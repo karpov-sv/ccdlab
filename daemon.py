@@ -22,15 +22,32 @@ class SimpleProtocol(Protocol):
         self._peer = None
         self._refresh = refresh
 
+        # Name and type of the connection peer
+        self.name = None
+        self.type = None
+
+        # These will be set in Factory::buildProtocol
+        self.factory = None
+        self.object = None
+
+    def setName(self, name, type=None):
+        """Set the name (and type) used to identify the connection"""
+        self.name = name
+        self.type = type
+
     def connectionMade(self):
         """Method called when connection is established"""
         self._peer = self.transport.getPeer()
+        self.factory.connections.append(self)
+
         print "Connected to %s:%d" % (self._peer.host, self._peer.port)
 
         LoopingCall(self.update).start(self._refresh)
 
     def connectionLost(self, reason):
         """Method called when connection is finished"""
+        self.factory.connections.remove(self)
+
         print "Disconnected from %s:%d" % (self._peer.host, self._peer.port)
 
     def message(self, string):
@@ -65,11 +82,22 @@ class SimpleProtocol(Protocol):
         """
         self._is_binary = True
         self._binary_length = length
+        if self._debug:
+            print "%s:%d = binary mode waiting for %d bytes" % (self._peer.host, self._peer.port, string, length)
 
     def processMessage(self, string):
         """Process single message"""
         if self._debug:
             print "%s:%d > %s" % (self._peer.host, self._peer.port, string)
+
+        cmd = Command(string)
+
+        # Some generic commands every connection should understand
+        if cmd.name == 'get_id':
+            # Identification of the daemon
+            self.message('id name=%s type=%s' % (self.factory.name, self.factory.type))
+
+        return cmd
 
     def processBinary(self, data):
         """Process binary data when completely read out"""
@@ -85,10 +113,16 @@ class SimpleFactory(Factory):
     Every connection receives the object passed to class constructor
     so it may be accessed from connection protocol
     """
-    def __init__(self, protocol, object=None, reactor=None):
-        self._object = object
+    def __init__(self, protocol, object=None, reactor=None, name=None, type=None):
         self._protocol = protocol
         self._reactor = reactor
+
+        self.connections = [] # List of all currently active connections
+        self.object = object # User-supplied object what should be accessible by all connections and daemon itself
+
+        # Name and type of the daemon
+        self.name = name
+        self.type = type
 
         if not self._reactor:
             from twisted.internet import reactor
@@ -96,10 +130,36 @@ class SimpleFactory(Factory):
 
     def buildProtocol(self, addr):
         p = self._protocol()
-        p._factory = self
-        p.object = self._object
+
+        p.factory = self
+        p.object = self.object
 
         return p
+
+    def findConnection(self, name=None, type=None):
+        """Find the first connection with given name and type among the active connections"""
+        for c in self.connections:
+            isMatched = True
+
+            if name and c.name != name:
+                isMatched = False
+
+            if type and c.type != type:
+                isMatched = False
+
+            if isMatched:
+                return c
+
+        return None
+
+    def messageAll(self, string, name=None, type=None):
+        """Send the message to all (or with a given name/type only) active connections"""
+        for c in self.connections:
+            if name and c.name != name:
+                continue
+            if type and c.type != type:
+                continue
+            c.message(string)
 
     def listen(self, port=0):
         """Listen for incoming connections on a given port"""

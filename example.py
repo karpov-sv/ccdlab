@@ -7,20 +7,28 @@ from daemon import SimpleFactory, SimpleProtocol, Command
 ### Example code with server daemon and outgoing connection to hardware
 
 class DaemonProtocol(SimpleProtocol):
-    _debug = True
+    _debug = True # Display all traffic for debug purposes
 
     def processMessage(self, string):
-        if self._debug:
-            print "%s:%d > %s" % (self._peer.host, self._peer.port, string)
-
-        cmd = Command(string)
+        # It will handle some generic messages and return pre-parsed Command object
+        cmd = SimpleProtocol.processMessage(self, string)
+        obj = self.object # Object holding the state
+        hw = obj['hw'] # HW factory
 
         if cmd.name == 'get_status':
             self.message('status hw_connected=%s' % self.object['hw_connected'])
+        else:
+            if obj['hw_connected']:
+                # Pass all other commands directly to hardware
+                hw.messageAll(string, name='hw', type='hw')
 
 class HWProtocol(SimpleProtocol):
+    _debug = True # Display all traffic for debug purposes
+
     def connectionMade(self):
         self.object['hw_connected'] = 1
+        self.name = 'hw'
+        self.type = 'hw'
         SimpleProtocol.connectionMade(self)
 
     def connectionLost(self, reason):
@@ -53,6 +61,9 @@ if __name__ == '__main__':
     # We need two different factories as the protocols are different
     daemon = SimpleFactory(DaemonProtocol, obj)
     hw = SimpleFactory(HWProtocol, obj)
+
+    obj['daemon'] = daemon
+    obj['hw'] = hw
 
     # Incoming connections
     daemon.listen(options.port)
