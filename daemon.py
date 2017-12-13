@@ -24,8 +24,8 @@ class SimpleProtocol(Protocol):
         self._refresh = refresh
 
         # Name and type of the connection peer
-        self.name = None
-        self.type = None
+        self.name = ''
+        self.type = ''
 
         # These will be set in Factory::buildProtocol
         self.factory = None
@@ -43,11 +43,14 @@ class SimpleProtocol(Protocol):
 
         print "Connected to %s:%d" % (self._peer.host, self._peer.port)
 
-        LoopingCall(self.update).start(self._refresh)
+        self._updateTimer = LoopingCall(self.update)
+        self._updateTimer.start(self._refresh)
 
     def connectionLost(self, reason):
         """Method called when connection is finished"""
         self.factory.connections.remove(self)
+
+        self._updateTimer.stop()
 
         print "Disconnected from %s:%d" % (self._peer.host, self._peer.port)
 
@@ -97,6 +100,10 @@ class SimpleProtocol(Protocol):
         if cmd.name == 'get_id':
             # Identification of the daemon
             self.message('id name=%s type=%s' % (self.factory.name, self.factory.type))
+        elif cmd.name == 'id':
+            # Set peer identification
+            self.name = cmd.get('name', '')
+            self.type = cmd.get('type', '')
 
         return cmd
 
@@ -122,8 +129,8 @@ class SimpleFactory(Factory):
         self.object = object # User-supplied object what should be accessible by all connections and daemon itself
 
         # Name and type of the daemon
-        self.name = name
-        self.type = type
+        self.name = ''
+        self.type = ''
 
         if not self._reactor:
             from twisted.internet import reactor

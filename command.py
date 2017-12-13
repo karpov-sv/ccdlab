@@ -10,6 +10,8 @@ class Command:
         self.args = []
         self.kwargs = {}
 
+        self.chunks = [] # Raw splitted chunks
+
         self.parse(string)
 
     def name(self):
@@ -19,9 +21,9 @@ class Command:
             return self.kwargs.get(key, value)
 
     def parse(self, string):
-        chunks = shlex.split(string)
+        self.chunks = shlex.split(string)
 
-        for i,chunk in enumerate(chunks):
+        for i,chunk in enumerate(self.chunks):
             if '=' not in chunk:
                 if i == 0:
                     self.name = chunk

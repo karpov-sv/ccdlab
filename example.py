@@ -51,6 +51,7 @@ if __name__ == '__main__':
     parser.add_option('-H', '--hw-host', help='Hardware host to connect', action='store', dest='hw_host', default='localhost')
     parser.add_option('-P', '--hw-port', help='Hardware port to connect', action='store', dest='hw_port', type='int', default=8099)
     parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=12345)
+    parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='example')
 
     (options,args) = parser.parse_args()
 
@@ -62,6 +63,8 @@ if __name__ == '__main__':
     # We need two different factories as the protocols are different
     daemon = SimpleFactory(DaemonProtocol, obj)
     hw = SimpleFactory(HWProtocol, obj)
+
+    daemon.name = options.name
 
     obj['daemon'] = daemon
     obj['hw'] = hw
