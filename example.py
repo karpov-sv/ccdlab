@@ -2,7 +2,8 @@
 
 import os, sys
 
-from daemon import SimpleFactory, SimpleProtocol, Command
+from daemon import SimpleFactory, SimpleProtocol
+from command import Command
 
 ### Example code with server daemon and outgoing connection to hardware
 
