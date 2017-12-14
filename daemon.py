@@ -104,6 +104,9 @@ class SimpleProtocol(Protocol):
             # Set peer identification
             self.name = cmd.get('name', '')
             self.type = cmd.get('type', '')
+        elif cmd.name == 'exit':
+            # Stops the daemon
+            self.factory._reactor.stop()
 
         return cmd
 
