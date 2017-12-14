@@ -157,7 +157,19 @@ class WebMonitor(Resource):
                               clients = self.object['clients'],
                               status = self.factory.getStatus(as_dict=True))
         elif q.path == '/monitor/command':
-            self.factory.messageAll(args['string'][0])
+            cmd = Command(args['string'][0])
+
+            if cmd.name == 'exit':
+                self.factory._reactor.stop()
+
+            elif cmd.name == 'send' and cmd.chunks[1]:
+                c = self.factory.findConnection(name=cmd.chunks[1])
+                if c:
+                    c.message(" ".join(cmd.chunks[2:]))
+
+            elif (cmd.name == 'broadcast' or cmd.name == 'send_all'):
+                self.factory.messageAll(" ".join(cmd.chunks[1:]))
+
             return serve_json(request)
 
 if __name__ == '__main__':
