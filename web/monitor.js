@@ -10,7 +10,7 @@ Monitor = function(parent_id, base="/monitor", title="Monitor"){
     var title = $("<h3/>", {class:"panel-title"}).html(title + " ").appendTo(header);
     this.throbber = $("<span/>", {class:"glyphicon glyphicon-refresh pull-right"}).appendTo(title);
     this.connstatus = $("<span/>", {class:"label label-default"}).appendTo(title);
-
+        
     this.body = $("<div/>", {class:"panel-body"}).appendTo(panel);
 
     var list = $("<ul/>", {class:"list-group"}).appendTo(this.body);
@@ -30,7 +30,7 @@ Monitor = function(parent_id, base="/monitor", title="Monitor"){
         event.preventDefault();
     }, this));
 
-    this.clientsdiv = $("<div/>", {class:""}).appendTo(this.body);
+    this.clientsdiv = $("<div/>").appendTo(this.body);
     this.clients = [];
 
     var footer = $("<div/>", {class:"panel-footer"});//.appendTo(panel);
@@ -96,7 +96,8 @@ Monitor.prototype.updateStatus = function(status, clients){
     if(this.clients.length != clients.length)
         this.makeClients(clients);
 
-    state = "Connections: " + label(status['nconnected']);
+    state = "";
+    //state += "Connections: " + label(status['nconnected']);
     state += " Clients:";
 
     for(var i=0; i < clients.length; i++){
@@ -125,7 +126,14 @@ Monitor.prototype.updateStatus = function(status, clients){
                 hide(this.clients[i].progressdiv);
             }
 
-
+            if(client_status['hw_connected'] == '1'){
+                this.clients[i].hwstatus.html("HW connected");
+                this.clients[i].hwstatus.removeClass("label-danger").addClass("label-success");                
+            } else {
+                this.clients[i].hwstatus.html("HW disconnected");
+                this.clients[i].hwstatus.removeClass("label-success").addClass("label-danger");   
+            }
+            
             for(var key in client_status){
                 html += key + ": " + label(client_status[key]) + " ";
             }
@@ -159,18 +167,21 @@ Monitor.prototype.makeButton = function(text, command, title)
 
 Monitor.prototype.makeClients = function(clients)
 {
-    this.clientsdiv.html = "";
-
+    this.clientsdiv.html("");
+    this.clients = [];
+    
     for(var i=0; i < clients.length; i++){
         this.clients[i] = {};
 
         var div = $("<div/>", {class:"panel panel-default"}).appendTo(this.clientsdiv);
         var header = $("<div/>", {class:"panel-heading"}).appendTo(div);
-        var title = $("<h3/>", {class:"panel-title"}).html(clients[i]['name']+" ").appendTo(header);
-        this.clients[i].connstatus = $("<span/>", {class:"label label-default"}).appendTo(title);
+        var title = $("<h3/>", {class:"panel-title"}).appendTo(header);
+        this.clients[i].title = $("<span/>", {style:"margin-right: 0.5em"}).html(clients[i]['name']).appendTo(title);
+        this.clients[i].connstatus = $("<span/>", {class:"label label-default", style:"margin-right: 0.5em"}).appendTo(title);
+        this.clients[i].hwstatus = $("<span/>", {class:"label label-default", style:"margin-right: 0.5em"}).appendTo(title);
         var body = $("<div/>", {class:"panel-body", style:"padding: 1px; margin: 1px"}).appendTo(div);
         this.clients[i].body = body;
-
+        
         this.clients[i].progressdiv = $("<div/>", {class:"progress", style:"margin: 0; padding: 0"}).appendTo(body);
         this.clients[i].progress = $("<div/>", {class:"progress-bar", style:"width: 0%"}).appendTo(this.clients[i].progressdiv);
 
@@ -181,5 +192,8 @@ Monitor.prototype.makeClients = function(clients)
         //this.clients[i].state = $("<li/>", {class: "list-group-item", style:"padding: 5px"}).appendTo(list);
 
         //$("<option>", {value: this.clients[i]['name']}).html(this.clients[i]['name']).appendTo(this.cmdtarget);
+
+        if(clients[i]['description'])
+            this.clients[i].title.html(clients[i]['description']);
     }
 }

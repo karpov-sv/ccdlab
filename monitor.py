@@ -7,10 +7,11 @@ from twisted.web.resource import Resource
 from twisted.web.static import File
 from twisted.internet.endpoints import TCP4ServerEndpoint
 
-import os, sys
+import os, sys, posixpath
 import re
 import urlparse
 import json
+import ConfigParser
 
 from daemon import SimpleFactory, SimpleProtocol
 from command import Command
@@ -18,8 +19,6 @@ from command import Command
 ### Example code with server daemon and outgoing connection to hardware
 
 def kwargsToString(kwargs, prefix=''):
-    result = ''
-
     return " ".join([prefix + _ + '=' + kwargs[_] for _ in kwargs])
 
 def catch(func):
@@ -125,7 +124,8 @@ class CmdlineProtocol(LineReceiver):
             print "Number of registered clients:", len(self.object['clients'])
             for c in self.object['clients']:
                 conn = self.factory.findConnection(name=c['name'])
-                self.message("  %s:%s name:%s connected:%s\n" % (c['host'], c['port'], c['name'], conn!=None))
+                self.message("  %s:%s name:%s connected:%s" % (c['host'], c['port'], c['name'], conn!=None))
+            self.message()
 
         elif cmd.name == 'send' and cmd.chunks[1]:
             c = self.factory.findConnection(name=cmd.chunks[1])
@@ -174,7 +174,8 @@ class WebMonitor(Resource):
 
 if __name__ == '__main__':
     from optparse import OptionParser
-
+    from ConfigParser import SafeConfigParser
+    
     parser = OptionParser(usage="usage: %prog [options] arg")
     parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7100)
 
@@ -183,12 +184,39 @@ if __name__ == '__main__':
     # Object holding actual state and work logic.
     obj = {'clients':[]}
 
+    # First read client config from INI file
+    parser = SafeConfigParser({'enabled':'True', 'description':None})
+    parser.read('%s.ini' % posixpath.splitext(__file__)[0])
+
+    for section in parser.sections():
+        if not parser.getboolean(section, 'enabled'):
+            continue
+        
+        if parser.has_option(section, 'host') and parser.has_option(section, 'port'):
+            client = {'name':section,
+                      'host':parser.get(section, 'host'),
+                      'port':parser.getint(section, 'port'),
+                      'description':parser.get(section, 'description')}
+
+            # if parser.has_option(section, 'description'):
+            #     client['description'] = parser.get(section, 'description')
+
+        obj['clients'].append(client)
+
+    # Next parse command line positional args as name=host:port tokens
     for arg in args:
         m = re.match('(([a-zA-Z0-9-_]+)=)?(.*):(\d+)', arg)
         if m:
             name,host,port = m.group(2,3,4)
             print name,host,port
-            obj['clients'].append({'host':host, 'port':int(port), 'name':name})
+
+            client = [_ for _ in obj['clients'] if _['name'] == name]
+
+            if client:
+                client[0]['host'] = host
+                client[0]['port'] = int(port)
+            else:
+                obj['clients'].append({'host':host, 'port':int(port), 'name':name, 'description':None})
 
     daemon = MonitorFactory(MonitorProtocol, obj)
     daemon.listen(options.port)
