@@ -11,7 +11,6 @@ import os, sys, posixpath
 import re
 import urlparse
 import json
-import ConfigParser
 
 from daemon import SimpleFactory, SimpleProtocol
 from command import Command
@@ -174,34 +173,58 @@ class WebMonitor(Resource):
 
 if __name__ == '__main__':
     from optparse import OptionParser
-    from ConfigParser import SafeConfigParser
+    from configobj import ConfigObj,Section # apt-get install python-configobj
+    from validate import Validator
+    from StringIO import StringIO
     
-    parser = OptionParser(usage="usage: %prog [options] arg")
-    parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7100)
-
-    (options,args) = parser.parse_args()
-
     # Object holding actual state and work logic.
-    obj = {'clients':[]}
+    obj = {'clients':[], 'port':7100, 'name':'monitor'}
 
     # First read client config from INI file
-    parser = SafeConfigParser({'enabled':'True', 'description':None})
-    parser.read('%s.ini' % posixpath.splitext(__file__)[0])
+    # We use ConfigObj library from http://www.voidspace.org.uk/python/configobj.html
 
-    for section in parser.sections():
-        if not parser.getboolean(section, 'enabled'):
-            continue
-        
-        if parser.has_option(section, 'host') and parser.has_option(section, 'port'):
+    # Schema to validate and transform the values from config file
+    schema = ConfigObj(StringIO('''
+    port = integer(min=0,max=65535,default=%d)
+    name = string(default=%s)
+    [__many__]
+    enabled = boolean(default=True)
+    port = integer(min=0,max=65535,default=0)
+    host = string(default="localhost")
+    description = string(default=None)
+    ''' % (obj['port'], obj['name'])), list_values=False)
+
+    confname = '%s.ini' % posixpath.splitext(__file__)[0]
+    conf = ConfigObj(confname, configspec=schema)
+    if len(conf):
+        result = conf.validate(Validator())
+        if result != True:
+            print "Config file failed validation: %s" % confname
+            print result
+            sys.exit(1)
+
+        for section in conf:
+            # Skip leafs and branches with enabled=False
+            if type(conf[section]) != Section or not conf[section]['enabled']:
+                continue
+
             client = {'name':section,
-                      'host':parser.get(section, 'host'),
-                      'port':parser.getint(section, 'port'),
-                      'description':parser.get(section, 'description')}
+                      'host':conf[section]['host'],
+                      'port':conf[section]['port'],
+                      'description':conf[section]['description']}
 
-            # if parser.has_option(section, 'description'):
-            #     client['description'] = parser.get(section, 'description')
+            obj['clients'].append(client)
 
-        obj['clients'].append(client)
+        obj['port'] = conf.get('port')
+        obj['name'] = conf.get('name')
+
+    # Now parse command-line arguments using values read from config as defaults
+    # so that they may be changed at startup time
+    parser = OptionParser(usage="usage: %prog [options] arg")
+    parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=obj['port'])
+    parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', type='string', default=obj['name'])
+    
+    (options,args) = parser.parse_args()
 
     # Next parse command line positional args as name=host:port tokens
     for arg in args:
@@ -218,10 +241,9 @@ if __name__ == '__main__':
             else:
                 obj['clients'].append({'host':host, 'port':int(port), 'name':name, 'description':None})
 
-    daemon = MonitorFactory(MonitorProtocol, obj)
+    # Now we have everything to construct an run the daemon
+    daemon = MonitorFactory(MonitorProtocol, obj, name=options.name)
     daemon.listen(options.port)
-
-    obj['daemon'] = daemon
 
     for c in obj['clients']:
         daemon.connect(c['host'], c['port'])
