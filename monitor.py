@@ -15,6 +15,7 @@ import json
 from StringIO import StringIO
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
+from matplotlib.dates import DateFormatter
 
 from daemon import SimpleFactory, SimpleProtocol
 from command import Command
@@ -41,7 +42,7 @@ class MonitorProtocol(SimpleProtocol):
         SimpleProtocol.__init__(self)
         self.name = None
         self.status = {}
-        
+
     def connectionMade(self):
         SimpleProtocol.connectionMade(self)
 
@@ -69,16 +70,16 @@ class MonitorProtocol(SimpleProtocol):
                         value = datetime.datetime.utcnow()
                     else:
                         value = self.status.get(name, None)
-                        
+
                     self.object['values'][self.name][name].append(value)
                     # Keep the maximal length of data arrays limited
                     # TODO: make it configurable, probably for every plot
                     if len(self.object['values'][self.name][name]) > 1000:
                         self.object['values'][self.name][name] = self.object['values'][self.name][name][100:]
-            
+
         elif cmd.name == 'get_status':
             self.message(self.factory.getStatus())
-        
+
     def update(self):
         self.factory.messageAll('get_status')
 
@@ -168,6 +169,10 @@ def make_plot(file, obj, client_name, plot_name, size=800):
     for _ in plot['values'][1:]:
         ax.plot(values[plot['values'][0]], values[_], '.-', label=_)
 
+    if plot['values'][0] == 'time' and len(values[plot['values'][0]]) > 1:
+        ax.xaxis.set_major_formatter(DateFormatter('%H:%M:%S'))
+        fig.autofmt_xdate()
+
     if plot['xlabel']:
         ax.set_xlabel(plot['xlabel'])
     else:
@@ -181,11 +186,11 @@ def make_plot(file, obj, client_name, plot_name, size=800):
         ax.set_ylabel(plot['values'][1])
 
     ax.set_title(plot['name'])
-        
+
     # Return the image
     canvas = FigureCanvas(fig)
-    canvas.print_png(file, bbox_inches='tight')    
-    
+    canvas.print_png(file, bbox_inches='tight')
+
 class WebMonitor(Resource):
     isLeaf = True
 
@@ -264,7 +269,7 @@ def loadINI(filename, obj):
 
         for sname in conf:
             section = conf[sname]
-            
+
             # Skip leafs and branches with enabled=False
             if type(section) != Section or not section['enabled']:
                 continue
@@ -279,15 +284,15 @@ def loadINI(filename, obj):
 
             if section.has_key('plots'):
                 values = []
-                
+
                 # Parse parameters of plots
                 for plot in section['plots']:
                     client['plots'][plot] = section['plots'][plot]
 
                     values += section['plots'][plot]['values']
-                
+
                 obj['values'][sname] = {_:[] for _ in set(values)} # Unique values
-                
+
             obj['clients'][sname] = client
 
         obj['port'] = conf.get('port')
@@ -295,12 +300,12 @@ def loadINI(filename, obj):
 
     # print obj
     # sys.exit(1)
-        
+
     return True
-        
+
 if __name__ == '__main__':
     from optparse import OptionParser
-    
+
     # Object holding actual state and work logic.
     obj = {'clients':{}, 'values':{}, 'port':7100, 'name':'monitor'}
 
@@ -312,7 +317,7 @@ if __name__ == '__main__':
     parser = OptionParser(usage="usage: %prog [options] arg")
     parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=obj['port'])
     parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', type='string', default=obj['name'])
-    
+
     (options,args) = parser.parse_args()
 
     # Next parse command line positional args as name=host:port tokens
