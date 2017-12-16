@@ -71,6 +71,10 @@ class MonitorProtocol(SimpleProtocol):
                         value = self.status.get(name, None)
                         
                     self.object['values'][self.name][name].append(value)
+                    # Keep the maximal length of data arrays limited
+                    # TODO: make it configurable, probably for every plot
+                    if len(self.object['values'][self.name][name]) > 1000:
+                        self.object['values'][self.name][name] = self.object['values'][self.name][name][100:]
             
         elif cmd.name == 'get_status':
             self.message(self.factory.getStatus())
