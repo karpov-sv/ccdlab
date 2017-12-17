@@ -93,10 +93,6 @@ Monitor.prototype.updateStatus = function(status, clients){
         var client_status = status[client['name']];
         var widget = this.clients[i]['widget'];
 
-        if(client['name'] in this.last_status && Object.keys(this.last_status[client['name']]).length != Object.keys(client_status).length){
-            this.renderClient(this.clients[i], client_status);
-        }
-
         if(client_status == '0') {
             this.clients[i]['state'].html("Disconnected").removeClass("label-success").addClass("label-warning");
 
@@ -124,13 +120,8 @@ Monitor.prototype.updateStatus = function(status, clients){
                 widget.find(".monitor-client-hwstatus").html("HW disconnected").removeClass("label-success").addClass("label-danger");
             }
 
-            //var html = "";
-            for(var key in client_status){
-                //html += key + ": " + label(client_status[key]) + " ";
-
-                widget.find(".monitor-value-"+key.replace(/\//, "\\/")).html(client_status[key]);
-            }
-            //widget.find(".monitor-client-main").html(html);
+            // Update tempated view using data-linked values
+            $.observable(this.clients[i]).setProperty('status', client_status);
         }
     }
 
@@ -156,19 +147,14 @@ Monitor.prototype.makeClients = function(clients, status)
 
         client['template'] = getData('/template/' + clients[name]['template']);
         client['widget'] = $("<div/>").appendTo($(this.id).find('.monitor-clients'));
+        client['status'] = status[name];
 
-        this.renderClient(client, status[name]);
+        // Render the template with data-linking to client object
+        $.templates(client['template']).link(client['widget'], client);
 
         // Create updaters to refresh the plots
         for(var name in client['params']['plots']){
             new Updater(client['widget'].find('.monitor-plot-'+client['name']+'-'+name), 10000);
         }
     }
-}
-
-Monitor.prototype.renderClient = function(client, client_status)
-{
-    var rendered = $.templates(client['template']).render({'params':client['params'], 'status':client_status});
-
-    client['widget'].html(rendered);
 }

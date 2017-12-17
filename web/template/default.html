@@ -20,8 +20,8 @@
 
     <!-- Show all key=value pairs from the status -->
     <div class="monitor-client-main" style="padding: 5px">
-      {{props status }}
-      {{: key }}:&nbsp;<span class="monitor-value-{{: key }} label label-primary" style="margin-right: 1em">{{>prop}}</span>
+      {^{props status ~status=status}}
+      {^{: key }}:&nbsp;<span class="monitor-value-{{: key }} label label-primary" style="margin-right: 1em" data-link="~status.{{: key }}">-</span>
       {{/props}}
     </div>
 
