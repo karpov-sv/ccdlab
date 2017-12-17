@@ -186,6 +186,7 @@ def make_plot(file, obj, client_name, plot_name, size=800):
         ax.set_ylabel(plot['values'][1])
 
     ax.set_title(plot['name'])
+    ax.margins(0.01, 0.1)
 
     # Return the image
     canvas = FigureCanvas(fig)
@@ -208,6 +209,7 @@ class WebMonitor(Resource):
             return serve_json(request,
                               clients = self.object['clients'],
                               status = self.factory.getStatus(as_dict=True))
+        # /monitor/plots/{client}/{name}
         elif qs[1] == 'monitor' and qs[2] == 'plot' and len(qs) > 4:
             s = StringIO()
             make_plot(s, self.object, qs[3], qs[4])
@@ -232,7 +234,7 @@ class WebMonitor(Resource):
             return serve_json(request)
 
 def loadINI(filename, obj):
-    # We use ConfigObj library from http://www.voidspace.org.uk/python/configobj.html
+    # We use ConfigObj library, docs: http://configobj.readthedocs.io/en/latest/index.html
     from configobj import ConfigObj,Section # apt-get install python-configobj
     from validate import Validator
 
@@ -244,8 +246,9 @@ def loadINI(filename, obj):
     [__many__]
     enabled = boolean(default=True)
     port = integer(min=0,max=65535,default=0)
-    host = string(default="localhost")
+    host = string(default=localhost)
     description = string(default=None)
+    template = string(default=default.html)
 
     [[plots]]
     [[[__many__]]]
@@ -274,11 +277,8 @@ def loadINI(filename, obj):
             if type(section) != Section or not section['enabled']:
                 continue
 
-            client = {'name':sname,
-                      'host':section['host'],
-                      'port':section['port'],
-                      'description':section['description'],
-                      'plots':{}}
+            client = section.dict()
+            client['name'] = sname
 
             obj['values'][sname] = {}
 
@@ -317,6 +317,7 @@ if __name__ == '__main__':
     parser = OptionParser(usage="usage: %prog [options] arg")
     parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=obj['port'])
     parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', type='string', default=obj['name'])
+    parser.add_option('-d', '--debug', help='Debug output', action='store_true', dest='debug', default=False)
 
     (options,args) = parser.parse_args()
 
@@ -344,9 +345,13 @@ if __name__ == '__main__':
 
     # Web interface
 
+    if options.debug:
+        from twisted.python import log
+        log.startLogging(sys.stdout)
+
     # Serve files from web
     root = File("web")
-    root.putChild("", File('web/webmonitor.html'))
+    root.putChild("", File('web/main.html'))
     root.putChild("monitor", WebMonitor(factory=daemon, object=obj))
     site = Site(root)
 

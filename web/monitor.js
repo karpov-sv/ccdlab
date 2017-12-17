@@ -1,44 +1,48 @@
 Monitor = function(parent_id, base="/monitor", title="Monitor"){
     this.base = base;
     this.title = title;
-
     this.last_status = {};
+    this.parent_id = parent_id;
+    this.clients = [];
 
-    var panel = $("<div/>", {class:"monitor panel panel-default"});
+    // Render the main block from the template
+    var template = getData("/template/monitor.html");
+    var rendered = $.templates(template).render(this);
+    this.id = $(this.parent_id).html(rendered);
 
-    var header = $("<div/>", {class:"panel-heading"}).appendTo(panel);
-    var title = $("<h3/>", {class:"panel-title"}).html(title + " ").appendTo(header);
-    this.throbber = $("<span/>", {class:"glyphicon glyphicon-refresh pull-right"}).appendTo(title);
-    this.connstatus = $("<span/>", {class:"label label-default"}).appendTo(title);
-        
-    this.body = $("<div/>", {class:"panel-body"}).appendTo(panel);
-
-    var list = $("<ul/>", {class:"list-group"}).appendTo(this.body);
-
-    this.state = $("<li/>", {class:"list-group-item"}).appendTo(list);
-
-    this.cmdline = $("<input>", {type:"text", size:"40", class:"form-control"});
-    this.cmdtarget = $("<select/>", {class:"selectpicker input-group-btn"});
-
-    $("<div/>", {class:"input-group"}).append($("<span/>", {class:"input-group-addon"}).html("Command:")).append(this.cmdline).appendTo(list);
-
+    // Command line
+    this.cmdline = $(this.id).find(".monitor-cmdline");
     this.cmdline.pressEnter($.proxy(function(event){
         this.sendCommand(this.cmdline.val());
         event.preventDefault();
     }, this));
 
-    this.clientsdiv = $("<div/>").appendTo(this.body);
-    this.clients = [];
-
-    var footer = $("<div/>", {class:"panel-footer"});//.appendTo(panel);
-
-    var form = $("<form/>").appendTo(footer);
-    this.delayValue = 2000;
-
-    panel.appendTo(parent_id);
-
+    //
     this.timer = 0;
+    this.refreshDelay = 2000;
     this.requestState();
+}
+
+// Synchronously request data from server and return it
+getData = function(url){
+    $.ajax({
+        url: url,
+        async: false,
+        context: this,
+        dataType: "text",
+        success: function(text){
+            result = text;
+        }
+    });
+
+    return result;
+}
+
+Monitor.prototype.sendCommand = function(command){
+    $.ajax({
+        url: this.base + "/command",
+        data: {string: command}
+    });
 }
 
 Monitor.prototype.requestState = function(){
@@ -49,11 +53,11 @@ Monitor.prototype.requestState = function(){
         context: this,
 
         success: function(json){
-            this.throbber.animate({opacity: 1.0}, 200).animate({opacity: 0.1}, 400);
+            $(this.id).find('.monitor-throbber').animate({opacity: 1.0}, 200).animate({opacity: 0.1}, 400);
 
             this.json = json;
-            
-            /* Crude hack to prevent jumping */
+
+            // Crude hack to prevent jumping
             st = document.body.scrollTop;
             sl = document.body.scrollLeft;
             this.updateStatus(json.status, json.clients);
@@ -61,119 +65,110 @@ Monitor.prototype.requestState = function(){
             document.body.scrollLeft = sl;
         },
 
-        complete: function( xhr, status ) {
+        error: function(){
+            $(this.id).find(".monitor-connstatus").html("Disconnected").addClass("label-danger").removeClass("label-success");
+            $(this.id).find(".monitor-body").addClass("disabled-controls");
+        },
+
+        complete: function(xhr, status) {
             clearTimeout(this.timer);
-            this.timer = setTimeout($.proxy(this.requestState, this), this.delayValue);
+            this.timer = setTimeout($.proxy(this.requestState, this), this.refreshDelay);
         }
     });
 }
 
 Monitor.prototype.updateStatus = function(status, clients){
-    this.last_status = status;
+    show($(this.id).find(".monitor-body"));
+    enable($(this.id).find(".monitor-body"));
 
-    show(this.body);
-
-    this.connstatus.html("Connected");
-    this.connstatus.removeClass("label-danger").addClass("label-success");
+    $(this.id).find(".monitor-connstatus").html("Connected").removeClass("label-danger").addClass("label-success");
+    $(this.id).find(".monitor-body").removeClass("disabled-controls");
 
     if(this.clients.length != Object.keys(clients).length){
-        this.makeClients(clients);
+        this.makeClients(clients, status);
     }
-
-    state = "";
-    //state += "Connections: " + label(status['nconnected']);
-    state += " Clients:";
 
     for(var i=0; i < this.clients.length; i++){
         var client = clients[this.clients[i].name];
         var client_status = status[client['name']];
-        var html = "";
+        var widget = this.clients[i]['widget'];
+
+        if(client['name'] in this.last_status && Object.keys(this.last_status[client['name']]).length != Object.keys(client_status).length){
+            this.renderClient(this.clients[i], client_status);
+        }
 
         if(client_status == '0') {
-            state += " " + label(client['name'], 'warning');
+            this.clients[i]['state'].html("Disconnected").removeClass("label-success").addClass("label-warning");
 
-            hide(this.clients[i].body);
-            this.clients[i].connstatus.html("Disconnected");
-            this.clients[i].connstatus.removeClass("label-success").addClass("label-danger");
+            hide(widget.find(".monitor-client-body"));
+            hide(widget.find(".monitor-client-hwstatus"));
+            widget.find(".monitor-client-connstatus").html("Disconnected").removeClass("label-success").addClass("label-danger");
         } else {
-            state += " " + label(client['name'], 'success');
+            this.clients[i]['state'].html("Connected").addClass("label-success").removeClass("label-warning");
 
-            show(this.clients[i].body);
-            this.clients[i].connstatus.html("Connected");
-            this.clients[i].connstatus.removeClass("label-danger").addClass("label-success");
+            show(widget.find(".monitor-client-body"));
+            show(widget.find(".monitor-client-hwstatus"));
+            widget.find(".monitor-client-connstatus").html("Connected").addClass("label-success").removeClass("label-danger");
 
             if(client_status['progress'] && client_status['progress'] > 0){
-                show(this.clients[i].progressdiv);
+                show(widget.find(".monitor-client-progressdiv"));
 
-                this.clients[i].progress.css("width", 100*client_status['progress']+"%");
+                widget.find(".monitor-client-progress").clients[i].progress.css("width", 100*client_status['progress']+"%");
             } else {
-                hide(this.clients[i].progressdiv);
+                hide(widget.find(".monitor-client-progressdiv"));
             }
 
             if(client_status['hw_connected'] == '1'){
-                this.clients[i].hwstatus.html("HW connected");
-                this.clients[i].hwstatus.removeClass("label-danger").addClass("label-success");                
+                widget.find(".monitor-client-hwstatus").html("HW connected").removeClass("label-danger").addClass("label-success");
             } else {
-                this.clients[i].hwstatus.html("HW disconnected");
-                this.clients[i].hwstatus.removeClass("label-success").addClass("label-danger");   
+                widget.find(".monitor-client-hwstatus").html("HW disconnected").removeClass("label-success").addClass("label-danger");
             }
-            
-            for(var key in client_status){
-                html += key + ": " + label(client_status[key]) + " ";
-            }
-        }
 
-        this.clients[i].state.html(html);
+            //var html = "";
+            for(var key in client_status){
+                //html += key + ": " + label(client_status[key]) + " ";
+
+                widget.find(".monitor-value-"+key.replace(/\//, "\\/")).html(client_status[key]);
+            }
+            //widget.find(".monitor-client-main").html(html);
+        }
     }
 
-    this.state.html(state);
+    this.last_status = status;
 }
 
-Monitor.prototype.sendCommand = function(command){
-    $.ajax({
-        url: this.base + "/command",
-        data: {string: command}
-    });
-}
-
-Monitor.prototype.makeButton = function(text, command, title)
+Monitor.prototype.makeClients = function(clients, status)
 {
-    if(typeof(command) == "string")
-        return $("<button>", {class:"btn btn-default", title:title}).html(text).click($.proxy(function(event){
-            this.sendCommand(command);
-            event.preventDefault();
-        }, this));
-    else if(typeof(command) == "function")
-        return $("<button>", {class:"btn btn-default", title:title}).html(text).click($.proxy(command, this));
-    else
-        return $("<button>", {class:"btn btn-default disabled", title:title}).html(text);
-}
+    var clientsdiv = $(this.id).find('.monitor-clients');
+    var clientsstate = $(this.id).find('.monitor-clients-state');
 
-Monitor.prototype.makeClients = function(clients)
-{
-    this.clientsdiv.html("");
+    clientsdiv.html("");
+    clientsstate.html("");
+
     this.clients = [];
-    
+
     for(var name in clients){
-        client = {'name':name};
-        
-        var div = $("<div/>", {class:"panel panel-default"}).appendTo(this.clientsdiv);
-        var header = $("<div/>", {class:"panel-heading"}).appendTo(div);
-        var title = $("<h3/>", {class:"panel-title"}).appendTo(header);
-        client.title = $("<span/>", {style:"margin-right: 0.5em"}).html(clients[name]['name']).appendTo(title);
-        client.connstatus = $("<span/>", {class:"label label-default", style:"margin-right: 0.5em"}).appendTo(title);
-        client.hwstatus = $("<span/>", {class:"label label-default", style:"margin-right: 0.5em"}).appendTo(title);
-        var body = $("<div/>", {class:"panel-body", style:"padding: 1px; margin: 1px"}).appendTo(div);
-        client.body = body;
-        
-        client.progressdiv = $("<div/>", {class:"progress", style:"margin: 0; padding: 0"}).appendTo(body);
-        client.progress = $("<div/>", {class:"progress-bar", style:"width: 0%"}).appendTo(client.progressdiv);
-
-        client.state = $("<div/>", {class: "", style:"padding: 5px"}).appendTo(body);
-
-        if(clients[name]['description'])
-            client.title.html(clients[name]['description']);
+        var client = {'name':name, 'params':clients[name]};
 
         this.clients.push(client);
+
+        client['state'] = $("<span/>", {class:"monitor-client-state label label-default"}).html(name).appendTo(clientsstate);
+
+        client['template'] = getData('/template/' + clients[name]['template']);
+        client['widget'] = $("<div/>").appendTo($(this.id).find('.monitor-clients'));
+
+        this.renderClient(client, status[name]);
+
+        // Create updaters to refresh the plots
+        for(var name in client['params']['plots']){
+            new Updater(client['widget'].find('.monitor-plot-'+client['name']+'-'+name), 10000);
+        }
     }
+}
+
+Monitor.prototype.renderClient = function(client, client_status)
+{
+    var rendered = $.templates(client['template']).render({'params':client['params'], 'status':client_status});
+
+    client['widget'].html(rendered);
 }

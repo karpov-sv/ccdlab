@@ -1,0 +1,27 @@
+<div class="monitor panel panel-default">
+  <div class="panel-heading">
+    <h3 class="panel-title">
+      <span class="monitor-title">{{> title }}</span>
+      <span class="monitor-connstatus label label-default"></span>
+      <span class="monitor-throbber glyphicon glyphicon-dot pull-right" title="Update indicator"></span>
+    </h3>
+  </div>
+
+  <div class="monitor-body panel-body">
+    <ul class="list-group">
+      <li class="list-group-item">
+        Clients:
+        <span class="monitor-clients-state"></span>
+      </li>
+      <div class="input-group">
+        <span class="input-group-addon">
+          Command:
+        </span>
+        <input type="text" class="monitor-cmdline form-control"/>
+      </div>
+    </ul>
+
+    <div class="monitor-clients"></div>
+
+  </div>
+</div>

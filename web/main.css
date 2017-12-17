@@ -1,0 +1,12 @@
+.throbber {
+    opacity: 0.1;
+}
+
+.glyphicon.glyphicon-dot:before {
+    content: "\25cf";
+}
+
+.disabled-controls {
+    pointer-events: none;
+    opacity: 0.4;
+}
