@@ -131,8 +131,47 @@ while True:
     
 ```
 
+## Implementing device daemons
+
+Device daemons may be implemented in any programming language, the only requirement is to accept line-based commands over network and to send proper status messages.
+
+For Python, we have a simple framework for implementing such servers by sub-classing generic classes defined in `daemon.py`, like in the example below. The code inside generic classes will take care of all incoming and outgoing connections, handle re-connection if necessary, keep persistent state between re-connections etc.
+
+```python
+from daemon import SimpleProtocol
+from command import Command
+
+class DaemonProtocol(SimpleProtocol):
+    def processMessage(self, string):
+        # It will handle some generic messages and return pre-parsed Command object
+        cmd = SimpleProtocol.processMessage(self, string)
+
+        if cmd.name == 'get_status':
+            self.message('status some_variable=0')
+
+if __name__ == '__main__':
+    # Factory for daemon connections
+    daemon = SimpleFactory(DaemonProtocol)
+
+    # Listen for incoming connections
+    daemon.listen(7002)
+
+    # Start the event cycle
+    daemon._reactor.run()
+```
+
+Check `example.py` for a bit more complex daemon which holds persistent re-connecting outgoing connection to the hardware with dedicated messaging protocol.
+
 ## Supported devices
 
+  * Archon CCD controller (in progress) 
+    * `archon_fake.py` - hardware simulator based on the responses of an actual controller
+    * `archon.py` - daemon code
+    
+  * CryoCon Model 24C cryogenic temperature controller (planned)
+  
+  * ...
+  
 ...
 
 ## TODO
