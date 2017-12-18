@@ -96,13 +96,13 @@ Monitor.prototype.updateStatus = function(status, clients){
         var widget = this.clients[i]['widget'];
 
         if(client_status == '0') {
-            this.clients[i]['state'].html("Disconnected").removeClass("label-success").addClass("label-warning");
+            this.clients[i]['state'].removeClass("label-success").addClass("label-warning");
 
             hide(widget.find(".monitor-client-body"));
             hide(widget.find(".monitor-client-hwstatus"));
             widget.find(".monitor-client-connstatus").html("Disconnected").removeClass("label-success").addClass("label-danger");
         } else {
-            this.clients[i]['state'].html("Connected").addClass("label-success").removeClass("label-warning");
+            this.clients[i]['state'].addClass("label-success").removeClass("label-warning");
 
             show(widget.find(".monitor-client-body"));
             show(widget.find(".monitor-client-hwstatus"));
