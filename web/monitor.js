@@ -25,6 +25,8 @@ Monitor = function(parent_id, base="/monitor", title="Monitor"){
 
 // Synchronously request data from server and return it
 getData = function(url){
+    var result = "";
+
     $.ajax({
         url: url,
         async: false,
@@ -120,8 +122,14 @@ Monitor.prototype.updateStatus = function(status, clients){
                 widget.find(".monitor-client-hwstatus").html("HW disconnected").removeClass("label-success").addClass("label-danger");
             }
 
+            // Remove entries no more in status
+            for(var name in this.clients[i]['status']){
+                if(!(name in client_status))
+                    $.observable(this.clients[i]['status']).removeProperty(name);
+            }
+
             // Update tempated view using data-linked values
-            $.observable(this.clients[i]).setProperty('status', client_status);
+            $.observable(this.clients[i]['status']).setProperty(client_status);
         }
     }
 
@@ -150,6 +158,8 @@ Monitor.prototype.makeClients = function(clients, status)
         client['status'] = status[name];
 
         // Render the template with data-linking to client object
+        $.views.settings.allowCode(true);
+
         $.templates(client['template']).link(client['widget'], client);
 
         // Create updaters to refresh the plots
