@@ -319,7 +319,7 @@ if __name__ == '__main__':
 
     # Now parse command-line arguments using values read from config as defaults
     # so that they may be changed at startup time
-    parser = OptionParser(usage="usage: %prog [options] arg")
+    parser = OptionParser(usage="usage: %prog [options] name1=host1:port1 name2=host2:port2 ...")
     parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=obj['port'])
     parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', type='string', default=obj['name'])
     parser.add_option('-d', '--debug', help='Debug output', action='store_true', dest='debug', default=False)
