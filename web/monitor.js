@@ -151,15 +151,13 @@ Monitor.prototype.makeClients = function(clients, status)
 
         this.clients.push(client);
 
-        client['state'] = $("<span/>", {class:"monitor-client-state label label-default"}).html(name).appendTo(clientsstate);
+        client['state'] = $("<span/>", {class:"monitor-client-state label label-default", style:'margin-right: 0.5em'}).html(name).appendTo(clientsstate);
 
         client['template'] = getData('/template/' + clients[name]['template']);
         client['widget'] = $("<div/>").appendTo($(this.id).find('.monitor-clients'));
         client['status'] = status[name];
 
         // Render the template with data-linking to client object
-        $.views.settings.allowCode(true);
-
         $.templates(client['template']).link(client['widget'], client);
 
         // Create updaters to refresh the plots
