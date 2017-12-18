@@ -80,6 +80,11 @@ class MonitorProtocol(SimpleProtocol):
         elif cmd.name == 'get_status':
             self.message(self.factory.getStatus())
 
+        elif cmd.name == 'send' and cmd.chunks[1]:
+            c = self.factory.findConnection(name=cmd.chunks[1])
+            if c:
+                c.message(" ".join(cmd.chunks[2:]))
+
     def update(self):
         self.factory.messageAll('get_status')
 
@@ -331,7 +336,7 @@ if __name__ == '__main__':
                 obj['clients'][name]['host'] = host
                 obj['clients'][name]['port'] = int(port)
             else:
-                obj['clients'][name] = {'host':host, 'port':int(port), 'name':name, 'description':None}
+                obj['clients'][name] = {'host':host, 'port':int(port), 'name':name, 'description':name, 'template':'default.html', 'plots':None}
 
     # Now we have everything to construct and run the daemon
     daemon = MonitorFactory(MonitorProtocol, obj, name=options.name)
