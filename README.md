@@ -88,3 +88,56 @@ The plots are configured as a lists of variable names from a client status strin
 The web interface is accessible at `localhost:8888` by default, and contains a header with list of all registered clients and their connection statuses, the command line to send commands to the service, and an information blocks for every client. Default information block (as defined in `default.html` template) simply lists all the variables reported by status reply, as well as all the plots configured for client. More sophisticated, device-specific views may be defined.
 
 The templates reside in `web/template/` folder. `monitor.html` defines the overall look of *MONITOR* web page, while `default.html` - default client information block.
+
+
+## Scripted access to the system
+
+You may access from shell or your script either device daemons directly, or *MONITOR* service which already holds the connections to all configured devices and allows sending arbitrary commands to them.
+
+Below is an example of how to do it in Python.
+
+```python
+from telnetlib import Telnet
+from command import Command
+from time import sleep
+
+def send_message_wait_reply(message, replies=[], host='localhost', port=7100):
+    t = Telnet(host, port)
+    t.write('%s\n' % message)
+    
+    if replies:
+        while True:
+            reply = t.read_until('\n')
+            cmd = Command(reply)
+            
+            if cmd.name in replies:
+                t.close()
+                return cmd
+            
+# Request status of all devices from monitor
+status = send_message_wait_reply('get_status', replies=['status']).kwargs
+print status
+
+# Send command and wait for specific condition 
+send_message_wait_reply('send cryocon set temperature=-100')
+while True:
+    sleep(10)
+    status = send_message_wait_reply('get_status', replies=['status']).kwargs
+    print "CryoCon temperature:", status['cryocon_temperature']
+    if float(status['cryocon_temperature']) < -99.9:
+        print "CryoCon temperature reached"
+        break
+
+    
+```
+
+## Supported devices
+
+...
+
+## TODO
+
+  * Storing logs (for all daemons?) and status variables (for *MONITOR* service) to database
+  * Acquiring and storing FITS images with proper meta-information in headers
+  * Displaying acquired images in *MONITOR* web interface
+  
