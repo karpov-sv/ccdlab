@@ -102,6 +102,29 @@ Monitor.prototype.updateStatus = function(status, clients){
             hide(widget.find(".monitor-client-hwstatus"));
             widget.find(".monitor-client-connstatus").html("Disconnected").removeClass("label-success").addClass("label-danger");
         } else {
+            // Crude hack to re-render the template completely if structure of status has changed too much
+            // It seems it can't be easily done using data-linking alone for our complex template logic
+            var should_rerender = Math.abs(Object.keys(this.clients[i]['status']).length - Object.keys(client_status).length) > 1
+
+            // Fix the incoming status so it is always an object, to be able to merge it with current status below
+            if(typeof(client_status) != 'object')
+                client_status = {};
+
+            if(should_rerender){
+                // Completely re-render the tempated view
+                this.clients[i]['status'] = client_status;
+                this.renderClient(this.clients[i]);
+            } else {
+                // Remove entries no more in status
+                for(var name in this.clients[i]['status']){
+                    if(!(name in client_status))
+                        $.observable(this.clients[i]['status']).removeProperty(name);
+                }
+
+                // Update templated view using data-linked values
+                $.observable(this.clients[i]['status']).setProperty(client_status);
+            }
+
             this.clients[i]['state'].addClass("label-success").removeClass("label-warning");
 
             show(widget.find(".monitor-client-body"));
@@ -121,16 +144,8 @@ Monitor.prototype.updateStatus = function(status, clients){
             } else {
                 widget.find(".monitor-client-hwstatus").html("HW disconnected").removeClass("label-success").addClass("label-danger");
             }
-
-            // Remove entries no more in status
-            for(var name in this.clients[i]['status']){
-                if(!(name in client_status))
-                    $.observable(this.clients[i]['status']).removeProperty(name);
-            }
-
-            // Update tempated view using data-linked values
-            $.observable(this.clients[i]['status']).setProperty(client_status);
         }
+
     }
 
     this.last_status = status;
@@ -155,14 +170,20 @@ Monitor.prototype.makeClients = function(clients, status)
 
         client['template'] = getData('/template/' + clients[name]['template']);
         client['widget'] = $("<div/>").appendTo($(this.id).find('.monitor-clients'));
-        client['status'] = status[name];
+        client['status'] = typeof(status[name]) == 'object' ? status[name] : {};
 
-        // Render the template with data-linking to client object
-        $.templates(client['template']).link(client['widget'], client);
 
-        // Create updaters to refresh the plots
-        for(var name in client['params']['plots']){
-            new Updater(client['widget'].find('.monitor-plot-'+client['name']+'-'+name), 10000);
-        }
+        this.renderClient(client);
+    }
+}
+
+Monitor.prototype.renderClient = function(client)
+{
+    // Render the template with data-linking to client object
+    $.templates(client['template']).link(client['widget'], client);
+
+    // Create updaters to refresh the plots
+    for(var name in client['params']['plots']){
+        new Updater(client['widget'].find('.monitor-plot-'+client['name']+'-'+name), 10000);
     }
 }

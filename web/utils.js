@@ -115,3 +115,30 @@ popupImage = function(url, title, ok)
 
     bootbox.dialog(params);
 }
+
+// Stuff for JsRender/JsViews
+$.views.settings.allowCode(true);
+
+var vars = {}; // Custom storage
+
+$.views.helpers({
+    // Create a list from arbitrary number of arguments
+    list: function(...a) {return a;},
+    // Shortcut for getting a status by its name
+    status: function(name) {return this.root.data.status[name];},
+    // Get value from our custom storage by name
+    get: function(name) {return vars[name];}
+});
+
+$.views.tags({
+    // Generate a value display label data-linked to status field with given name
+    status: function(name, aclass) {
+        aclass = (typeof aclass === 'undefined') ? '' : aclass;
+        return '<span class="label label-primary '+aclass+'" style="margin-right: 1em" data-link="~root.status.' + name + '"> - </span>';
+    },
+    // Store value to our custom storage, to be later used by ~get helper
+    set: function(name, value) {
+        vars[name] = value;
+        return;
+    }
+});
