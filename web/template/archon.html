@@ -1,0 +1,100 @@
+<!-- Default layout for a client widget -->
+<div class="panel panel-default">
+  <!-- Title bar with connection and hardware connection status flags -->
+  <div class="panel-heading">
+    <h3 class="panel-title">
+      <span class="monitor-client-title" style="margin-right: 0.5em">{{> params.description }}</span>
+      <span class="monitor-client-connstatus label label-default" style="margin-right: 0.5em"></span>
+      <span class="monitor-client-hwstatus label label-default" style="margin-right: 0.5em" ></span>
+      {{!--
+      <span class="monitor-client-hwstatus label label-default" style="margin-right: 0.5em" data-link="class{: (status.hw_connected == 0) ? 'label label-danger' : 'label label-success' } {:(status.hw_connected == 0) ? 'HW Disconnected' : 'HW Connected'}"></span>
+      --}}
+    </h3>
+  </div>
+  <!-- Main body, hidden when disconnected -->
+  <ul class="monitor-client-body list-group">
+    <!-- Progress bar -->
+    <li class="monitor-client-progressdiv list-group-item progress hide" style="margin: 0; padding: 0">
+      <div class="monitor-client-progress progress-bar" style="width: 0%">
+      </div>
+    </li>
+
+    <!-- Main content -->
+
+    <!-- Show all key=value pairs from the status -->
+    <li class="list-group-item" style="padding: 5px">
+    </li>
+    <li class="list-group-item" style="padding: 5px">
+      <!-- Globals -->
+      {{for ~list('POWER', 'POWERGOOD', 'OVERHEAT') }}
+      {{: #data }}:&nbsp;{{status #data /}}
+      {{/for}}
+    </li>
+
+    <li class="list-group-item" style="padding: 5px">
+      <!-- Power -->
+      {{for ~list('P2V5', 'P5V', 'P6V', 'N6V', 'P17V', 'N17V', 'P35V', 'N35V', 'P100V', 'N100V', 'USER', 'HEATER') itemVar="~id" }}
+      <span style="margin-right: 0.5em">
+        {{: ~id }} V:{{status ~id+'_V' /}} A:{{status ~id+'_I' /}} |
+      </span>
+      {{/for}}
+    </li>
+
+    <li class="list-group-item" style="padding: 5px">
+      <!-- Subsystems -->
+      {{for ~list('BACKPLANE', 'MOD1', 'MOD2', 'MOD3', 'MOD4', 'MOD5', 'MOD6', 'MOD7', 'MOD8', 'MOD9', 'MOD10', 'MOD11', 'MOD12') itemVar="~prefix" }}
+      <div>
+        {{: ~prefix }} :::
+        {^{if ~status(~prefix+'_TYPE') == 'None' }}
+        {{set 'list' ~list('TYPE') /}}
+        {{set 'class' 'label-warning' /}}
+        {{else}}
+        {{set 'list' ~list('TYPE', 'TEMP') /}}
+        {{set 'class' 'label-primary' /}}
+        {{/if}}
+        {{for ~get('list') itemVar="~id"}}
+        {{: ~id }}: {{status ~prefix+'_'+~id ~get('class') /}}
+        {{/for}}
+      </div>
+      {{/for}}
+    </li>
+
+    <li class="list-group-item" style="padding: 5px">
+      <!-- Frames -->
+      Timer:{{status 'TIMER'/}}
+      RBUF:{{status 'RBUF'/}}
+      WBUF:{{status 'WBUF'/}}<br>
+      <table class='table table-condensed'>
+        {{for ~list('0', '1', '2', '3') itemVar="~id" }}
+        <tbody>
+          <tr>
+            {{if ~id == 0 }}
+            <th>Buffer</th>
+            {{else}}
+            <td>{{: ~id }}</td>
+            {{/if}}
+
+            {{for ~list('SAMPLE', 'COMPLETE', 'MODE', 'BASE', 'FRAME', 'WIDTH', 'HEIGHT', 'PIXELS', 'LINES', 'RAWBLOCKS', 'RAWLINES', 'RAWOFFSET', 'TIMESTAMP') itemVar="~field"}}
+
+            {{if ~id == 0}}
+            <th>{{:~field}}</th>
+            {{else}}
+            <td>{{status 'BUF'+~id+~field /}}</td>
+            {{/if}}
+
+            {{/for}}
+          </tr>
+        </tbody>
+        {{/for}}
+      </table>
+    </li>
+
+    <!-- Show all pre-configured plots -->
+    <li class="monitor-client-plots" style="padding: 5px">
+      {{props params.plots }}
+      <img src="/monitor/plot/{{> ~root.params.name }}/{{> key }}" class="monitor-plot-{{> ~root.params.name }}-{{> key }} img img-responsive center-block"/><br>
+      {{/props}}
+    </li>
+
+  </ul>
+</div>

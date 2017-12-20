@@ -134,11 +134,13 @@ $.views.tags({
     // Generate a value display label data-linked to status field with given name
     status: function(name, aclass) {
         aclass = (typeof aclass === 'undefined') ? '' : aclass;
-        return '<span class="label label-primary '+aclass+'" style="margin-right: 1em" data-link="~root.status.' + name + '"> - </span>';
+        return '<span class="label label-primary '+aclass+'" style="margin-right: 0em" data-link="~root.status.' + name + '"> - </span>';
     },
     // Store value to our custom storage, to be later used by ~get helper
     set: function(name, value) {
         vars[name] = value;
         return;
-    }
+    },
+    // Generic label
+    label: label
 });
