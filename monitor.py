@@ -11,6 +11,7 @@ import os, sys, posixpath, datetime
 import re
 import urlparse
 import json
+import numpy as np
 
 from StringIO import StringIO
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
@@ -159,13 +160,18 @@ def make_plot(file, obj, client_name, plot_name, size=800):
     plot = obj['clients'][client_name]['plots'][plot_name]
     values = obj['values'][client_name]
 
+    has_data = False
+
     fig = Figure(facecolor='white', dpi=72, figsize=(plot['width']/72, plot['height']/72), tight_layout=True)
     ax = fig.add_subplot(111)
 
     for _ in plot['values'][1:]:
-        ax.plot(values[plot['values'][0]], values[_], '.-', label=_)
+        # Check whether we have at least one data point to plot
+        if np.any(np.array(values[_]) != None):
+            has_data = True
+            ax.plot(values[plot['values'][0]], values[_], '.-', label=_)
 
-    if plot['values'][0] == 'time' and len(values[plot['values'][0]]) > 1:
+    if plot['values'][0] == 'time' and len(values[plot['values'][0]]) > 1 and has_data:
         ax.xaxis.set_major_formatter(DateFormatter('%H:%M:%S'))
         fig.autofmt_xdate()
 
@@ -176,10 +182,14 @@ def make_plot(file, obj, client_name, plot_name, size=800):
 
     if plot['ylabel']:
         ax.set_ylabel(plot['ylabel'])
-    elif len(plot['values']) > 2:
-        ax.legend(frameon=False)
-    else:
+    elif len(plot['values']) == 1:
         ax.set_ylabel(plot['values'][1])
+
+    if has_data:
+        if len(plot['values']) > 4:
+            ax.legend(frameon=True, loc=2, framealpha=0.99)
+        elif len(plot['values']) > 2:
+            ax.legend(frameon=False)
 
     ax.set_title(plot['name'])
     ax.margins(0.01, 0.1)
