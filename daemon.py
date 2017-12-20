@@ -12,6 +12,17 @@ import re
 
 from command import Command
 
+def catch(func):
+    '''Decorator to catch errors inside functions and print tracebacks'''
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except:
+            import traceback
+            traceback.print_exc()
+
+    return wrapper
+
 class SimpleProtocol(Protocol):
     _debug = False
 
@@ -76,8 +87,11 @@ class SimpleProtocol(Protocol):
                 else:
                     break
             else:
-                token, self._buffer = re.split('\0|\n', self._buffer, 1)
-                self.processMessage(token)
+                try:
+                    token, self._buffer = re.split('\0|\n', self._buffer, 1)
+                    self.processMessage(token)
+                except ValueError:
+                    break
 
     def switchToBinary(self, length=0):
         """

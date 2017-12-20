@@ -19,21 +19,12 @@ from matplotlib.dates import DateFormatter
 
 from daemon import SimpleFactory, SimpleProtocol
 from command import Command
+from daemon import catch
 
 ### Example code with server daemon and outgoing connection to hardware
 
 def kwargsToString(kwargs, prefix=''):
     return " ".join([prefix + _ + '=' + kwargs[_] for _ in kwargs])
-
-def catch(func):
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except:
-            import traceback
-            traceback.print_exc()
-
-    return wrapper
 
 class MonitorProtocol(SimpleProtocol):
     _debug = False
