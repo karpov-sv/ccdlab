@@ -104,21 +104,21 @@ from time import sleep
 def send_message_wait_reply(message, replies=[], host='localhost', port=7100):
     t = Telnet(host, port)
     t.write('%s\n' % message)
-    
+
     if replies:
         while True:
             reply = t.read_until('\n')
             cmd = Command(reply)
-            
+
             if cmd.name in replies:
                 t.close()
                 return cmd
-            
+
 # Request status of all devices from monitor
 status = send_message_wait_reply('get_status', replies=['status']).kwargs
 print status
 
-# Send command and wait for specific condition 
+# Send command and wait for specific condition
 send_message_wait_reply('send cryocon set temperature=-100')
 while True:
     sleep(10)
@@ -128,7 +128,6 @@ while True:
         print "CryoCon temperature reached"
         break
 
-    
 ```
 
 ## Implementing device daemons
@@ -138,7 +137,7 @@ Device daemons may be implemented in any programming language, the only requirem
 For Python, we have a simple framework for implementing such servers by sub-classing generic classes defined in `daemon.py`, like in the example below. The code inside generic classes will take care of all incoming and outgoing connections, handle re-connection if necessary, keep persistent state between re-connections etc.
 
 ```python
-from daemon import SimpleProtocol
+from daemon import SimpleProtocol, SimpleFactory
 from command import Command
 
 class DaemonProtocol(SimpleProtocol):
@@ -164,14 +163,14 @@ Check `example.py` for a bit more complex daemon which holds persistent re-conne
 
 ## Supported devices
 
-  * Archon CCD controller (in progress) 
+  * Archon CCD controller (in progress)
     * `archon_fake.py` - hardware simulator based on the responses of an actual controller
     * `archon.py` - daemon code
-    
+
   * CryoCon Model 24C cryogenic temperature controller (planned)
-  
+
   * ...
-  
+
 ...
 
 ## TODO
@@ -179,4 +178,3 @@ Check `example.py` for a bit more complex daemon which holds persistent re-conne
   * Storing logs (for all daemons?) and status variables (for *MONITOR* service) to database
   * Acquiring and storing FITS images with proper meta-information in headers
   * Displaying acquired images in *MONITOR* web interface
-  
