@@ -169,7 +169,7 @@ def make_plot(file, obj, client_name, plot_name, size=800):
         # Check whether we have at least one data point to plot
         if np.any(np.array(values[_]) != None):
             has_data = True
-            ax.plot(values[plot['values'][0]], values[_], '.-', label=_)
+            ax.plot(values[plot['values'][0]], values[_], '-', label=_)
 
     if plot['values'][0] == 'time' and len(values[plot['values'][0]]) > 1 and has_data:
         ax.xaxis.set_major_formatter(DateFormatter('%H:%M:%S'))
@@ -247,6 +247,7 @@ def loadINI(filename, obj):
     # Schema to validate and transform the values from config file
     schema = ConfigObj(StringIO('''
     port = integer(min=0,max=65535,default=%d)
+    http_port = integer(min=0,max=65535,default=%d)
     name = string(default=%s)
 
     [__many__]
@@ -264,7 +265,7 @@ def loadINI(filename, obj):
     ylabel = string(default=None)
     width = integer(min=0,max=2048,default=800)
     height = integer(min=0,max=2048,default=300)
-    ''' % (obj['port'], obj['name'])), list_values=False)
+    ''' % (obj['port'], obj['http_port'], obj['name'])), list_values=False)
 
     confname = '%s.ini' % posixpath.splitext(__file__)[0]
     conf = ConfigObj(confname, configspec=schema)
@@ -301,8 +302,8 @@ def loadINI(filename, obj):
 
             obj['clients'][sname] = client
 
-        obj['port'] = conf.get('port')
-        obj['name'] = conf.get('name')
+        for key in ['port', 'http_port', 'name']:
+            obj[key] = conf.get(key)
 
     # print obj
     # sys.exit(1)
@@ -313,7 +314,7 @@ if __name__ == '__main__':
     from optparse import OptionParser
 
     # Object holding actual state and work logic.
-    obj = {'clients':{}, 'values':{}, 'port':7100, 'name':'monitor'}
+    obj = {'clients':{}, 'values':{}, 'port':7100, 'http_port':8888, 'name':'monitor'}
 
     # First read client config from INI file
     loadINI('%s.ini' % posixpath.splitext(__file__)[0], obj)
@@ -322,8 +323,10 @@ if __name__ == '__main__':
     # so that they may be changed at startup time
     parser = OptionParser(usage="usage: %prog [options] name1=host1:port1 name2=host2:port2 ...")
     parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=obj['port'])
+    parser.add_option('-H', '--http-port', help='HTTP server port', action='store', dest='http_port', type='int', default=obj['http_port'])
     parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', type='string', default=obj['name'])
     parser.add_option('-d', '--debug', help='Debug output', action='store_true', dest='debug', default=False)
+    parser.add_option('-s', '--server', help='Act as a TCP and HTTP server', action='store_true', dest='server', default=False)
 
     (options,args) = parser.parse_args()
 
@@ -341,7 +344,6 @@ if __name__ == '__main__':
 
     # Now we have everything to construct and run the daemon
     daemon = MonitorFactory(MonitorProtocol, obj, name=options.name)
-    daemon.listen(options.port)
 
     for name,c in obj['clients'].items():
         daemon.connect(c['host'], c['port'])
@@ -350,18 +352,22 @@ if __name__ == '__main__':
     stdio.StandardIO(CmdlineProtocol(factory=daemon, object=obj), reactor=daemon._reactor)
 
     # Web interface
-
     if options.debug:
         from twisted.python import log
         log.startLogging(sys.stdout)
 
-    # Serve files from web
-    root = File("web")
-    root.putChild("", File('web/main.html'))
-    root.putChild("monitor", WebMonitor(factory=daemon, object=obj))
-    site = Site(root)
+    if options.server:
+        # Listen for incoming TCP connections
+        print "Listening for incoming TCP connections on port %d" % options.port
+        daemon.listen(options.port)
 
-    print "Listening for incoming HTTP connections on port %d" % 8888
-    TCP4ServerEndpoint(daemon._reactor, 8888).listen(site)
+        # Serve files from web
+        root = File("web")
+        root.putChild("", File('web/main.html'))
+        root.putChild("monitor", WebMonitor(factory=daemon, object=obj))
+        site = Site(root)
+
+        print "Listening for incoming HTTP connections on port %d" % options.http_port
+        TCP4ServerEndpoint(daemon._reactor, options.http_port).listen(site)
 
     daemon._reactor.run()

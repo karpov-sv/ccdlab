@@ -52,8 +52,11 @@ Usage: monitor.py [options] name1=host1:port1 name2=host2:port2 ...
 Options:
   -h, --help            show this help message and exit
   -p PORT, --port=PORT  Daemon port
+  -H HTTP_PORT, --http-port=HTTP_PORT
+                        HTTP server port
   -n NAME, --name=NAME  Daemon name
   -d, --debug           Debug output
+  -s, --server          Act as a TCP and HTTP server
 ```
 
 The list of clients may either be provided on command line as a list of `name=host:port` expressions, or given in a configuration file. By default the code looks for `monitor.ini` file alongside with the `monitor.py` executable.
@@ -62,6 +65,7 @@ The format of configuration file is as follows:
 
 ```INI
 port = integer(min=0,max=65535,default=7100) ; Monitor service port
+http_port = integer(min=0,max=65535,default=8888) ; Monitor HTTP daemon port
 name = string(default=monitor) ; Monitor service id name
 
 [client_name] ; Section for a single client, may be repeated
