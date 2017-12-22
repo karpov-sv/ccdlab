@@ -175,6 +175,18 @@ Check `example.py` for a bit more complex daemon which holds persistent re-conne
 
   * ...
 
+
+## Installation
+
+The following Python packages are necessary in order to run the system:
+
+  * Twisted
+    * ``apt-get install python-twisted``
+  * ConfigObj
+    * ``apt-get install python-configobj``
+  * SockJS-Twisted
+    * ``pip install txsockjs``
+
 ...
 
 ## TODO

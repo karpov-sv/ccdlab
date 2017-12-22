@@ -21,6 +21,10 @@ Monitor = function(parent_id, base="/monitor", title="Monitor"){
     this.timer = 0;
     this.refreshDelay = 2000;
     this.requestState();
+
+    // SockJS
+    this.ws_base = '/ws/';
+    this.connectWS();
 }
 
 // Synchronously request data from server and return it
@@ -38,6 +42,31 @@ getData = function(url){
     });
 
     return result;
+}
+
+Monitor.prototype.connectWS = function(){
+    this.ws_sock = new SockJS(this.ws_base);
+
+    this.ws_sock.onopen = $.proxy(function(){
+        //console.log('ws open');
+    }, this);
+
+    this.ws_sock.onmessage = $.proxy(function(e) {
+        //console.log(e.data);
+        json = JSON.parse(e.data)
+
+        $.notify(json.msg, json.type);
+    }, this);
+
+    this.ws_sock.onclose = $.proxy(function() {
+        //console.log('ws close');
+        this.ws_interval = setTimeout($.proxy(this.connectWS, this), 2000.0);
+    }, this);
+
+    this.ws_sock.onerror = $.proxy(function() {
+        //console.log('ws error');
+        this.ws_interval = setTimeout($.proxy(this.connectWS, this), 2000.0);
+    }, this);
 }
 
 Monitor.prototype.sendCommand = function(command){

@@ -6,6 +6,7 @@ from twisted.web.server import Site
 from twisted.web.resource import Resource
 from twisted.web.static import File
 from twisted.internet.endpoints import TCP4ServerEndpoint
+from txsockjs.factory import SockJSResource
 
 import os, sys, posixpath, datetime
 import re
@@ -77,8 +78,26 @@ class MonitorProtocol(SimpleProtocol):
             if c:
                 c.message(" ".join(cmd.chunks[2:]))
 
+        elif cmd.name in ['info', 'message', 'error', 'warning']:
+            # WebSockets
+            if self.object.has_key('ws'):
+                msgtype = {'info':'info',
+                           'error':'error',
+                           'warning':'warn',
+                           'message':'success'}.get(cmd.name, 'info')
+
+                self.object['ws'].messageAll(json.dumps({'msg':" ".join(cmd.chunks[1:]), 'type':msgtype}));
+
     def update(self):
-        self.factory.messageAll('get_status')
+        for c in self.factory.connections:
+            if c.name or c.type:
+                c.message('get_status')
+        #self.factory.messageAll('get_status')
+
+class WSProtocol(SimpleProtocol):
+    def message(self, string):
+        """Sending outgoing message with no newline"""
+        self.transport.write(string)
 
 class MonitorFactory(SimpleFactory):
     @catch
@@ -131,12 +150,17 @@ class CmdlineProtocol(LineReceiver):
             self.factory._reactor.stop()
 
         elif cmd.name == 'connections':
-            print "Number of connections:", len(self.factory.connections)
+            self.message("Number of connections: %d" % len(self.factory.connections))
             for c in self.factory.connections:
                 self.message("  %s:%s name:%s type:%s\n" % (c._peer.host, c._peer.port, c.name, c.type))
 
+            if self.object.has_key('ws'):
+                self.message("Number of WS connections: %d" % len(self.object['ws'].connections))
+                for c in self.object['ws'].connections:
+                    self.message("  %s:%s name:%s type:%s\n" % (c._peer.host, c._peer.port, c.name, c.type))
+
         elif cmd.name == 'clients':
-            print "Number of registered clients:", len(self.object['clients'])
+            self.message("Number of registered clients: %d" % len(self.object['clients']))
             for name,c in self.object['clients'].items():
                 conn = self.factory.findConnection(name=c['name'])
                 self.message("  %s:%s name:%s connected:%s" % (c['host'], c['port'], c['name'], conn!=None))
@@ -226,6 +250,7 @@ class WebMonitor(Resource):
         elif q.path == '/monitor/command':
             cmd = Command(args['string'][0])
 
+            # TODO: re-use the command processing code from TCP server part
             if cmd.name == 'exit':
                 self.factory._reactor.stop()
 
@@ -236,6 +261,15 @@ class WebMonitor(Resource):
 
             elif (cmd.name == 'broadcast' or cmd.name == 'send_all'):
                 self.factory.messageAll(" ".join(cmd.chunks[1:]))
+
+            elif cmd.name in ['info', 'message', 'error', 'warning']:
+                if self.object.has_key('ws'):
+                    msgtype = {'info':'info',
+                               'error':'error',
+                               'warning':'warn',
+                               'message':'success'}.get(cmd.name, 'info')
+
+                    self.object['ws'].messageAll(json.dumps({'msg':args['string'][0], 'type':msgtype}));
 
             return serve_json(request)
 
@@ -366,6 +400,11 @@ if __name__ == '__main__':
         root.putChild("", File('web/main.html'))
         root.putChild("monitor", WebMonitor(factory=daemon, object=obj))
         site = Site(root)
+
+        # WebSockets
+        ws = SimpleFactory(WSProtocol, obj)
+        obj['ws'] = ws
+        root.putChild("ws", SockJSResource(ws))
 
         print "Listening for incoming HTTP connections on port %d" % options.http_port
         TCP4ServerEndpoint(daemon._reactor, options.http_port).listen(site)
