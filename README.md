@@ -1,7 +1,16 @@
 # CCDLab
 Software for a CCD testing lab at Fyzikální ústav AV ČR
 
-## Introduction
+Table of Contents
+=================
+
+   * [Command protocol](#command-protocol)
+   * [MONITOR service](#monitor-service)
+   * [Scripted access to the system](#scripted-access-to-the-system)
+   * [Implementing device daemons](#implementing-device-daemons)
+   * [Supported devices](#supported-devices)
+   * [Installation](#installation)
+   * [TODO](#todo)
 
 We have decided to create our own, very small software framework for integrating various devices (sensors, CCD controllers etc) into a network to easily monitor their state and access from scripts.
 
@@ -13,7 +22,7 @@ Basic principles we will follow:
   * Dedicated *MONITOR* service is always running on the network, always polling all the devices for state changes, storing the data to database and providing simple Web interface for it
   * During the experiment, user-level scripts (written in any language) connect to every device they need, initiate state changing commands (e.g. setting the temperature), wait for a given state conditions (e.g. temperature stabilization) etc. The high level script logic is completely outside the scope of the software framework controlling the devices
 
-## Command protocol
+# Command protocol
 
 The protocol is based on simple newline- or null-terminated strings sent over TCP connection. There is an extension for sending binary data of a given length over the protocol connection.
 
@@ -41,7 +50,7 @@ The following set of commands is common for all daemons:
 
   * **connections** (console only) - print the list of current connections to console
 
-## MONITOR service
+# MONITOR service
 
 The service is intended for a continuous monitoring of all registered device daemons or other services, and provides both (primitive) console interface and a (configurable) Web interface.
 
@@ -94,7 +103,7 @@ The web interface is accessible at `localhost:8888` by default, and contains a h
 The templates reside in `web/template/` folder. `monitor.html` defines the overall look of *MONITOR* web page, while `default.html` - default client information block.
 
 
-## Scripted access to the system
+# Scripted access to the system
 
 You may access from shell or your script either device daemons directly, or *MONITOR* service which already holds the connections to all configured devices and allows sending arbitrary commands to them.
 
@@ -134,7 +143,7 @@ while True:
 
 ```
 
-## Implementing device daemons
+# Implementing device daemons
 
 Device daemons may be implemented in any programming language, the only requirement is to accept line-based commands over network and to send proper status messages.
 
@@ -165,7 +174,7 @@ if __name__ == '__main__':
 
 Check `example.py` for a bit more complex daemon which holds persistent re-connecting outgoing connection to the hardware with dedicated messaging protocol.
 
-## Supported devices
+# Supported devices
 
   * Archon CCD controller (in progress)
     * `archon_fake.py` - hardware simulator based on the responses of an actual controller
@@ -176,20 +185,21 @@ Check `example.py` for a bit more complex daemon which holds persistent re-conne
   * ...
 
 
-## Installation
+# Installation
 
 The following Python packages are necessary in order to run the system:
 
-  * Twisted
+  * **Twisted** for a basic TCP networking framework
     * ``apt-get install python-twisted``
-  * ConfigObj
+  * **ConfigObj** for parsing configuration files
     * ``apt-get install python-configobj``
-  * SockJS-Twisted
+  * **SockJS-Twisted** for WebSockets
     * ``pip install txsockjs``
-
+  * **Psycopg2** for accessing PostgreSQL databases
+    * ``apt-get install python-psycopg2``
 ...
 
-## TODO
+# TODO
 
   * Storing logs (for all daemons?) and status variables (for *MONITOR* service) to database
   * Acquiring and storing FITS images with proper meta-information in headers
