@@ -78,15 +78,13 @@ class MonitorProtocol(SimpleProtocol):
             if c:
                 c.message(" ".join(cmd.chunks[2:]))
 
-        elif cmd.name in ['info', 'message', 'error', 'warning']:
+        elif cmd.name in ['info', 'message', 'error', 'warning', 'success']:
+            # For now, accept MONITOR time as a time of message
+            time = datetime.datetime.utcnow()
+
             # WebSockets
             if self.object.has_key('ws'):
-                msgtype = {'info':'info',
-                           'error':'error',
-                           'warning':'warn',
-                           'message':'success'}.get(cmd.name, 'info')
-
-                self.object['ws'].messageAll(json.dumps({'msg':" ".join(cmd.chunks[1:]), 'type':msgtype}));
+                self.object['ws'].messageAll(json.dumps({'msg':" ".join(cmd.chunks[1:]), 'time':str(time), 'type':cmd.name}));
 
     def update(self):
         for c in self.factory.connections:

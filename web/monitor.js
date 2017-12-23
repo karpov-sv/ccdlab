@@ -25,6 +25,19 @@ Monitor = function(parent_id, base="/monitor", title="Monitor"){
     // SockJS
     this.ws_base = '/ws/';
     this.connectWS();
+
+    // Popup
+    $("#monitor-log-popup").popup({
+        color: 'white',
+        opacity: 0.7,
+        transition: 'all 0.3s',
+        scrolllock: true,
+        onopen: function() {
+            var log = $('.monitor-log');
+            log.scrollTop(log.prop('scrollHeight'));
+        }
+    });
+
 }
 
 // Synchronously request data from server and return it
@@ -54,8 +67,7 @@ Monitor.prototype.connectWS = function(){
     this.ws_sock.onmessage = $.proxy(function(e) {
         //console.log(e.data);
         json = JSON.parse(e.data)
-
-        $.notify(json.msg, json.type);
+        this.addLog(json.msg, json.time, json.type);
     }, this);
 
     this.ws_sock.onclose = $.proxy(function() {
@@ -215,4 +227,27 @@ Monitor.prototype.renderClient = function(client)
     for(var name in client['params']['plots']){
         new Updater(client['widget'].find('.monitor-plot-'+client['name']+'-'+name), 10000);
     }
+}
+
+Monitor.prototype.addLog = function(message, time, type)
+{
+    var time = time || "";
+    var type = type || "message";
+
+    var logtype = {'message':'primary', 'info':'info', 'warning':'warning', 'error':'danger', 'success':'success'}[type];
+    var entry = $('<div/>', {class:"monitor-log-entry text-" + logtype}).html(time + ": " + message);
+    var log = $('.monitor-log');
+
+    var should_scroll = log.scrollTop()+log.prop('clientHeight') == log.prop('scrollHeight');
+
+    log.append(entry);
+    if(should_scroll)
+        log.scrollTop(log.prop('scrollHeight'));
+
+    // Icon blinking
+    $(this.id).find('.monitor-log-icon').animate({opacity: 1.0}, 200).animate({opacity: 0.1}, 400);
+
+    // Notification message
+    var notifytype = {'message':'base', 'info':'info', 'warning':'warn', 'error':'error', 'success':'success'}[type];
+    $.notify(message, notifytype);
 }
