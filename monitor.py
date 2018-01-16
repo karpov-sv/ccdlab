@@ -22,6 +22,7 @@ from matplotlib.dates import DateFormatter
 from daemon import SimpleFactory, SimpleProtocol
 from command import Command
 from daemon import catch
+from db import DB
 
 ### Example code with server daemon and outgoing connection to hardware
 
@@ -70,6 +71,19 @@ class MonitorProtocol(SimpleProtocol):
                     if len(self.object['values'][self.name][name]) > 1000:
                         self.object['values'][self.name][name] = self.object['values'][self.name][name][100:]
 
+            # Store the values to database, if necessary
+            if self.object.has_key('db') and self.object['db'] is not None:
+                if (datetime.datetime.utcnow() - self.object['db_status_timestamp']).total_seconds() > self.object['db_status_interval']:
+                    # FIXME: should we also store the status if no peer is reporting at all?
+                    # print "Storing the state to DB"
+
+                    time = datetime.datetime.utcnow()
+                    status = self.factory.getStatus(as_dict=True)
+                    self.object['db'].query('INSERT INTO monitor_status (time, status) VALUES (%s,%s)', (time, status))
+
+                    self.object['db_status_timestamp'] = datetime.datetime.utcnow()
+                    pass
+
         elif cmd.name == 'get_status':
             self.message(self.factory.getStatus())
 
@@ -79,12 +93,17 @@ class MonitorProtocol(SimpleProtocol):
                 c.message(" ".join(cmd.chunks[2:]))
 
         elif cmd.name in ['info', 'message', 'error', 'warning', 'success']:
+            msg = " ".join(cmd.chunks[1:])
             # For now, accept MONITOR time as a time of message
             time = datetime.datetime.utcnow()
 
+            # DB
+            if self.object.has_key('db') and self.object['db'] is not None:
+                self.object['db'].log(msg, time=time, type=cmd.name)
+
             # WebSockets
             if self.object.has_key('ws'):
-                self.object['ws'].messageAll(json.dumps({'msg':" ".join(cmd.chunks[1:]), 'time':str(time), 'type':cmd.name}));
+                self.object['ws'].messageAll(json.dumps({'msg':msg, 'time':str(time), 'type':cmd.name}));
 
     def update(self):
         for c in self.factory.connections:
@@ -267,7 +286,10 @@ class WebMonitor(Resource):
                                'warning':'warn',
                                'message':'success'}.get(cmd.name, 'info')
 
-                    self.object['ws'].messageAll(json.dumps({'msg':args['string'][0], 'type':msgtype}));
+                    msg = " ".join(cmd.chunks[1:])
+                    time = datetime.datetime.utcnow()
+
+                    self.object['ws'].messageAll(json.dumps({'msg':msg, 'time':str(time), 'type':msgtype}));
 
             return serve_json(request)
 
@@ -281,6 +303,8 @@ def loadINI(filename, obj):
     port = integer(min=0,max=65535,default=%d)
     http_port = integer(min=0,max=65535,default=%d)
     name = string(default=%s)
+    db_host = string(default=%s)
+    db_status_interval = float(min=0, max=3600, default=%g)
 
     [__many__]
     enabled = boolean(default=True)
@@ -297,7 +321,7 @@ def loadINI(filename, obj):
     ylabel = string(default=None)
     width = integer(min=0,max=2048,default=800)
     height = integer(min=0,max=2048,default=300)
-    ''' % (obj['port'], obj['http_port'], obj['name'])), list_values=False)
+    ''' % (obj['port'], obj['http_port'], obj['name'], obj['db_host'], obj['db_status_interval'])), list_values=False)
 
     confname = '%s.ini' % posixpath.splitext(__file__)[0]
     conf = ConfigObj(confname, configspec=schema)
@@ -334,7 +358,7 @@ def loadINI(filename, obj):
 
             obj['clients'][sname] = client
 
-        for key in ['port', 'http_port', 'name']:
+        for key in ['port', 'http_port', 'name', 'db_host', 'db_status_interval']:
             obj[key] = conf.get(key)
 
     # print obj
@@ -346,7 +370,7 @@ if __name__ == '__main__':
     from optparse import OptionParser
 
     # Object holding actual state and work logic.
-    obj = {'clients':{}, 'values':{}, 'port':7100, 'http_port':8888, 'name':'monitor'}
+    obj = {'clients':{}, 'values':{}, 'port':7100, 'http_port':8888, 'db_host':None, 'db_status_interval':60.0, 'name':'monitor', 'db':None}
 
     # First read client config from INI file
     loadINI('%s.ini' % posixpath.splitext(__file__)[0], obj)
@@ -356,6 +380,7 @@ if __name__ == '__main__':
     parser = OptionParser(usage="usage: %prog [options] name1=host1:port1 name2=host2:port2 ...")
     parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=obj['port'])
     parser.add_option('-H', '--http-port', help='HTTP server port', action='store', dest='http_port', type='int', default=obj['http_port'])
+    parser.add_option('-D', '--db-host', help='Database server host', action='store', dest='db_host', type='string', default=obj['db_host'])
     parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', type='string', default=obj['name'])
     parser.add_option('-d', '--debug', help='Debug output', action='store_true', dest='debug', default=False)
     parser.add_option('-s', '--server', help='Act as a TCP and HTTP server', action='store_true', dest='server', default=False)
@@ -403,6 +428,10 @@ if __name__ == '__main__':
         ws = SimpleFactory(WSProtocol, obj)
         obj['ws'] = ws
         root.putChild("ws", SockJSResource(ws))
+
+        # Database connection
+        obj['db'] = DB(dbhost=options.db_host)
+        obj['db_status_timestamp'] = datetime.datetime.utcfromtimestamp(0)
 
         print "Listening for incoming HTTP connections on port %d" % options.http_port
         TCP4ServerEndpoint(daemon._reactor, options.http_port).listen(site)

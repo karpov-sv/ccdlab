@@ -50,6 +50,8 @@ The following set of commands is common for all daemons:
 
   * **connections** (console only) - print the list of current connections to console
 
+  * **message**, **info**, **warning**, **error**, **success** - various types of information messages, to be written to main system log and displayed in Web interface
+
 # MONITOR service
 
 The service is intended for a continuous monitoring of all registered device daemons or other services, and provides both (primitive) console interface and a (configurable) Web interface.
@@ -63,6 +65,8 @@ Options:
   -p PORT, --port=PORT  Daemon port
   -H HTTP_PORT, --http-port=HTTP_PORT
                         HTTP server port
+  -D DB_HOST, --db-host=DB_HOST
+                        Database server host
   -n NAME, --name=NAME  Daemon name
   -d, --debug           Debug output
   -s, --server          Act as a TCP and HTTP server
@@ -76,6 +80,8 @@ The format of configuration file is as follows:
 port = integer(min=0,max=65535,default=7100) ; Monitor service port
 http_port = integer(min=0,max=65535,default=8888) ; Monitor HTTP daemon port
 name = string(default=monitor) ; Monitor service id name
+db_host = string(default=None) ; Database host, default to local connection
+db_status_interval = float(min=0, max=3600, default=60) ; Interval between storing the state to database, in seconds
 
 [client_name] ; Section for a single client, may be repeated
 enabled = boolean(default=True) ; The client may be disabled here
