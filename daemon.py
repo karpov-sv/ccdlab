@@ -9,6 +9,7 @@ from twisted.internet.task import LoopingCall
 
 import os, sys
 import re
+import socket
 
 from command import Command
 
@@ -24,9 +25,14 @@ def catch(func):
     return wrapper
 
 class SimpleProtocol(Protocol):
+    """Class corresponding to a single connection, either incoming or outgoing"""
     _debug = False
 
-    """Class corresponding to a single connection, either incoming or outgoing"""
+    # Some sensible TCP keepalive settings. This way the connection will close after 13 seconds of network failure
+    _tcp_keepidle = 10 # Interval to wait before sending first keepalive packet
+    _tcp_keepintvl = 1 # Interval between packets
+    _tcp_keepcnt = 3 # Number of retries
+
     def __init__(self, refresh=1):
         self._buffer = ''
         self._is_binary = False
@@ -56,6 +62,21 @@ class SimpleProtocol(Protocol):
 
         self._updateTimer = LoopingCall(self.update)
         self._updateTimer.start(self._refresh)
+
+        # Set up TCP keepalive for the connection
+        self.transport.getHandle().setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        if sys.platform == 'darwin':
+            # OSX specific code
+            TCP_KEEPALIVE = 0x10
+            self.transport.getHandle().setsockopt(socket.IPPROTO_TCP, TCP_KEEPALIVE, self._tcp_keepidle)
+            self.transport.getHandle().setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, self._tcp_keepintvl)
+            self.transport.getHandle().setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, self._tcp_keepcnt)
+        elif sys.platform.startswith('linux'):
+            # Linux specific code
+            TCP_KEEPIDLE = 0x4
+            self.transport.getHandle().setsockopt(socket.IPPROTO_TCP, TCP_KEEPIDLE, self._tcp_keepidle)
+            self.transport.getHandle().setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, self._tcp_keepintvl)
+            self.transport.getHandle().setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, self._tcp_keepcnt)
 
     def connectionLost(self, reason):
         """Method called when connection is finished"""
