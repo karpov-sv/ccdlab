@@ -64,6 +64,11 @@ class MonitorProtocol(SimpleProtocol):
                         value = datetime.datetime.utcnow()
                     else:
                         value = self.status.get(name, None)
+                        # Now we should try to convert the value to numerical form, if possible
+                        try:
+                            value = float(value)
+                        except:
+                            pass
 
                     self.object['values'][self.name][name].append(value)
                     # Keep the maximal length of data arrays limited
