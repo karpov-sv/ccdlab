@@ -99,11 +99,11 @@ class MonitorProtocol(SimpleProtocol):
 
             # DB
             if self.object.has_key('db') and self.object['db'] is not None:
-                self.object['db'].log(msg, time=time, type=cmd.name)
+                self.object['db'].log(msg, time=time, source=self.name, type=cmd.name)
 
             # WebSockets
             if self.object.has_key('ws'):
-                self.object['ws'].messageAll(json.dumps({'msg':msg, 'time':str(time), 'type':cmd.name}));
+                self.object['ws'].messageAll(json.dumps({'msg':msg, 'time':str(time), 'source':self.name, 'type':cmd.name}));
 
     def update(self):
         for c in self.factory.connections:

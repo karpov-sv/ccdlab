@@ -78,9 +78,12 @@ class DB:
             # Nothing returned from the query
             return None
 
-    def log(self, message, time=None, type='info'):
+    def log(self, message, time=None, source=None, type='info'):
         """Store message to log table. Time is assumed to be in UTC scale, default to present moment."""
         if time is None:
             time = datetime.datetime.utcnow()
 
-        self.query('INSERT INTO log (time, type, message) VALUES (%s, %s, %s);', (time, type, message))
+        if not source:
+            source = ''
+
+        self.query('INSERT INTO log (time, source, type, message) VALUES (%s, %s, %s, %s);', (time, source, type, message))

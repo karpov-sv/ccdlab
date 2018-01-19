@@ -3,6 +3,7 @@ DROP TABLE log CASCADE;
 CREATE TABLE log (
        id SERIAL PRIMARY KEY,
        time TIMESTAMP,
+       source TEXT,
        type TEXT DEFAULT 'info',
        message TEXT
 );

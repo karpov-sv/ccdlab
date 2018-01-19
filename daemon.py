@@ -221,3 +221,8 @@ class SimpleFactory(Factory):
             service.startService()
         else:
             ep.connect(self)
+
+    def log(self, message, type='info'):
+        """Generic interface for sending system-level log messages, to be stored to DB and shown in GUI"""
+        # TODO: should we send it to specific names/types only?
+        self.messageAll(type + ' ' + message)
