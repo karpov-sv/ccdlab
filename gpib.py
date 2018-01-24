@@ -30,6 +30,7 @@ class DaemonProtocol(SimpleProtocol):
             # TODO: escape all necessary characters in the string
             self.sendCommand(" ".join(cmd.chunks[1:]))
         elif self.addr >= 0:
+            # FIXME: we should somehow prevent the commands already processed in superclass from arriving here
             self.sendCommand(string)
 
     @catch

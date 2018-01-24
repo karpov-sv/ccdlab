@@ -52,6 +52,14 @@ The following set of commands is common for all daemons:
 
   * **message**, **info**, **warning**, **error**, **success** - various types of information messages, to be written to main system log and displayed in Web interface
 
+*GPIB Multiplexor* service accepts the following commands:
+
+  * **set_addr *addr*** - sets the GPIB address for the current connection to a given number
+
+  * **send *command**** - sends the command to GPIB address specified for the connection
+
+  * any unparsed message will also be sent to the GPIB device, which may be potentially conflicting
+
 # MONITOR service
 
 The service is intended for a continuous monitoring of all registered device daemons or other services, and provides both (primitive) console interface and a (configurable) Web interface.
@@ -186,6 +194,9 @@ Check `example.py` for a bit more complex daemon which holds persistent re-conne
     * `archon_fake.py` - hardware simulator based on the responses of an actual controller
     * `archon.py` - daemon code
 
+  * GPIB Prologix Ethernet controller
+    * `gpib.py` - simple multiplexor daemon to allow simultaneous access to several GPIB devices at once
+
   * CryoCon Model 24C cryogenic temperature controller (planned)
 
   * ...
@@ -203,10 +214,10 @@ The following Python packages are necessary in order to run the system:
     * ``pip install txsockjs``
   * **Psycopg2** for accessing PostgreSQL databases
     * ``apt-get install python-psycopg2``
+
 ...
 
 # TODO
 
-  * Storing logs (for all daemons?) and status variables (for *MONITOR* service) to database
   * Acquiring and storing FITS images with proper meta-information in headers
   * Displaying acquired images in *MONITOR* web interface
