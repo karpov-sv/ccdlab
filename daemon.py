@@ -198,14 +198,14 @@ class SimpleFactory(Factory):
 
         return None
 
-    def messageAll(self, string, name=None, type=None):
+    def messageAll(self, string, name=None, type=None, **kwargs):
         """Send the message to all (or with a given name/type only) active connections"""
         for c in self.connections:
             if name and c.name != name:
                 continue
             if type and c.type != type:
                 continue
-            c.message(string)
+            c.message(string, **kwargs)
 
     def listen(self, port=0):
         """Listen for incoming connections on a given port"""
