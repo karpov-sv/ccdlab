@@ -23,7 +23,7 @@ class DaemonProtocol(SimpleProtocol):
         hw = obj['hw'] # HW factory
 
         if cmd.name == 'get_status':
-            self.message('status hw_connected=%s current_addr=%d' % (self.object['hw_connected'], self.object['']))
+            self.message('status hw_connected=%s current_addr=%d' % (obj['hw_connected'], obj['current_addr']))
         elif cmd.name == 'set_addr':
             self.addr = int(cmd.args[0]) if len(cmd.args) else -1
         elif cmd.name == 'send':
@@ -111,7 +111,7 @@ if __name__ == '__main__':
     parser.add_option('-H', '--hw-host', help='Hardware host to connect', action='store', dest='hw_host', default='localhost')
     parser.add_option('-P', '--hw-port', help='Hardware port to connect', action='store', dest='hw_port', type='int', default=1234)
     parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7020)
-    parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='GPIB')
+    parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='gpib')
 
     (options,args) = parser.parse_args()
 
