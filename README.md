@@ -56,7 +56,7 @@ The following set of commands is common for all daemons:
 
   * **set_addr *addr*** - sets the GPIB address for the current connection to a given number
 
-  * **send *command**** - sends the command to GPIB address specified for the connection
+  * **send *command*** - sends the command to GPIB address specified for the connection
 
   * any unparsed message will also be sent to the GPIB device, which may be potentially conflicting
 

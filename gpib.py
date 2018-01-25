@@ -108,7 +108,7 @@ if __name__ == '__main__':
     from optparse import OptionParser
 
     parser = OptionParser(usage="usage: %prog [options] arg")
-    parser.add_option('-H', '--hw-host', help='Hardware host to connect', action='store', dest='hw_host', default='localhost')
+    parser.add_option('-H', '--hw-host', help='Hardware host to connect', action='store', dest='hw_host', default='10.0.0.2')
     parser.add_option('-P', '--hw-port', help='Hardware port to connect', action='store', dest='hw_port', type='int', default=1234)
     parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7020)
     parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='gpib')

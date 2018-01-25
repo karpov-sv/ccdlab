@@ -181,7 +181,7 @@ class CmdlineProtocol(LineReceiver):
                 for c in self.object['ws'].connections:
                     self.message("  %s:%s name:%s type:%s\n" % (c._peer.host, c._peer.port, c.name, c.type))
 
-        elif cmd.name == 'clients':
+        elif cmd.name == 'clients' or not cmd.name:
             self.message("Number of registered clients: %d" % len(self.object['clients']))
             for name,c in self.object['clients'].items():
                 conn = self.factory.findConnection(name=c['name'])
