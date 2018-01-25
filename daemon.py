@@ -169,6 +169,9 @@ class SimpleFactory(Factory):
         # Name and type of the daemon
         self.name = ''
         self.type = ''
+        
+        # number of connections made since the deamon start
+        self.nConnectios = 0
 
         if not self._reactor:
             from twisted.internet import reactor
@@ -178,6 +181,7 @@ class SimpleFactory(Factory):
         p = self._protocol()
 
         p.factory = self
+        p.name='anonymous'+str(self.nConnectios).zfill(3)
         p.object = self.object
 
         return p

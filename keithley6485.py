@@ -27,6 +27,10 @@ class DaemonProtocol(SimpleProtocol):
         elif string and string[0] == '*':
             # For debug purposes only
             self.sendCommand(string)
+        elif cmd.name in ['get_curr']:
+            print "calling get curr, connection"
+            print self.name
+            self.sendCommand('read?', keep=True)
 
     @catch
     def sendCommand(self, string, keep=False):
@@ -119,7 +123,7 @@ if __name__ == '__main__':
     parser.add_option('-P', '--hw-port', help='GPIB multiplexor port to connect', action='store', dest='hw_port', type='int', default=7020)
     parser.add_option('-a', '--addr', help='GPIB bus address of the device', action='store', dest='addr', default=14)
     parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7021)
-    parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='keithley6487')
+    parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='keithley6485')
 
     (options,args) = parser.parse_args()
 
