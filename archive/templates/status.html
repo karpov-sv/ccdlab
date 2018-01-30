@@ -42,8 +42,6 @@ $(document).ready(function(){
 
 {% block content %}
 
-{{ timestamp }}
-
 <div class="well">
   <form action="" method="post" role="form">{% csrf_token %}
     <div class="form-group">
@@ -77,16 +75,18 @@ $(document).ready(function(){
 {% if status %}
   <ul>
   {% for id,value in status.items %}
-    {% if value.items %}
-      <li>
+    <li>
+      {% if value.items %}
         {{ id }}
         <ul>
           {% for id2,value2 in value.items %}
             <li>{{ id2 }} = {{ value2 }}</li>
           {% endfor %}
         </ul>
-      </li>
-    {% endif %}
+      {% else %}
+        {{ id }} = {{ value }}
+      {% endif %}
+    </li>
   {% endfor %}
   </ul>
 {% endif %}

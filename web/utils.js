@@ -116,6 +116,14 @@ popupImage = function(url, title, ok)
     bootbox.dialog(params);
 }
 
+function isEmpty(obj) {
+    for(var key in obj) {
+        if(obj.hasOwnProperty(key))
+            return false;
+    }
+    return true;
+}
+
 // Stuff for JsRender/JsViews
 $.views.settings.allowCode(true);
 

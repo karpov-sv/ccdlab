@@ -136,7 +136,7 @@ Monitor.prototype.updateStatus = function(status, clients){
         var client_status = status[client['name']];
         var widget = this.clients[i]['widget'];
 
-        if(client_status == '0') {
+        if(isEmpty(client_status) || client_status == '0') {
             this.clients[i]['state'].removeClass("label-success").addClass("label-warning");
 
             hide(widget.find(".monitor-client-body"));

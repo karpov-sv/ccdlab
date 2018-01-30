@@ -139,7 +139,7 @@ class MonitorFactory(SimpleFactory):
                     status += ' ' + c.name + '=1 ' + kwargsToString(c.status, prefix=c.name + '_')
             else:
                 if as_dict:
-                    status[name] = 0
+                    status[name] = {}
                 else:
                     status += ' ' + name + '=0'
 
@@ -237,7 +237,8 @@ def make_plot(file, obj, client_name, plot_name, size=800):
         elif len(plot['values']) > 2:
             ax.legend(frameon=False)
 
-    ax.set_title(plot['name'])
+    if plot['name']:
+        ax.set_title(plot['name'])
     ax.margins(0.01, 0.1)
 
     # Return the image
