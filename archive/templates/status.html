@@ -1,0 +1,94 @@
+{% extends "template.html" %}
+
+{% load filters %}
+
+{% block head %}
+<!-- Bootstrap-datetimepicker -->
+<link rel="stylesheet" href="{{ STATIC_URL }}/web/bootstrap-datetimepicker/bootstrap-datetimepicker.min.css">
+<script src="{{ STATIC_URL }}/web/moment-with-locales.min.js"></script>
+<script src="{{ STATIC_URL }}/web/bootstrap-datetimepicker/bootstrap-datetimepicker.min.js"></script>
+
+<script type="text/javascript">
+$(document).ready(function(){
+   var now = new Date();
+   now.setTime(now.getTime() + now.getTimezoneOffset()*60000);
+
+   {% if timestamp %}
+   now = "{{ timestamp|date:"Y-m-d H:i:s" }}";
+   {% endif %}
+
+   $('#datetimepicker').datetimepicker({
+     sideBySide: true,
+     useSeconds: true,
+     language: 'en',
+     format: "YYYY.MM.DD HH:mm:ss",
+     minDate: new Date("june 1, 2014"),
+     defaultDate: now,
+   });
+ });
+</script>
+
+{% endblock %}
+
+{% block ptitle %}Status : CCDLab {% endblock %}
+
+{% block title %}System Status
+{% if time %}
+  at {{ time|date:"Y-m-d H:i:s" }}
+{% else %}
+  Archive
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+<div class="well">
+  <form action="" method="post" role="form">{% csrf_token %}
+    <div class="form-group">
+      <div class='input-group date' id='datetimepicker'>
+        <span class="input-group-addon">UTC time:</span>
+
+        <input name='time' type='text' class="form-control" placeholder="YYYY.MM.DD HH:MM:SS"/>
+
+        <span class="input-group-addon datepickerbutton" title="Open time selector">
+          <span class="glyphicon glyphicon-calendar"></span>
+        </span>
+
+        <span class="input-group-btn">
+          <button type="submit" name="action" value="show" class="btn btn-default">Show status</button>
+        </span>
+      </div>
+
+      <!--
+      <div class="checkbox">
+        <label>
+          <input name="debug" type="checkbox" {% if request.GET.debug or request.POST.debug %}checked {% endif %}> Debug (detailed) view
+        </label>
+      </div>
+      -->
+
+      <p class="help-block">Enter UTC time and the CCDLab status for that moment will be displayed, based on the data stored once per minute. You may use datetime picker widget (calendar icon) or enter time directly.</p>
+    </div>
+  </form>
+</div>
+
+{% if status %}
+  <ul>
+  {% for id,value in status.items %}
+    <li>
+      {% if value.items %}
+        {{ id }}
+        <ul>
+          {% for id2,value2 in value.items %}
+            <li>{{ id2 }} = {{ value2 }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        {{ id }} = {{ value }}
+      {% endif %}
+    </li>
+  {% endfor %}
+  </ul>
+{% endif %}
+
+{% endblock %}

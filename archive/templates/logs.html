@@ -1,0 +1,39 @@
+{% extends "template.html" %}
+
+{% load el_pagination_tags %}
+
+{% block ptitle %}Logs : CCDLab{% endblock %}
+
+{% block title %}Logs{% endblock %}
+
+{% block content %}
+
+{% if sources %}
+<div class="pagination">
+  <div class="btn-group">
+    <span class="btn btn-default btn-sm disabled">Filter:</span>
+    {% for source1 in sources %}
+    <a class="btn btn-default btn-sm {% if source == source1 %} disabled {% endif %}" href="/logs/{{ source1 }}">{{ source1 }}</a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% paginate 50 logs %}
+<table class="table table-striped table-condensed">
+  <tr>
+    <th>Time, UT</th><th>Source</th><th>Type</th><th>Message</th>
+  </tr>
+  {% for message in logs %}
+  <tr>
+    <td>{{ message.time|date:"Y-m-d H:i:s.u" }}</td>
+    <td><a href="/logs/{{ message.source }}">{{ message.source }}</a></td>
+    <td>{{ message.type }}</td>
+    <td>{{ message.message }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+{% show_pages %}
+
+{% endblock %}
