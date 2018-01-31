@@ -32,13 +32,16 @@ class SimpleProtocol(Protocol):
     _tcp_keepidle = 10 # Interval to wait before sending first keepalive packet
     _tcp_keepintvl = 1 # Interval between packets
     _tcp_keepcnt = 3 # Number of retries
-
-    def __init__(self, refresh=1):
+    _refresh = 1.0
+    
+    def __init__(self, refresh=0):
         self._buffer = ''
         self._is_binary = False
         self._binary_length = 0
         self._peer = None
-        self._refresh = refresh
+        
+        if refresh > 0:
+            self._refresh = refresh
 
         # Name and type of the connection peer
         self.name = ''
@@ -169,6 +172,9 @@ class SimpleFactory(Factory):
         # Name and type of the daemon
         self.name = ''
         self.type = ''
+        
+        # number of connections made since the deamon start
+        self.nConnectios = 0
 
         if not self._reactor:
             from twisted.internet import reactor
@@ -178,6 +184,9 @@ class SimpleFactory(Factory):
         p = self._protocol()
 
         p.factory = self
+        if p.name=='':
+            p.name='anonymous'+str(self.nConnectios).zfill(3)
+            self.nConnectios+=1
         p.object = self.object
 
         return p
