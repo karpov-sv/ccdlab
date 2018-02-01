@@ -104,7 +104,6 @@ class KeithleyProtocol(SimpleProtocol):
         Send the message to the controller. If keep=True, append the command name to
         internal queue so that we may properly recognize the reply
         """
-        #SimpleProtocol.message(self, '%s' % (string))
         cmd = Command(string)
         self.commands.append({'cmd':cmd.name,'source':source,'timeStamp':datetime.datetime.utcnow(),'keep':keep})
 
