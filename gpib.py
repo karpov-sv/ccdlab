@@ -145,7 +145,6 @@ class GPIBProtocol(SimpleProtocol):
                 self.object['current_addr']=self.nextaddr
                 SimpleProtocol.message(self, '%s' % (self.daemonQs[self.nextaddr][0]['cmd']))
                 if self.daemonQs[self.nextaddr][0]['cmd'] in ['++read','++addr']: self.readBusy=True
-                frameinfo = getframeinfo(currentframe())
                 self.daemonQs[self.nextaddr].pop(0) 
                 return
         elif not self.readBusy:
