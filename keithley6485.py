@@ -7,7 +7,7 @@ from command import Command
 from daemon import catch
 
 class DaemonProtocol(SimpleProtocol):
-    _debug = True # Display all traffic for debug purposes
+    _debug = False # Display all traffic for debug purposes
 
     @catch
     def processMessage(self, string):
@@ -37,7 +37,7 @@ class DaemonProtocol(SimpleProtocol):
         hw.messageAll(string, type='hw', keep=keep, source=self.name)
 
 class KeithleyProtocol(SimpleProtocol):
-    _debug = True # Display all traffic for debug purposes
+    _debug = False # Display all traffic for debug purposes
     _refresh = 0.1
 
     def __init__(self):
@@ -45,7 +45,6 @@ class KeithleyProtocol(SimpleProtocol):
         self.commands = [] # Queue of command sent to the device which will provide replies, each entry is a dict with keys "cmd","source","timeStamp"
         self.name = 'hw'
         self.type = 'hw'
-        self.waitForMessage=False
         self.lastAutoRead=datetime.datetime.utcnow()
 
     @catch
@@ -67,7 +66,6 @@ class KeithleyProtocol(SimpleProtocol):
         daemon = obj['daemon']
 
         print 'KEITHLEY6485 >> %s' % string
-
         # Update the last reply timestamp
         obj['hw_last_reply_time'] = datetime.datetime.utcnow()
         obj['hw_connected'] = 1
@@ -76,12 +74,8 @@ class KeithleyProtocol(SimpleProtocol):
         if len(self.commands):
             # We have some sent commands in the queue - let's check what was the oldest one
             if self.commands[0]['cmd'] == '*opc?' and self.commands[0]['source']=='itself':
-                if string=='1':
-                    # devide is ready
-                    self.commands[0]['keep']=False
-                    return
-                else:
-                    return
+                # not used at the moment
+                pass
             if self.commands[0]['cmd'] == '*idn?' and self.commands[0]['source']=='itself':
                 # Example of how to broadcast some message to be printed on screen and stored to database
                 daemon.log(string)
@@ -96,7 +90,7 @@ class KeithleyProtocol(SimpleProtocol):
                 daemon.messageAll(string,self.commands[0]['source'])
             else:
                 daemon.log('WARNING responce to unidentified command: '+self.commands[0]['cmd']+' from connection '+self.commands[0]['source'])
-            self.commands[0]['keep']=False
+            self.commands.pop(0)   
 
     @catch
     def message(self, string, keep=False, source='itself'):
@@ -106,8 +100,8 @@ class KeithleyProtocol(SimpleProtocol):
         """
         cmd = Command(string)
         if keep:
-            SimpleProtocol.message(self, '?$%s' % cmd.name)
             self.commands.append({'cmd':cmd.name,'source':source,'timeStamp':datetime.datetime.utcnow(),'keep':keep})
+            SimpleProtocol.message(self, '?$%s' % cmd.name)
         else:
             SimpleProtocol.message(self, string.name)
 
@@ -123,7 +117,7 @@ class KeithleyProtocol(SimpleProtocol):
             #if not connected do not send any commands
             return
 
-        elif (datetime.datetime.utcnow()-self.lastAutoRead).total_seconds()>2.:
+        elif (datetime.datetime.utcnow()-self.lastAutoRead).total_seconds()>2. and len(self.commands)==0:
             # Request the hardware state from the device
             self.message('read?', keep=True, source='itself')
             self.lastAutoRead=datetime.datetime.utcnow()

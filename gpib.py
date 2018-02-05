@@ -4,9 +4,10 @@ import os, sys
 
 from daemon import SimpleFactory, SimpleProtocol, catch
 from command import Command
+from inspect import currentframe, getframeinfo
 
 class DaemonProtocol(SimpleProtocol):
-    _debug = True # Display all traffic for debug purposes
+    _debug = False # Display all traffic for debug purposes
 
     @catch
     def __init__(self):
@@ -53,9 +54,9 @@ class DaemonProtocol(SimpleProtocol):
             hw.messageAll(string, type='hw', source=self.name)
 
 class GPIBProtocol(SimpleProtocol):
-    _debug = True # Display all traffic for debug purposes
+    _debug = False # Display all traffic for debug purposes
     _tcp_keepidle = 10 # Faster detection of peer disconnection
-    _refresh = 1.
+    _refresh = 0.01
     
     def __init__(self):
         SimpleProtocol.__init__(self)
@@ -64,7 +65,7 @@ class GPIBProtocol(SimpleProtocol):
         self.name = 'hw'
         self.type = 'hw'
         self.nextaddr=-1
-        self.daemonQs={'itself':[]} # queues for device commands, the key as the address
+        self.daemonQs={} # queues for GPIB devices commands, the key as the address
         self.gpibAddrList=[] #a list of the active GPIB connection addresses
         self.readBusy=False
     @catch
@@ -105,15 +106,12 @@ class GPIBProtocol(SimpleProtocol):
         internal queue so that we may properly recognize the reply
         """
         self.update_daemonQs()
-        print "here",string
         if source in self.daemonQs.keys():
-            print "here 2",source,keep
             #i.e. this is a GPIB connection, add the commad to the corresponding Q
             self.daemonQs[source].append({'cmd':string})
             if keep and not source=='itself':
                 self.daemonQs[source].append({'cmd':'++read'})
             return
-        print self.daemonQs
         
         #handle non GPIB messages as usual
         SimpleProtocol.message(self, '%s' % (string))
@@ -134,31 +132,27 @@ class GPIBProtocol(SimpleProtocol):
 
     @catch
     def update(self):
-        print self.daemonQs
-        print "self.nextaddr1",self.nextaddr
         if self.readBusy: return
         self.update_daemonQs()    
         if len(self.gpibAddrList):
             try:
                 self.nextaddr=self.gpibAddrList[self.gpibAddrList.index(self.nextaddr)-1]
-                if self._debug: "found last addr, switching to the next (",self.nextaddr,")"
+                if self._debug: print "found last addr, switching to the next (",self.nextaddr,")"
             except:
                 self.nextaddr=self.gpibAddrList[0]
-                if self._debug: "last addr not found (perhaps disconnected meanwhile), switching to the first (",self.nextaddr,")"
-            print "self.nextaddr2",self.nextaddr            
+                if self._debug: print "last addr not found (perhaps disconnected meanwhile), switching to the first (",self.nextaddr,")"
             if len(self.daemonQs[self.nextaddr]):
                 SimpleProtocol.message(self,'++addr %i' % self.nextaddr)
                 self.object['current_addr']=self.nextaddr
                 SimpleProtocol.message(self, '%s' % (self.daemonQs[self.nextaddr][0]['cmd']))
-                if self.daemonQs[self.nextaddr][0]['cmd']=='++read': self.readBusy=True
+                if self.daemonQs[self.nextaddr][0]['cmd'] in ['++read','++addr']: self.readBusy=True
+                frameinfo = getframeinfo(currentframe())
                 self.daemonQs[self.nextaddr].pop(0) 
                 return
-        if len(self.daemonQs['itself']):
-            SimpleProtocol.message(self, '%s' % (self.daemonQs['itself'][0]['cmd']))
-            if self.daemonQs['itself'][0]['cmd']=='++read': self.readBusy=True
-            self.daemonQs['itself'].pop(0)    
-        else:
+        elif not self.readBusy:
+            # i.e. either there is no GPIB connection or there is nothing to do for them
             self.message('++addr',keep=True)
+            self.readBusy=True
 
 if __name__ == '__main__':
     from optparse import OptionParser
