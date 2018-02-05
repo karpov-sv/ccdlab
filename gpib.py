@@ -4,7 +4,6 @@ import os, sys
 
 from daemon import SimpleFactory, SimpleProtocol, catch
 from command import Command
-from inspect import currentframe, getframeinfo
 
 class DaemonProtocol(SimpleProtocol):
     _debug = False # Display all traffic for debug purposes
