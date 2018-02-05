@@ -40,14 +40,13 @@ class KeithleyProtocol(SimpleProtocol):
         self.name = 'hw'
         self.type = 'hw'
         self.lastAutoRead=datetime.datetime.utcnow()
-        self.waitForMessage=False
         
     @catch
     def connectionMade(self):
         SimpleProtocol.connectionMade(self)
         self.object['hw_connected'] = 0 # We will set this flag when we receive any reply from the device
         SimpleProtocol.message(self, 'set_addr %d' % self.object['addr'])
-        SimpleProtocol.message(self, 'K0XU0X') #enable EOI and holdoff
+        SimpleProtocol.message(self, '?$K0XU0X') #enable EOI and holdoff
        
     @catch
     def connectionLost(self, reason):
@@ -68,7 +67,7 @@ class KeithleyProtocol(SimpleProtocol):
         
         # Process the device reply
         if len(self.commands):
-            if self.commands[0]['cmd'] == 'XL0XK0B1' and self.commands[0]['source']=='itself':
+            if self.commands[0]['cmd'] == '?$XL0XK0B1' and self.commands[0]['source']=='itself':
                 obj['value'] = float(string[4:-1])
                 obj['units'] = 'mA'
                 obj['timestamp'] = (datetime.datetime(2018, 1, 1)-datetime.datetime.utcnow()).total_seconds()
@@ -89,19 +88,13 @@ class KeithleyProtocol(SimpleProtocol):
 
         if self._debug: print len(self.commands),' commands in the Q:\n',self.commands
         if len(self.commands):
-            if not self.waitForMessage:
-                SimpleProtocol.message(self, '%s' % (self.commands[0]['cmd'])) #send the actual command
-                if not self.commands[0]['keep']:
-                    self.commands.pop(0)
-                else:
-                    self.waitForMessage=True   
-            elif not self.commands[0]['keep']: 
+            SimpleProtocol.message(self, '%s' % (self.commands[0]['cmd'])) #send the actual command
+            if not self.commands[0]['keep']:
                 self.commands.pop(0)
-                self.waitForMessage=False
                 
         elif (datetime.datetime.utcnow()-self.lastAutoRead).total_seconds()>2.:
             # Request the hardware state from the device
-            self.message('XL0XK0B1', keep=True, source='itself')
+            self.message('?$XL0XK0B1', keep=True, source='itself')
             self.lastAutoRead=datetime.datetime.utcnow()
             
     @catch
