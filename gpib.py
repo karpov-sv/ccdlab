@@ -127,7 +127,6 @@ class GPIBProtocol(SimpleProtocol):
         If a new GPIB device connected, add it, disconnected devices should stay in the dict
         """
         self.gpibAddrList = [_.addr for _ in self.object['daemon'].connections if _.addr > 0]
-
         for addr in self.gpibAddrList:
             if addr not in self.daemonQs.keys():
                 self.daemonQs[addr] = []
@@ -147,16 +146,14 @@ class GPIBProtocol(SimpleProtocol):
                 self.next_addr = self.gpibAddrList[0]
                 if self._debug:
                     print "Last addr not found (perhaps disconnected meanwhile), switching to the first (", self.next_addr, ")"
-
             if len(self.daemonQs[self.next_addr]):
                 SimpleProtocol.message(self, '++addr %i' % self.next_addr)
                 self.object['current_addr'] = self.next_addr
                 cmd = self.daemonQs[self.next_addr].pop(0)
                 if cmd['cmd'] in ['++read','++addr']:
                     self.readBusy = True
-                time.sleep(0.3)
+                time.sleep(0.3) # we need to wait a bit here to allow the controller to finish changing the addr
                 SimpleProtocol.message(self, cmd['cmd'])
-
         elif not self.readBusy:
             # There is either no GPIB connections, or nothing to do for them
             self.message('++addr', keep=True)
