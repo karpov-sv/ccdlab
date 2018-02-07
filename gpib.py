@@ -97,10 +97,9 @@ class GPIBProtocol(SimpleProtocol):
                     # Send the device reply to the client connection with given address
                     conn.message(string)
         self.readBusy = False
-           
 
     @catch
-    def message(self, string, keep=False, source='itself'):
+    def message(self, string, keep=False, source='self'):
         """
         Send the message to the controller. If keep=True, append the command name to
         internal queue so that we may properly recognize the reply
@@ -112,7 +111,6 @@ class GPIBProtocol(SimpleProtocol):
             self.daemonQs[source].append({'cmd':string})
             if keep and source != 'itself':
                 self.daemonQs[source].append({'cmd':'++read'})
-
         else:
             # Handle non-GPIB messages as usual
             SimpleProtocol.message(self, '%s' % (string))
