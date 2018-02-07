@@ -52,6 +52,7 @@ class KeithleyProtocol(SimpleProtocol):
         SimpleProtocol.connectionMade(self)
         self.object['hw_connected'] = 0 # We will set this flag when we receive any reply from the device
         SimpleProtocol.message(self, 'set_addr %d' % self.object['addr'])
+        SimpleProtocol.message(self, '*rst')
         SimpleProtocol.message(self, '?$*opc?')
        
     @catch
@@ -65,7 +66,8 @@ class KeithleyProtocol(SimpleProtocol):
         obj = self.object # Object holding the state
         daemon = obj['daemon']
 
-        print 'KEITHLEY6485 >> %s' % string
+        if self._debug:
+            print 'KEITHLEY6485 >> %s' % string
         # Update the last reply timestamp
         obj['hw_last_reply_time'] = datetime.datetime.utcnow()
         obj['hw_connected'] = 1
@@ -131,6 +133,7 @@ if __name__ == '__main__':
     parser.add_option('-a', '--addr', help='GPIB bus address of the device', action='store', dest='addr', default=14)
     parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7021)
     parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='keithley6485')
+    parser.add_option("-D", '--debug', help='Debug mode', action="store_true", dest="debug")
 
     (options,args) = parser.parse_args()
 
@@ -142,6 +145,10 @@ if __name__ == '__main__':
     # We need two different factories as the protocols are different
     daemon = SimpleFactory(DaemonProtocol, obj)
     hw = SimpleFactory(KeithleyProtocol, obj)
+    
+    if options.debug:
+        daemon._protocol._debug=True
+        hw._protocol._debug=True
 
     daemon.name = options.name
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, sys
+import os, sys, time
 
 from daemon import SimpleFactory, SimpleProtocol, catch
 from command import Command
@@ -36,17 +36,14 @@ class DaemonProtocol(SimpleProtocol):
     def sendCommand(self, string):
         obj = self.object # Object holding the state
         hw = obj['hw'] # HW factory
+
         #for GPIB connections send the address as the source ID
-        if self.addr>0:
-            cmd=string.split('$')
-            if len(cmd)==1:
+        if self.addr > 0:
+            cmd = string.split('$')
+            if len(cmd) == 1:
                 hw.messageAll(cmd[-1], type='hw', source=self.addr)
-            elif len(cmd)==2:
-                try:
-                    postpone=int(cmd[1])
-                except:
-                    postpone=0
-                hw.messageAll(cmd[-1], type='hw', source=self.addr,keep=(cmd[0]=='?'))
+            elif len(cmd) == 2:
+                hw.messageAll(cmd[-1], type='hw', source=self.addr, keep=(cmd[0]=='?'))
             else:
                 raise ValueError('cannot parse command')
         else:
@@ -56,22 +53,25 @@ class GPIBProtocol(SimpleProtocol):
     _debug = False # Display all traffic for debug purposes
     _tcp_keepidle = 10 # Faster detection of peer disconnection
     _refresh = 0.01
-    
+
     def __init__(self):
         SimpleProtocol.__init__(self)
         self.command_id = 0
         self.commands = []
         self.name = 'hw'
         self.type = 'hw'
-        self.nextaddr=-1
-        self.daemonQs={} # queues for GPIB devices commands, the key as the address
-        self.gpibAddrList=[] #a list of the active GPIB connection addresses
-        self.readBusy=False
+
+        self.next_addr = -1
+        self.daemonQs = {} # queues for GPIB devices commands, the key as the address
+        self.gpibAddrList = [] # a list of the active GPIB connection addresses
+        self.readBusy = False
+
     @catch
     def connectionMade(self):
         SimpleProtocol.connectionMade(self)
         self.object['hw_connected'] = 1
         self.object['current_addr'] = -1 # We are resetting it to be sure that we have proper address later
+
         self.message('++auto 0')
 
     @catch
@@ -81,8 +81,9 @@ class GPIBProtocol(SimpleProtocol):
 
     @catch
     def processMessage(self, string):
-        print "GPIB >> ",string
-        self.readBusy=False
+        if self._debug:
+            print "GPIB >> ", string
+
         SimpleProtocol.processMessage(self, string)
         daemon = self.object['daemon']
 
@@ -95,8 +96,8 @@ class GPIBProtocol(SimpleProtocol):
                 if conn.addr == self.object['current_addr'] and self.object['current_addr'] >= 0:
                     # Send the device reply to the client connection with given address
                     conn.message(string)
-
-        pass
+        self.readBusy = False
+           
 
     @catch
     def message(self, string, keep=False, source='itself'):
@@ -105,52 +106,61 @@ class GPIBProtocol(SimpleProtocol):
         internal queue so that we may properly recognize the reply
         """
         self.update_daemonQs()
+
         if source in self.daemonQs.keys():
-            #i.e. this is a GPIB connection, add the commad to the corresponding Q
+            # This is a GPIB connection, add the command to the corresponding queue
             self.daemonQs[source].append({'cmd':string})
-            if keep and not source=='itself':
+            if keep and source != 'itself':
                 self.daemonQs[source].append({'cmd':'++read'})
-            return
-        
-        #handle non GPIB messages as usual
-        SimpleProtocol.message(self, '%s' % (string))
-        if keep:
-            cmd = Command(string)
-            self.commands.append(cmd.name)
-            
+
+        else:
+            # Handle non-GPIB messages as usual
+            SimpleProtocol.message(self, '%s' % (string))
+            if keep:
+                cmd = Command(string)
+                self.commands.append(cmd.name)
+
     @catch
     def update_daemonQs(self):
         """
-        check if there are any new GPIB connections, 
-        if a new gpib device connected, add it, disconnected devices shoul stay in the dict
+        Check if there are any new GPIB connections.
+        If a new GPIB device connected, add it, disconnected devices should stay in the dict
         """
-        self.gpibAddrList=[ad.addr for ad in self.object['daemon'].connections if ad.addr > 0]
-        for addrD in self.gpibAddrList:
-            if addrD not in self.daemonQs.keys():
-                self.daemonQs[addrD] = []
+        self.gpibAddrList = [_.addr for _ in self.object['daemon'].connections if _.addr > 0]
+
+        for addr in self.gpibAddrList:
+            if addr not in self.daemonQs.keys():
+                self.daemonQs[addr] = []
 
     @catch
     def update(self):
-        if self.readBusy: return
-        self.update_daemonQs()    
+        if self.readBusy:
+            return
+
+        self.update_daemonQs()
         if len(self.gpibAddrList):
             try:
-                self.nextaddr=self.gpibAddrList[self.gpibAddrList.index(self.nextaddr)-1]
-                if self._debug: print "found last addr, switching to the next (",self.nextaddr,")"
+                self.next_addr = self.gpibAddrList[self.gpibAddrList.index(self.next_addr)-1]
+                if self._debug:
+                    print "Found last addr, switching to the next (", self.next_addr, ")"
             except:
-                self.nextaddr=self.gpibAddrList[0]
-                if self._debug: print "last addr not found (perhaps disconnected meanwhile), switching to the first (",self.nextaddr,")"
-            if len(self.daemonQs[self.nextaddr]):
-                SimpleProtocol.message(self,'++addr %i' % self.nextaddr)
-                self.object['current_addr']=self.nextaddr
-                SimpleProtocol.message(self, '%s' % (self.daemonQs[self.nextaddr][0]['cmd']))
-                if self.daemonQs[self.nextaddr][0]['cmd'] in ['++read','++addr']: self.readBusy=True
-                self.daemonQs[self.nextaddr].pop(0) 
-                return
+                self.next_addr = self.gpibAddrList[0]
+                if self._debug:
+                    print "Last addr not found (perhaps disconnected meanwhile), switching to the first (", self.next_addr, ")"
+
+            if len(self.daemonQs[self.next_addr]):
+                SimpleProtocol.message(self, '++addr %i' % self.next_addr)
+                self.object['current_addr'] = self.next_addr
+                cmd = self.daemonQs[self.next_addr].pop(0)
+                if cmd['cmd'] in ['++read','++addr']:
+                    self.readBusy = True
+                time.sleep(0.3)
+                SimpleProtocol.message(self, cmd['cmd'])
+
         elif not self.readBusy:
-            # i.e. either there is no GPIB connection or there is nothing to do for them
-            self.message('++addr',keep=True)
-            self.readBusy=True
+            # There is either no GPIB connections, or nothing to do for them
+            self.message('++addr', keep=True)
+            self.readBusy = True
 
 if __name__ == '__main__':
     from optparse import OptionParser
@@ -160,7 +170,8 @@ if __name__ == '__main__':
     parser.add_option('-P', '--hw-port', help='Hardware port to connect', action='store', dest='hw_port', type='int', default=1234)
     parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7020)
     parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='gpib')
-
+    parser.add_option("-D", '--debug', help='Debug mode', action="store_true", dest="debug")
+    
     (options,args) = parser.parse_args()
 
     # Object holding actual state and work logic.
@@ -171,7 +182,11 @@ if __name__ == '__main__':
     # We need two different factories as the protocols are different
     daemon = SimpleFactory(DaemonProtocol, obj)
     hw = SimpleFactory(GPIBProtocol, obj)
-
+    
+    if options.debug:
+        daemon._protocol._debug=True
+        hw._protocol._debug=True
+        
     daemon.name = options.name
 
     obj['daemon'] = daemon
