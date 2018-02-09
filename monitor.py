@@ -40,6 +40,7 @@ class MonitorProtocol(SimpleProtocol):
     def connectionMade(self):
         SimpleProtocol.connectionMade(self)
 
+        self.message('id name=monitor')
         self.message('get_id')
 
     @catch
