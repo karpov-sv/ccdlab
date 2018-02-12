@@ -24,11 +24,24 @@ class DaemonProtocol(SimpleProtocol):
             self.sendCommand('*RST')
         elif cmd.name in ['idn']:
             self.sendCommand('*idn?', keep=True)
+        elif cmd.name in ['get_curr_range']:
+            self.sendCommand('CURR:RANGE?', keep=True)
+        elif cmd.name in ['zero_check_on']:
+            self.sendCommand('SYST:ZCH ON')
+        elif cmd.name in ['trigger']:
+            self.sendCommand('INIT')
+        elif cmd.name in ['zero_check_aquire']:
+            self.sendCommand('SYST:ZCOR:ACQ')
+        elif cmd.name in ['zero_check_do']:
+            self.sendCommand('SYST:ZCOR ON')
+        elif cmd.name in ['set_curr_range_auto']:    
+            self.sendCommand('CURR:RANG:AUTO ON')
+        elif cmd.name in ['zero_check_off']:
+            self.sendCommand('SYST:ZCH OFF')
+
         elif string and string[0] == '*':
             # For debug purposes only
             self.sendCommand(string)
-        elif cmd.name in ['get_curr']:
-            self.sendCommand('CURR:RANGE?', keep=True)
 
     @catch
     def sendCommand(self, string, keep=False):
@@ -100,12 +113,11 @@ class KeithleyProtocol(SimpleProtocol):
         Send the message to the controller. If keep=True, append the command name to
         internal queue so that we may properly recognize the reply
         """
-        cmd = Command(string)
         if keep:
-            self.commands.append({'cmd':cmd.name,'source':source,'timeStamp':datetime.datetime.utcnow(),'keep':keep})
-            SimpleProtocol.message(self, '?$%s' % cmd.name)
+            self.commands.append({'cmd':string,'source':source,'timeStamp':datetime.datetime.utcnow(),'keep':keep})
+            SimpleProtocol.message(self, '?$%s' % string)
         else:
-            SimpleProtocol.message(self, string.name)
+            SimpleProtocol.message(self, string)
 
     @catch
     def update(self):
