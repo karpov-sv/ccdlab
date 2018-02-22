@@ -97,7 +97,7 @@ class MonitorProtocol(SimpleProtocol):
             if c:
                 c.message(" ".join(cmd.chunks[2:]))
 
-        elif cmd.name in ['info', 'message', 'error', 'warning', 'success']:
+        elif cmd.name in ['debug','info', 'message', 'error', 'warning', 'success']:
             msg = " ".join(cmd.chunks[1:])
             # For now, accept MONITOR time as a time of message
             time = datetime.datetime.utcnow()
@@ -285,9 +285,10 @@ class WebMonitor(Resource):
             elif (cmd.name == 'broadcast' or cmd.name == 'send_all'):
                 self.factory.messageAll(" ".join(cmd.chunks[1:]))
 
-            elif cmd.name in ['info', 'message', 'error', 'warning']:
+            elif cmd.name in ['debug','info', 'message', 'error', 'warning']:
                 if self.object.has_key('ws'):
-                    msgtype = {'info':'info',
+                    msgtype = {'debug':'debug',
+                               'info':'info',
                                'error':'error',
                                'warning':'warn',
                                'message':'success'}.get(cmd.name, 'info')
