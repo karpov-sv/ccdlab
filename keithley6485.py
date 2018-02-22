@@ -67,6 +67,7 @@ class KeithleyProtocol(SimpleProtocol):
         SimpleProtocol.message(self, 'set_addr %d' % self.object['addr'])
         SimpleProtocol.message(self, '*rst')
         SimpleProtocol.message(self, '?$*opc?')
+        self.commands.append({'cmd':'*opc?','source':'itself','timeStamp':datetime.datetime.utcnow(),'keep':'keep'})
        
     @catch
     def connectionLost(self, reason):
@@ -91,7 +92,7 @@ class KeithleyProtocol(SimpleProtocol):
             if self.commands[0]['cmd'] == '*opc?' and self.commands[0]['source']=='itself':
                 # not used at the moment
                 pass
-            if self.commands[0]['cmd'] == '*idn?' and self.commands[0]['source']=='itself':
+            elif self.commands[0]['cmd'] == '*idn?' and self.commands[0]['source']=='itself':
                 # Example of how to broadcast some message to be printed on screen and stored to database
                 daemon.log(string)
             elif self.commands[0]['cmd'] == 'read?' and self.commands[0]['source']=='itself':
