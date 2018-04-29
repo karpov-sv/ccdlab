@@ -46,7 +46,7 @@ class HWProtocol(SimpleProtocol):
         if self._debug:
             print "hw > %s" % string
 
-        if string[0] >= '0' and string[0] <= '6' and 'E' in string:
+        if len(string) and string[0] >= '0' and string[0] <= '6' and 'E' in string:
             # b,sx.xxxxEsxx
             self.object['status'] = int(string[0])
             self.object['pressure'] = float(string[2:])
