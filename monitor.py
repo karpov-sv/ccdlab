@@ -8,6 +8,8 @@ from twisted.web.static import File
 from twisted.internet.endpoints import TCP4ServerEndpoint
 from txsockjs.factory import SockJSResource
 
+from twistedauth import wrap_with_auth as Auth
+
 import os, sys, posixpath, datetime
 import re
 import urlparse
@@ -23,8 +25,6 @@ from daemon import SimpleFactory, SimpleProtocol
 from command import Command
 from daemon import catch
 from db import DB
-
-### Example code with server daemon and outgoing connection to hardware
 
 def kwargsToString(kwargs, prefix=''):
     return " ".join([prefix + _ + '=' + kwargs[_] for _ in kwargs])
@@ -428,7 +428,8 @@ if __name__ == '__main__':
         root = File("web")
         root.putChild("", File('web/main.html'))
         root.putChild("monitor", WebMonitor(factory=daemon, object=obj))
-        site = Site(root)
+        #site = Site(root)
+        site = Site(Auth(root, {'ccd':'ccd'}))
 
         # WebSockets
         ws = SimpleFactory(WSProtocol, obj)
