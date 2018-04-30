@@ -40,8 +40,8 @@ class MonitorProtocol(SimpleProtocol):
     def connectionMade(self):
         SimpleProtocol.connectionMade(self)
 
-        self.message('id name=monitor')
-        self.message('get_id')
+        self.message('id name=monitor') # Send our identity to the peer
+        self.message('get_id') # Request peer identity
 
     @catch
     def processMessage(self, string):
