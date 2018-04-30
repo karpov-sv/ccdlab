@@ -40,8 +40,9 @@
       {{/for}}
     </li>
 
-    <li class="list-group-item" style="padding: 5px">
+    <li class="list-group-item clearfix" style="padding: 5px">
       <!-- Subsystems -->
+      <img src="/monitor/plot/{{> ~root.params.name }}/temperatures" class="monitor-plot-{{> ~root.params.name }}-temperatures img pull-right"/><br>
       {{for ~list('BACKPLANE', 'MOD1', 'MOD2', 'MOD3', 'MOD4', 'MOD5', 'MOD6', 'MOD7', 'MOD8', 'MOD9', 'MOD10', 'MOD11', 'MOD12') itemVar="~prefix" }}
       <div>
         {{: ~prefix }} :::
@@ -90,11 +91,12 @@
     </li>
 
     <!-- Show all pre-configured plots -->
+    {{!--
     <li class="monitor-client-plots" style="padding: 5px">
       {{props params.plots }}
       <img src="/monitor/plot/{{> ~root.params.name }}/{{> key }}" class="monitor-plot-{{> ~root.params.name }}-{{> key }} img img-responsive center-block"/><br>
       {{/props}}
     </li>
-
+    --}}
   </ul>
 </div>

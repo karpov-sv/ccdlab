@@ -214,6 +214,9 @@ The following Python packages are necessary in order to run the system:
     * ``pip install txsockjs``
   * **Psycopg2** for accessing PostgreSQL databases
     * ``apt-get install python-psycopg2``
+  * **Django** for data archive web interface
+    * ``apt-get install python-django``
+    * ``pip install django-el-pagination``
 
 ...
 
