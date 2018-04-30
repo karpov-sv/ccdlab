@@ -8,6 +8,8 @@ from twisted.web.static import File
 from twisted.internet.endpoints import TCP4ServerEndpoint
 from txsockjs.factory import SockJSResource
 
+from twistedauth import wrap_with_auth as Auth
+
 import os, sys, posixpath, datetime
 import re
 import urlparse
@@ -23,8 +25,6 @@ from daemon import SimpleFactory, SimpleProtocol
 from command import Command
 from daemon import catch
 from db import DB
-
-### Example code with server daemon and outgoing connection to hardware
 
 def kwargsToString(kwargs, prefix=''):
     return " ".join([prefix + _ + '=' + kwargs[_] for _ in kwargs])
@@ -98,7 +98,7 @@ class MonitorProtocol(SimpleProtocol):
             if c:
                 c.message(" ".join(cmd.chunks[2:]))
 
-        elif cmd.name in ['info', 'message', 'error', 'warning', 'success']:
+        elif cmd.name in ['debug','info', 'message', 'error', 'warning', 'success']:
             msg = " ".join(cmd.chunks[1:])
             # For now, accept MONITOR time as a time of message
             time = datetime.datetime.utcnow()
@@ -286,9 +286,10 @@ class WebMonitor(Resource):
             elif (cmd.name == 'broadcast' or cmd.name == 'send_all'):
                 self.factory.messageAll(" ".join(cmd.chunks[1:]))
 
-            elif cmd.name in ['info', 'message', 'error', 'warning']:
+            elif cmd.name in ['debug','info', 'message', 'error', 'warning']:
                 if self.object.has_key('ws'):
-                    msgtype = {'info':'info',
+                    msgtype = {'debug':'debug',
+                               'info':'info',
                                'error':'error',
                                'warning':'warn',
                                'message':'success'}.get(cmd.name, 'info')
@@ -429,7 +430,8 @@ if __name__ == '__main__':
         root = File("web")
         root.putChild("", File('web/main.html'))
         root.putChild("monitor", WebMonitor(factory=daemon, object=obj))
-        site = Site(root)
+        #site = Site(root)
+        site = Site(Auth(root, {'ccd':'ccd'}))
 
         # WebSockets
         ws = SimpleFactory(WSProtocol, obj)
