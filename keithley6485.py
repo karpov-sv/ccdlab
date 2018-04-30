@@ -24,11 +24,24 @@ class DaemonProtocol(SimpleProtocol):
             self.sendCommand('*RST')
         elif cmd.name in ['idn']:
             self.sendCommand('*idn?', keep=True)
+        elif cmd.name in ['get_curr_range']:
+            self.sendCommand('CURR:RANGE?', keep=True)
+        elif cmd.name in ['zero_check_on']:
+            self.sendCommand('SYST:ZCH ON')
+        elif cmd.name in ['trigger']:
+            self.sendCommand('INIT')
+        elif cmd.name in ['zero_check_aquire']:
+            self.sendCommand('SYST:ZCOR:ACQ')
+        elif cmd.name in ['zero_check_do']:
+            self.sendCommand('SYST:ZCOR ON')
+        elif cmd.name in ['set_curr_range_auto']:    
+            self.sendCommand('CURR:RANG:AUTO ON')
+        elif cmd.name in ['zero_check_off']:
+            self.sendCommand('SYST:ZCH OFF')
+
         elif string and string[0] == '*':
             # For debug purposes only
             self.sendCommand(string)
-        elif cmd.name in ['get_curr']:
-            self.sendCommand('CURR:RANGE?', keep=True)
 
     @catch
     def sendCommand(self, string, keep=False):
@@ -52,7 +65,9 @@ class KeithleyProtocol(SimpleProtocol):
         SimpleProtocol.connectionMade(self)
         self.object['hw_connected'] = 0 # We will set this flag when we receive any reply from the device
         SimpleProtocol.message(self, 'set_addr %d' % self.object['addr'])
+        SimpleProtocol.message(self, '*rst')
         SimpleProtocol.message(self, '?$*opc?')
+        self.commands.append({'cmd':'*opc?','source':'itself','timeStamp':datetime.datetime.utcnow(),'keep':'keep'})
        
     @catch
     def connectionLost(self, reason):
@@ -65,7 +80,8 @@ class KeithleyProtocol(SimpleProtocol):
         obj = self.object # Object holding the state
         daemon = obj['daemon']
 
-        print 'KEITHLEY6485 >> %s' % string
+        if self._debug:
+            print 'KEITHLEY6485 >> %s' % string
         # Update the last reply timestamp
         obj['hw_last_reply_time'] = datetime.datetime.utcnow()
         obj['hw_connected'] = 1
@@ -76,7 +92,7 @@ class KeithleyProtocol(SimpleProtocol):
             if self.commands[0]['cmd'] == '*opc?' and self.commands[0]['source']=='itself':
                 # not used at the moment
                 pass
-            if self.commands[0]['cmd'] == '*idn?' and self.commands[0]['source']=='itself':
+            elif self.commands[0]['cmd'] == '*idn?' and self.commands[0]['source']=='itself':
                 # Example of how to broadcast some message to be printed on screen and stored to database
                 daemon.log(string)
             elif self.commands[0]['cmd'] == 'read?' and self.commands[0]['source']=='itself':
@@ -98,12 +114,11 @@ class KeithleyProtocol(SimpleProtocol):
         Send the message to the controller. If keep=True, append the command name to
         internal queue so that we may properly recognize the reply
         """
-        cmd = Command(string)
         if keep:
-            self.commands.append({'cmd':cmd.name,'source':source,'timeStamp':datetime.datetime.utcnow(),'keep':keep})
-            SimpleProtocol.message(self, '?$%s' % cmd.name)
+            self.commands.append({'cmd':string,'source':source,'timeStamp':datetime.datetime.utcnow(),'keep':keep})
+            SimpleProtocol.message(self, '?$%s' % string)
         else:
-            SimpleProtocol.message(self, string.name)
+            SimpleProtocol.message(self, string)
 
     @catch
     def update(self):
@@ -131,6 +146,7 @@ if __name__ == '__main__':
     parser.add_option('-a', '--addr', help='GPIB bus address of the device', action='store', dest='addr', default=14)
     parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7021)
     parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='keithley6485')
+    parser.add_option("-D", '--debug', help='Debug mode', action="store_true", dest="debug")
 
     (options,args) = parser.parse_args()
 
@@ -142,6 +158,10 @@ if __name__ == '__main__':
     # We need two different factories as the protocols are different
     daemon = SimpleFactory(DaemonProtocol, obj)
     hw = SimpleFactory(KeithleyProtocol, obj)
+    
+    if options.debug:
+        daemon._protocol._debug=True
+        hw._protocol._debug=True
 
     daemon.name = options.name
 
