@@ -233,8 +233,8 @@ def make_plot(file, obj, client_name, plot_name, size=800):
     elif len(plot['values']) == 1:
         ax.set_ylabel(plot['values'][1])
         
-    if plot['yscale']=='log':
-        ax.set_yscale(plot['yscale'], nonposy='clip')
+    if plot['yscale'] == 'log':
+        ax.set_yscale(plot['yscale'], nonposy = 'clip')
 
     if has_data:
         if len(plot['values']) > 4:
