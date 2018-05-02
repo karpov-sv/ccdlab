@@ -20,7 +20,7 @@ from StringIO import StringIO
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.dates import DateFormatter
-from matplotlib.ticker import ScalarFormatter
+from matplotlib.ticker import LogLocator,NullFormatter
 
 from daemon import SimpleFactory, SimpleProtocol
 from command import Command
@@ -235,7 +235,7 @@ def make_plot(file, obj, client_name, plot_name, size=800):
         
     if plot['yscale'] == 'log':
         ax.set_yscale(plot['yscale'], nonposy = 'clip')
-
+            
     if has_data:
         if len(plot['values']) > 4:
             ax.legend(frameon=True, loc=2, framealpha=0.99)
@@ -331,6 +331,7 @@ def loadINI(filename, obj):
     values = list(default=,)
     xlabel = string(default=None)
     ylabel = string(default=None)
+    yscale = string(default=linear)
     width = integer(min=0,max=2048,default=800)
     height = integer(min=0,max=2048,default=300)
     ''' % (obj['port'], obj['http_port'], obj['name'], obj['db_host'], obj['db_status_interval'])), list_values=False)
