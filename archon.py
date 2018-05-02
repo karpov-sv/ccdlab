@@ -10,24 +10,57 @@ def dictToString(kwargs, prefix=''):
     return " ".join([prefix + _ + '=' + kwargs[_] for _ in kwargs])
 
 class DaemonProtocol(SimpleProtocol):
-    _debug = True # Display all traffic for debug purposes
+    _debug = False # Display all traffic for debug purposes
 
     @catch
     def processMessage(self, string):
         # It will handle some generic messages and return pre-parsed Command object
         cmd = SimpleProtocol.processMessage(self, string)
         obj = self.object # Object holding the state
+        daemon = self.factory
         hw = obj['hw'] # HW factory
 
         if cmd.name == 'get_status':
             self.message('status hw_connected=%s %s' % (self.object['hw_connected'], dictToString(obj['status'])))
+        elif cmd.name == 'status':
+            # Global status message from MONITOR
+            obj['global'] = cmd.kwargs
+        elif cmd.name in ['start', 'poweron']:
+            daemon.log('Powering on')
+            self.sendCommand('POWERON')
+        elif cmd.name in ['stop', 'poweroff']:
+            daemon.log('Powering off')
+            self.sendCommand('POWEROFF')
+        elif cmd.name == 'clear':
+            daemon.log('Clearing configuration')
+            self.sendCommand('CLEARCONFIG')
+        elif cmd.name == 'apply':
+            daemon.log('Applying configuration')
+            self.sendCommand('APPLYALL')
+        elif cmd.name == 'reboot':
+            daemon.log('Initiating reboot', 'warning')
+            self.sendCommand('REBOOT')
+        elif cmd.name == 'warmboot':
+            daemon.log('Initiating warm boot', 'warning')
+            self.sendCommand('WARMBOOT')
         else:
-            if obj['hw_connected']:
-                # Pass all other commands directly to hardware
-                hw.messageAll(string, name='hw', type='hw')
+            pass
+
+    @catch
+    def sendCommand(self, string):
+        obj = self.object # Object holding the state
+        hw = obj['hw'] # HW factory
+
+        hw.messageAll(string, type='hw')
+
+    @catch
+    def update(self):
+        self.factory.messageAll('get_status', name='monitor')
 
 class ArchonProtocol(SimpleProtocol):
-    _debug = True # Display all traffic for debug purposes
+    _debug = False # Display all traffic for debug purposes
+
+    _tcp_keepidle = 1 # Faster detection of peer disconnection
 
     def __init__(self):
         SimpleProtocol.__init__(self)
@@ -43,23 +76,36 @@ class ArchonProtocol(SimpleProtocol):
         self.object['hw_connected'] = 1
         self.object['status'] = {}
 
+        self.object['state'] = 'idle'
+
         self.message('SYSTEM')
 
     @catch
     def connectionLost(self, reason):
         self.object['hw_connected'] = 0
         self.object['status'] = {}
+        self.object['state'] = 'unknown'
         SimpleProtocol.connectionLost(self, reason)
 
     @catch
     def processMessage(self, string):
+        SimpleProtocol.processMessage(self, string)
+        daemon = self.object['daemon']
+
+        id = int(string[1:3], 16)
+
         # Process the device reply
-        if string[0] != '<':
+        if string[0] == '?':
+            print "Error reply for command: %s" % (self.commands.get(id, ''))
+            daemon.log('Error reply: ' + self.commands.get(id, ''), 'error')
+            self.commands.pop(id, '')
+            return
+        elif string[0] != '<':
             print "Wrong reply from controller: %s" % string
             return
 
-        id = int(string[1:3], 16)
-        cmd = Command(string[3:])
+        body = string[3:]
+        cmd = Command(body)
 
         # Process and transform specific fields to be more understandable
         for key in cmd.kwargs:
@@ -67,6 +113,8 @@ class ArchonProtocol(SimpleProtocol):
             if newkey != key:
                 # Rename the argument key
                 cmd.kwargs[newkey] = cmd.kwargs.pop(key)
+
+        should_update_status = False
 
         if self.commands.get(id, '') == 'SYSTEM':
             cmd.kwargs['BACKPLANE_TYPE'] = {'0':'None', '1':'X12', '2':'X16'}.get(cmd.kwargs['BACKPLANE_TYPE'], 'unknown')
@@ -87,19 +135,43 @@ class ArchonProtocol(SimpleProtocol):
                                                 '11':'HeaterX',
                                                 '12':'XVBias',
                                                 '13':'ADF'}.get(cmd.kwargs['MOD%d_TYPE' % _], 'unknown')
-
+            should_update_status = True
         elif self.commands.get(id, '') == 'STATUS':
             cmd.kwargs['POWER'] = {'0':'Unknown', '1':'NotConfigured', '2':'Off', '3':'Intermediate', '4':'On', '5':'Standby'}.get(cmd.kwargs['POWER'], 'unknown')
 
+            if cmd.kwargs.has_key('LOG') and int(cmd.kwargs['LOG']) > 0:
+                # We have some unread LOG messages
+                for _ in xrange(int(cmd.kwargs['LOG'])):
+                    self.message('FETCHLOG')
+
+            should_update_status = True
+        elif self.commands.get(id, '') == 'FETCHLOG':
+            # We just fetched some log message, let's send it outwards
+            daemon.log(body, 'message')
+            print "Log:", body
+        elif self.commands.get(id, '') == 'FRAME':
+            should_update_status = True
+        else:
+            print "ARCHON >> %s" % body
+
         self.commands.pop(id, '')
 
-        self.object['status'].update(cmd.kwargs)
+        if should_update_status:
+            self.object['status'].update(cmd.kwargs)
 
     @catch
     def message(self, string):
-        SimpleProtocol.message(self, '>%02x%s' % (self.command_id, string))
+        if string in ['SYSTEM', 'STATUS', 'FRAME']:
+            if string in self.commands.values():
+                # Such command is already sent and still without reply
+                return
+
+        SimpleProtocol.message(self, '>%02X%s' % (self.command_id, string))
         self.commands[self.command_id] = string
         self.command_id = (self.command_id + 1) % 0x100
+
+        if string not in ['STATUS', 'FRAME', 'SYSTEM']:
+            print 'ARCHON << %s' % string
 
     @catch
     def update(self):
@@ -120,7 +192,7 @@ if __name__ == '__main__':
 
     # Object holding actual state and work logic.
     # May be anything that will be passed by reference - list, dict, object etc
-    obj = {'hw_connected':0, 'status':{}}
+    obj = {'hw_connected':0, 'status':{}, 'global':{}}
 
     # Factories for daemon and hardware connections
     # We need two different factories as the protocols are different

@@ -286,7 +286,7 @@ class WebMonitor(Resource):
             elif (cmd.name == 'broadcast' or cmd.name == 'send_all'):
                 self.factory.messageAll(" ".join(cmd.chunks[1:]))
 
-            elif cmd.name in ['debug','info', 'message', 'error', 'warning']:
+            elif cmd.name in ['debug', 'info', 'message', 'error', 'warning']:
                 if self.object.has_key('ws'):
                     msgtype = {'debug':'debug',
                                'info':'info',
