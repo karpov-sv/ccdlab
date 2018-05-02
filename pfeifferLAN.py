@@ -71,7 +71,7 @@ if __name__ == '__main__':
     parser = OptionParser(usage="usage: %prog [options] arg")
     parser.add_option('-H', '--hw-host', help='Hardware host to connect', action='store', dest='hw_host', default='192.168.1.11')
     parser.add_option('-P', '--hw-port', help='Hardware port to connect', action='store', dest='hw_port', type='int', default=8000)
-    parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7023)
+    parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7024)
     parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='pfeifferLAN')
     parser.add_option("-D", '--debug', help='Debug mode', action="store_true", dest="debug")
 

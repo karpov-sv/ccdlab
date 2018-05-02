@@ -68,7 +68,7 @@ if __name__ == '__main__':
 
     parser = OptionParser(usage="usage: %prog [options] arg")
     parser.add_option('-P', '--hw-port', help='Hardware port to connect', action='store', dest='hw_port', default='/dev/ttyUSB0')
-    parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7022)
+    parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7023)
     parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='pfeiffer')
 
     (options,args) = parser.parse_args()
