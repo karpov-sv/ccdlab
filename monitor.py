@@ -20,6 +20,7 @@ from StringIO import StringIO
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.dates import DateFormatter
+from matplotlib.ticker import ScalarFormatter
 
 from daemon import SimpleFactory, SimpleProtocol
 from command import Command
@@ -231,6 +232,9 @@ def make_plot(file, obj, client_name, plot_name, size=800):
         ax.set_ylabel(plot['ylabel'])
     elif len(plot['values']) == 1:
         ax.set_ylabel(plot['values'][1])
+        
+    if plot['yscale'] == 'log':
+        ax.set_yscale(plot['yscale'], nonposy = 'clip')
 
     if has_data:
         if len(plot['values']) > 4:
