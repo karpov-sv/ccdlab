@@ -3,15 +3,15 @@
 import os, sys
 
 from daemon import SimpleFactory, SimpleProtocol
-from twisted.internet.serialport import SerialPort
-from twisted.internet.task import LoopingCall
 from command import Command
+from daemon import catch
 
 ### Example code with server daemon and outgoing connection to hardware
 
 class DaemonProtocol(SimpleProtocol):
-    # _debug = True # Display all traffic for debug purposes
+    _debug = False # Display all traffic for debug purposes
 
+    @catch
     def processMessage(self, string):
         # It will handle some generic messages and return pre-parsed Command object
         cmd = SimpleProtocol.processMessage(self, string)
@@ -23,24 +23,24 @@ class DaemonProtocol(SimpleProtocol):
         else:
             if obj['hw_connected']:
                 # Pass all other commands directly to hardware
-                hw.protocol.message(string)
+                hw.messageAll(string, name='hw', type='hw')
 
 class HWProtocol(SimpleProtocol):
-    # _debug = True # Display all traffic for debug purposes
+    _debug = False # Display all traffic for debug purposes
 
+    @catch
     def connectionMade(self):
         self.object['hw_connected'] = 1
-        # SimpleProtocol.connectionMade(self)
-        self._updateTimer = LoopingCall(self.update)
-        self._updateTimer.start(self._refresh)
+        self.name = 'hw'
+        self.type = 'hw'
+        SimpleProtocol.connectionMade(self)
 
+    @catch
     def connectionLost(self, reason):
         self.object['hw_connected'] = 0
-        self.object['status'] = -1
-        self.object['pressure'] = 0
-        # SimpleProtocol.connectionLost(self, reason)
-        self._updateTimer.stop()
+        SimpleProtocol.connectionLost(self, reason)
 
+    @catch
     def processMessage(self, string):
         # Process the device reply
         if self._debug:
@@ -50,7 +50,8 @@ class HWProtocol(SimpleProtocol):
             # b,sx.xxxxEsxx
             self.object['status'] = int(string[0])
             self.object['pressure'] = float(string[2:])
-
+            
+    @catch
     def message(self, string):
         """Sending outgoing message"""
         if self._debug:
@@ -58,38 +59,45 @@ class HWProtocol(SimpleProtocol):
         self.transport.write(string)
         self.transport.write("\r\n")
 
+            
+    @catch
     def update(self):
         # Request the hardware state from the device
-        self.message('COM') # Start periodic reporting of status
-        pass
+        self.message('COM')
 
 if __name__ == '__main__':
     from optparse import OptionParser
 
     parser = OptionParser(usage="usage: %prog [options] arg")
-    parser.add_option('-P', '--hw-port', help='Hardware port to connect', action='store', dest='hw_port', default='/dev/ttyUSB0')
-    parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7023)
-    parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='pfeiffer')
+    parser.add_option('-H', '--hw-host', help='Hardware host to connect', action='store', dest='hw_host', default='192.168.1.11')
+    parser.add_option('-P', '--hw-port', help='Hardware port to connect', action='store', dest='hw_port', type='int', default=8000)
+    parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7024)
+    parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='pfeifferLAN')
+    parser.add_option("-D", '--debug', help='Debug mode', action="store_true", dest="debug")
 
     (options,args) = parser.parse_args()
-
+   
     # Object holding actual state and work logic.
     # May be anything that will be passed by reference - list, dict, object etc
-    obj = {'hw_connected':0, 'status':-1, 'pressure':0}
+    obj = {'hw_connected':0}
 
     # Factories for daemon and hardware connections
     # We need two different factories as the protocols are different
     daemon = SimpleFactory(DaemonProtocol, obj)
+    hw = SimpleFactory(HWProtocol, obj)
 
-    proto = HWProtocol()
-    proto.object = obj
-    hw = SerialPort(proto, options.hw_port, daemon._reactor, baudrate=9600)
     daemon.name = options.name
 
     obj['daemon'] = daemon
     obj['hw'] = hw
+    
+    if options.debug:
+        daemon._protocol._debug=True
+        hw._protocol._debug=True
 
     # Incoming connections
     daemon.listen(options.port)
+    # Outgoing connection
+    hw.connect(options.hw_host, options.hw_port)
 
     daemon._reactor.run()
