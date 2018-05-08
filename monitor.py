@@ -114,20 +114,10 @@ class MonitorProtocol(SimpleProtocol):
 
         elif cmd.name in ['debug', 'info', 'message', 'error', 'warning', 'success']:
             msg = " ".join(cmd.chunks[1:])
-            # For now, accept MONITOR time as a time of message
-            time = datetime.datetime.utcnow()
-
             self.log(msg, source=self.name, type=cmd.name)
 
-            # # DB
-            # if self.object.has_key('db') and self.object['db'] is not None:
-            #     self.object['db'].log(msg, time=time, source=self.name, type=cmd.name)
-
-            # # WebSockets
-            # if self.object.has_key('ws'):
-            #     self.object['ws'].messageAll(json.dumps({'msg':msg, 'time':str(time), 'source':self.name, 'type':cmd.name}))
-
     def log(self, msg, time=None, source=None, type='message'):
+        """Log the message to both console, web-interface and database, if connected"""
         if time is None:
             time = datetime.datetime.utcnow()
 
@@ -148,7 +138,6 @@ class MonitorProtocol(SimpleProtocol):
         for c in self.factory.connections:
             if c.name or c.type:
                 c.message('get_status')
-        #self.factory.messageAll('get_status')
 
 class WSProtocol(SimpleProtocol):
     def message(self, string):
