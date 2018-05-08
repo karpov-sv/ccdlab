@@ -8,6 +8,8 @@
 <script src="{{ STATIC_URL }}/web/moment-with-locales.min.js"></script>
 <script src="{{ STATIC_URL }}/web/bootstrap-datetimepicker/bootstrap-datetimepicker.min.js"></script>
 
+{% include "popup_image.html" %}
+
 <script type="text/javascript">
 $(document).ready(function(){
    var now = new Date();
@@ -80,7 +82,7 @@ $(document).ready(function(){
         {{ id }}
         <ul>
           {% for id2,value2 in value.items %}
-            <li>{{ id2 }} = {{ value2 }}</li>
+            <li><a href="{% url 'status_plot' id id2 %}"  onclick="return popupImage(event, '{% url 'status_plot' id id2 %}', 'History', true);" title="Show history">{{ id2 }}</a> = {{ value2 }}</li>
           {% endfor %}
         </ul>
       {% else %}

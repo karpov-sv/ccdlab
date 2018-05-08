@@ -15,6 +15,7 @@ urlpatterns = [
 
     # Status
     url(r'^status/?$', views.status, name='status'),
+    url(r'^status/plots/(?P<client>[a-zA-Z0-9_]+)/(?P<param>[a-zA-Z0-9_]+)/?$', views.status_plot, name='status_plot'),
 
     # Robots
     url(r'^robots.txt$', lambda r: HttpResponse("User-agent: *\nDisallow: /\n", content_type="text/plain")),

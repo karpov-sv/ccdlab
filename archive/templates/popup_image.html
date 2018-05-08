@@ -1,0 +1,42 @@
+<!-- Bootbox -->
+<script src="{{ STATIC_URL }}/web/bootbox.min.js"></script>
+
+<script language="javascript">
+
+ popupImage = function(event, url, title, ok)
+ {
+   // Fix for Safari CMD-click handled by onclick()
+   if(event.metaKey)
+     return true;
+
+   var body = $("<div/>", {class: ""});
+
+   $("<img/>", {class:"img img-responsive center-block", src:url}).appendTo(body);
+
+   params = {
+     title: title,
+     message: body,
+     onEscape: function() {},
+   };
+
+   if(ok){
+     params.buttons = {
+       success: {
+         label: "Ok",
+         className: "btn-default",
+         callback: function() {}
+       }
+     };
+   }
+
+   bootbox.dialog(params);
+
+   return false;
+ }
+</script>
+
+<style>
+ .modal-dialog {width: 850px; margin: 0 auto;}
+ .modal-body {padding: 0; margin: 0;}
+ .modal-footer {margin: 0;}
+</style>
