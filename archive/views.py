@@ -112,6 +112,8 @@ def status_plot(request, client, param, width=1000.0, height=500.0, hours=24.0, 
     if time: # It is failing if no data are plotted
         if (time[-1] - time[0]).total_seconds() < 2*24*3600:
             ax.xaxis.set_major_formatter(DateFormatter('%H:%M:%S'))
+        elif (time[-1] - time[0]).total_seconds() > 3*24*3600:
+            ax.xaxis.set_major_formatter(DateFormatter('%Y.%m.%d'))
         else:
             ax.xaxis.set_major_formatter(DateFormatter('%Y.%m.%d %H:%M:%S'))
 

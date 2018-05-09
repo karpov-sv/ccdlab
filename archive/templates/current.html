@@ -1,13 +1,59 @@
 {% extends "template.html" %}
 
+{% block head %}
+
+  <script src="{{ STATIC_URL }}/updater.js" type="text/javascript"></script>
+
+  <script language="javascript">
+   $(document).ready(function(){
+     new Updater('#pressure-hour > img', 60000, true);
+     new Updater('#pressure-day > img', 600000, true);
+     new Updater('#pressure-week > img', 600000, true);
+   });
+  </script>
+
+{% endblock %}
+
 {% block ptitle %}Current : CCDLab{% endblock %}
 
-{% block title %}Last day status of the laboratory{% endblock %}
+{% block title %}Laboratory status{% endblock %}
 
 {% block content %}
 
   <div>
-    <img src="{% url 'status_plot' 'pfeiffer' 'pressure' %}?ylog=1&width=1000&height=400&title=Pressure&ylabel=Pressure [mbar]" class="img img-responsive center-block">
+
+    <ul class="nav nav-tabs">
+      <li class="nav-item disabled"><a class="nav-link disabled">Pressure:</a></li>
+      <li class="nav-item"><a data-toggle="tab" href="#pressure-hour">Last Hour</a></li>
+      <li class="nav-item active"><a data-toggle="tab" href="#pressure-day">Last Day</a></li>
+      <li class="nav-item"><a data-toggle="tab" href="#pressure-week">Last Week</a></li>
+    </ul>
+
+    <div class="tab-content">
+      <div id="pressure-hour" class="tab-pane fade">
+        <img src="{% url 'status_plot' 'pfeiffer' 'pressure' %}?ylog=1&width=1000&height=400&hours=1&title=Pfeiffer&ylabel=Pressure [mbar]" class="img img-responsive center-block">
+      </div>
+      <div id="pressure-day" class="tab-pane fade in active">
+        <img src="{% url 'status_plot' 'pfeiffer' 'pressure' %}?ylog=1&width=1000&height=400&hours=24&title=Pfeiffer&ylabel=Pressure [mbar]" class="img img-responsive center-block">
+      </div>
+      <div id="pressure-week" class="tab-pane fade">
+        <img src="{% url 'status_plot' 'pfeiffer' 'pressure' %}?ylog=1&width=1000&height=400&hours=168&title=Pfeiffer&ylabel=Pressure [mbar]" class="img img-responsive center-block">
+      </div>
+    </div>
+
+
+    <div class="tab-content" id="pressure_tab">
+      <div class="tab-pane fade" id="pressure-hour" role="tabpanel" aria-labelledby="home-tab">
+
+      </div>
+      <div class="tab-pane fade show active" id="profile" role="tabpanel" aria-labelledby="profile-tab">
+
+      </div>
+      <div class="tab-pane fade" id="contact" role="tabpanel" aria-labelledby="contact-tab">
+
+      </div>
+    </div>
+
   </div>
 
 {% endblock %}
