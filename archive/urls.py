@@ -8,7 +8,8 @@ import views
 
 urlpatterns = [
     # Index
-    url(r'^$', views.index, name="index"),
+    url(r'index^$', views.index, name="index"),
+    url(r'^$', views.current, name="current"),
 
     # Log view
     url(r'^logs(/(?P<source>\w+)?)?$', views.logs_list, name='logs'),

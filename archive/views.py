@@ -20,6 +20,11 @@ def index(request):
 
     return TemplateResponse(request, 'index.html', context=context)
 
+def current(request):
+    context = {}
+
+    return TemplateResponse(request, 'current.html', context=context)
+
 def logs_list(request, source='all'):
     if not source or source == 'all':
         logs = Log.objects.order_by('-time')
@@ -62,7 +67,7 @@ def status(request):
 
     return TemplateResponse(request, 'status.html', context=context)
 
-def status_plot(request, client, param, width=1000.0, height=500.0, hours=24.0, title=None, ylog=False):
+def status_plot(request, client, param, width=1000.0, height=500.0, hours=24.0, title=None, xlabel="Time, UT", ylabel=None, ylog=False):
     hours = float(hours) if hours else 24.0
     # delay = int(delay) if delay else 0
 
@@ -75,22 +80,24 @@ def status_plot(request, client, param, width=1000.0, height=500.0, hours=24.0, 
         height = float(request.GET.get('height', height))
         hours = float(request.GET.get('hours', hours))
         if request.GET.has_key('ylog'):
+            # FIXME: make it possible to pass False somehow
             ylog = True
 
-    print width,height,hours
+        title = request.GET.get('title', title)
+        xlabel = request.GET.get('xlabel', xlabel)
+        ylabel = request.GET.get('ylabel', ylabel)
+
+    if not ylabel:
+        ylabel = param
+
+    if not title:
+        title = client + '.' + param
 
     ms = MonitorStatus.objects.extra(select={"value":"(status #> '{%s}' #>> '{%s}')::float" % (client, param)}).defer('status').order_by('time')
     ms = ms.filter(time__gt = datetime.datetime.utcnow() - datetime.timedelta(hours=hours))
 
     print ms.count()
     print datetime.datetime.utcnow() - datetime.timedelta(hours=hours)
-
-    # query = "SELECT id, time, status #> '{%s}' FROM beholder_status WHERE time > %s AND time < %s ORDER BY time DESC"
-    # db = DB()
-    # bs = db.query(query, (spath, datetime.datetime.utcnow() - datetime.timedelta(hours=hours) - datetime.timedelta(hours=delay), datetime.datetime.utcnow() - datetime.timedelta(hours=delay)))
-
-    if not title:
-        title = client + '.' + param
 
     values = [_.value for _ in ms]
     time = [_.time for _ in ms]
@@ -103,10 +110,13 @@ def status_plot(request, client, param, width=1000.0, height=500.0, hours=24.0, 
     ax.plot(time, values, '-', label=title)
 
     if time: # It is failing if no data are plotted
-        ax.xaxis.set_major_formatter(DateFormatter('%Y.%m.%d %H:%M:%S'))
+        if (time[-1] - time[0]).total_seconds() < 2*24*3600:
+            ax.xaxis.set_major_formatter(DateFormatter('%H:%M:%S'))
+        else:
+            ax.xaxis.set_major_formatter(DateFormatter('%Y.%m.%d %H:%M:%S'))
 
-    ax.set_xlabel("Time, UT")
-    ax.set_ylabel(param)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
     ax.set_title(title)
 
     if ylog:

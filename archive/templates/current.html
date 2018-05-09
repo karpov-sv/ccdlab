@@ -1,0 +1,13 @@
+{% extends "template.html" %}
+
+{% block ptitle %}Current : CCDLab{% endblock %}
+
+{% block title %}Last day status of the laboratory{% endblock %}
+
+{% block content %}
+
+  <div>
+    <img src="{% url 'status_plot' 'pfeiffer' 'pressure' %}?ylog=1&width=1000&height=400&title=Pressure&ylabel=Pressure [mbar]" class="img img-responsive center-block">
+  </div>
+
+{% endblock %}
