@@ -62,7 +62,7 @@ def status(request):
 
     return TemplateResponse(request, 'status.html', context=context)
 
-def status_plot(request, client, param, width=1000, height=500, hours=24.0, title=None):
+def status_plot(request, client, param, width=1000.0, height=500.0, hours=24.0, title=None, ylog=False):
     hours = float(hours) if hours else 24.0
     # delay = int(delay) if delay else 0
 
@@ -74,9 +74,17 @@ def status_plot(request, client, param, width=1000, height=500, hours=24.0, titl
         width = float(request.GET.get('width', width))
         height = float(request.GET.get('height', height))
         hours = float(request.GET.get('hours', hours))
+        if request.GET.has_key('ylog'):
+            ylog = True
+
+    print width,height,hours
 
     ms = MonitorStatus.objects.extra(select={"value":"(status #> '{%s}' #>> '{%s}')::float" % (client, param)}).defer('status').order_by('time')
-    ms.filter(time__gt = datetime.datetime.utcnow() - datetime.timedelta(hours=hours))
+    ms = ms.filter(time__gt = datetime.datetime.utcnow() - datetime.timedelta(hours=hours))
+
+    print ms.count()
+    print datetime.datetime.utcnow() - datetime.timedelta(hours=hours)
+
     # query = "SELECT id, time, status #> '{%s}' FROM beholder_status WHERE time > %s AND time < %s ORDER BY time DESC"
     # db = DB()
     # bs = db.query(query, (spath, datetime.datetime.utcnow() - datetime.timedelta(hours=hours) - datetime.timedelta(hours=delay), datetime.datetime.utcnow() - datetime.timedelta(hours=delay)))
@@ -87,7 +95,7 @@ def status_plot(request, client, param, width=1000, height=500, hours=24.0, titl
     values = [_.value for _ in ms]
     time = [_.time for _ in ms]
 
-    fig = Figure(facecolor='white', dpi=72, figsize=(width/72, height/72), tight_layout=True)
+    fig = Figure(facecolor='white', dpi=72, figsize=(width*1.0/72, height*1.0/72), tight_layout=True)
     ax = fig.add_subplot(111)
     ax.autoscale()
     ax.plot()
@@ -101,10 +109,13 @@ def status_plot(request, client, param, width=1000, height=500, hours=24.0, titl
     ax.set_ylabel(param)
     ax.set_title(title)
 
+    if ylog:
+        ax.set_yscale('log', nonposy='clip')
+
     fig.autofmt_xdate()
 
     # 10% margins on both axes
-    ax.margins(0.1, 0.1)
+    ax.margins(0.03, 0.03)
 
     # handles, labels = ax.get_legend_handles_labels()
     # ax.legend(handles, labels, loc=2)
