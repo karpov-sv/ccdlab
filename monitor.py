@@ -258,7 +258,7 @@ def make_plot(file, obj, client_name, plot_name, size=800):
         ax.set_xscale(plot['xscale'], nonposy='clip')
 
     if plot['yscale'] != 'linear':
-        ax.set_yscale(plot['yscale'], nonposy='clip')
+        ax.set_yscale(plot['yscale'], nonposx='clip')
 
     if has_data:
         if len(plot['values']) > 4:
