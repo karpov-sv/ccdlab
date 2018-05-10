@@ -38,11 +38,20 @@ class MonitorProtocol(SimpleProtocol):
         self.name = None
         self.status = {}
 
+    @catch
     def connectionMade(self):
         SimpleProtocol.connectionMade(self)
 
         self.message('id name=monitor') # Send our identity to the peer
         self.message('get_id') # Request peer identity
+
+    @catch
+    def connectionLost(self, reason):
+        if self.object['clients'].has_key(self.name):
+            self.log("%s disconnected" % self.name, type='info')
+            # print "Disconnected:", self.name
+
+        SimpleProtocol.connectionLost(self, reason)
 
     @catch
     def processMessage(self, string):
@@ -54,6 +63,10 @@ class MonitorProtocol(SimpleProtocol):
         if cmd.name == 'id':
             self.name = cmd.get('name', None)
             self.type = cmd.get('type', None)
+
+            if self.object['clients'].has_key(self.name):
+                self.log("%s connected" % self.name, type='info')
+                # print "Connected:", self.name
 
         elif cmd.name == 'status':
             # We keep var=value pairs from the status to report it to clients
@@ -99,24 +112,32 @@ class MonitorProtocol(SimpleProtocol):
             if c:
                 c.message(" ".join(cmd.chunks[2:]))
 
-        elif cmd.name in ['debug','info', 'message', 'error', 'warning', 'success']:
+        elif cmd.name in ['debug', 'info', 'message', 'error', 'warning', 'success']:
             msg = " ".join(cmd.chunks[1:])
-            # For now, accept MONITOR time as a time of message
+            self.log(msg, source=self.name, type=cmd.name)
+
+    def log(self, msg, time=None, source=None, type='message'):
+        """Log the message to both console, web-interface and database, if connected"""
+        if time is None:
             time = datetime.datetime.utcnow()
 
-            # DB
-            if self.object.has_key('db') and self.object['db'] is not None:
-                self.object['db'].log(msg, time=time, source=self.name, type=cmd.name)
+        if source is None:
+            source = self.name
 
-            # WebSockets
-            if self.object.has_key('ws'):
-                self.object['ws'].messageAll(json.dumps({'msg':msg, 'time':str(time), 'source':self.name, 'type':cmd.name}));
+        print "%s: %s > %s > %s" % (time, source, type, msg)
+
+        # DB
+        if self.object.has_key('db') and self.object['db'] is not None:
+            self.object['db'].log(msg, time=time, source=source, type=type)
+
+        # WebSockets
+        if self.object.has_key('ws'):
+            self.object['ws'].messageAll(json.dumps({'msg':msg, 'time':str(time), 'source':source, 'type':type}))
 
     def update(self):
         for c in self.factory.connections:
             if c.name or c.type:
                 c.message('get_status')
-        #self.factory.messageAll('get_status')
 
 class WSProtocol(SimpleProtocol):
     def message(self, string):
@@ -232,10 +253,13 @@ def make_plot(file, obj, client_name, plot_name, size=800):
         ax.set_ylabel(plot['ylabel'])
     elif len(plot['values']) == 1:
         ax.set_ylabel(plot['values'][1])
-        
-    if plot['yscale'] == 'log':
-        ax.set_yscale(plot['yscale'], nonposy = 'clip')
-            
+
+    if plot['xscale'] != 'linear':
+        ax.set_xscale(plot['xscale'], nonposx='clip')
+
+    if plot['yscale'] != 'linear':
+        ax.set_yscale(plot['yscale'], nonposy='clip')
+
     if has_data:
         if len(plot['values']) > 4:
             ax.legend(frameon=True, loc=2, framealpha=0.99)
@@ -334,6 +358,8 @@ def loadINI(filename, obj):
     yscale = string(default=linear)
     width = integer(min=0,max=2048,default=800)
     height = integer(min=0,max=2048,default=300)
+    xscale = string(default=linear)
+    yscale = string(default=linear)
     ''' % (obj['port'], obj['http_port'], obj['name'], obj['db_host'], obj['db_status_interval'])), list_values=False)
 
     confname = '%s.ini' % posixpath.splitext(__file__)[0]

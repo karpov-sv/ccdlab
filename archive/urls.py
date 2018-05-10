@@ -5,22 +5,28 @@ from django.conf.urls import include, url
 import settings
 
 import views
+import views_status
 
 urlpatterns = [
     # Index
-    url(r'^$', views.index, name="index"),
+    url(r'index^$', views.index, name="index"),
+    url(r'^$', views.current, name="current"),
 
     # Log view
     url(r'^logs(/(?P<source>\w+)?)?$', views.logs_list, name='logs'),
 
     # Status
-    url(r'^status/?$', views.status, name='status'),
+    url(r'^status/?$', views_status.status, name='status'),
+    url(r'^status/plots/(?P<client>[a-zA-Z0-9_]+)/(?P<param>[a-zA-Z0-9_]+)/?$', views_status.status_plot, name='status_plot'),
 
     # Robots
     url(r'^robots.txt$', lambda r: HttpResponse("User-agent: *\nDisallow: /\n", content_type="text/plain")),
 
     # Markdown
     #url(r'^about/(?P<path>.*)$', views_markdown.markdown_page, {'base':'about'}, name="markdown"),
+
+    # MONITOR proxy
+    url(r'^monitor/?$', views.monitor, name="monitor"),
 ]
 
 urlpatterns += staticfiles_urlpatterns()
