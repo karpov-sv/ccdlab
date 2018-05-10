@@ -70,7 +70,6 @@ class HWProtocol(SimpleProtocol):
                     self.object[channel[s]] = np.nan
             self.object['status'] = status
 
-
     @catch
     def message(self, string):
         """Sending outgoing message"""
