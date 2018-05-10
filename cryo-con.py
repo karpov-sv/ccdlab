@@ -58,18 +58,17 @@ class HWProtocol(SimpleProtocol):
         if len(string):
             # values for channel a;b;c;d (....... means dot connected)
             sstring = string.split(';')
-            status=''
-            channel=['temperatureA','temperatureB','temperatureC','temperatureD']
+            status = ''
+            channel = ['temperatureA','temperatureB','temperatureC','temperatureD']
             for s in range(len(sstring)):
                 try:
                     sstring[s] = float(sstring[s])
-                    status=status+'1'
+                    status = status+'1'
                     self.object[channel[s]] = sstring[s]
                 except ValueError:
-                    status=status+'0'
+                    status = status+'0'
                     self.object[channel[s]] = np.nan
             self.object['status'] = status
-
 
     @catch
     def message(self, string):
