@@ -20,7 +20,7 @@ from StringIO import StringIO
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.dates import DateFormatter
-from matplotlib.ticker import LogLocator,NullFormatter
+from matplotlib.ticker import ScalarFormatter
 
 from daemon import SimpleFactory, SimpleProtocol
 from command import Command
@@ -355,7 +355,6 @@ def loadINI(filename, obj):
     values = list(default=,)
     xlabel = string(default=None)
     ylabel = string(default=None)
-    yscale = string(default=linear)
     width = integer(min=0,max=2048,default=800)
     height = integer(min=0,max=2048,default=300)
     xscale = string(default=linear)

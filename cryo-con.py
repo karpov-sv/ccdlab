@@ -64,10 +64,10 @@ class HWProtocol(SimpleProtocol):
                 try:
                     sstring[s] = float(sstring[s])
                     status=status+'1'
-                    self.object['temperatureA'] = sstring[s]
+                    self.object[channel[s]] = sstring[s]
                 except ValueError:
                     status=status+'0'
-                    self.object['temperatureA'] = np.nan
+                    self.object[channel[s]] = np.nan
             self.object['status'] = status
 
 
