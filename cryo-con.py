@@ -20,14 +20,17 @@ class DaemonProtocol(SimpleProtocol):
 
         if cmd.name == 'get_status':
             if self._simulator:
-                self.message('status hw_connected=1 status=0 pressure=%g simulator=1' % (np.random.uniform(1.0, 10.0)))
+                self.message('status hw_connected=1 status=0 temperatureA=%g  temperatureB=%g temperatureC=%g temperatureD=%g simulator=1' 
+                             % (np.random.uniform(1.0, 10.0),np.random.uniform(1.0, 10.0),np.random.uniform(1.0, 10.0),np.random.uniform(1.0, 10.0)))
             else:
-                self.message('status hw_connected=%s status=%d pressure=%g' % (self.object['hw_connected'], self.object['status'], self.object['pressure']))
+                self.message('status hw_connected=%s status=%s temperatureA=%g temperatureB=%g temperatureC=%g temperatureD=%g' 
+                             % (self.object['hw_connected'], self.object['status'], 
+                                self.object['temperatureA'], self.object['temperatureB'], self.object['temperatureC'], self.object['temperatureD']))
         else:
             if obj['hw_connected']:
                 # Pass all other commands directly to hardware
                 hw.messageAll(string, name='hw', type='hw')
-
+                
 class HWProtocol(SimpleProtocol):
     _debug = False # Display all traffic for debug purposes
 
@@ -37,6 +40,9 @@ class HWProtocol(SimpleProtocol):
         self.name = 'hw'
         self.type = 'hw'
         SimpleProtocol.connectionMade(self)
+        # make sure the units are Celsius
+        self.message('input a,b,c,d:units c')
+
 
     @catch
     def connectionLost(self, reason):
@@ -49,10 +55,21 @@ class HWProtocol(SimpleProtocol):
         if self._debug:
             print "hw > %s" % string
 
-        if len(string) and string[0] >= '0' and string[0] <= '6' and 'E' in string:
-            # b,sx.xxxxEsxx
-            self.object['status'] = int(string[0])
-            self.object['pressure'] = float(string[2:])
+        if len(string):
+            # values for channel a;b;c;d (....... means dot connected)
+            sstring = string.split(';')
+            status=''
+            channel=['temperatureA','temperatureB','temperatureC','temperatureD']
+            for s in range(len(sstring)):
+                try:
+                    sstring[s] = float(sstring[s])
+                    status=status+'1'
+                    self.object['temperatureA'] = sstring[s]
+                except ValueError:
+                    status=status+'0'
+                    self.object['temperatureA'] = np.nan
+            self.object['status'] = status
+
 
     @catch
     def message(self, string):
@@ -60,22 +77,22 @@ class HWProtocol(SimpleProtocol):
         if self._debug:
             print ">> serial >>", string
         self.transport.write(string)
-        self.transport.write("\r\n")
+        self.transport.write("\n")
 
 
     @catch
     def update(self):
         # Request the hardware state from the device
-        self.message('COM')
+        self.message('input? a,b,c,d')
 
 if __name__ == '__main__':
     from optparse import OptionParser
 
     parser = OptionParser(usage="usage: %prog [options] arg")
-    parser.add_option('-H', '--hw-host', help='Hardware host to connect', action='store', dest='hw_host', default='192.168.1.11')
-    parser.add_option('-P', '--hw-port', help='Hardware port to connect', action='store', dest='hw_port', type='int', default=8000)
-    parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7023)
-    parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='pfeiffer')
+    parser.add_option('-H', '--hw-host', help='Hardware host to connect', action='store', dest='hw_host', default='192.168.1.5')
+    parser.add_option('-P', '--hw-port', help='Hardware port to connect', action='store', dest='hw_port', type='int', default=5000)
+    parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7024)
+    parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='cryo-con')
     parser.add_option("-D", '--debug', help='Debug mode', action="store_true", dest="debug")
     parser.add_option("-S", '--simulator', help='Simulator mode', action="store_true", dest="simulator")
 
@@ -83,7 +100,7 @@ if __name__ == '__main__':
 
     # Object holding actual state and work logic.
     # May be anything that will be passed by reference - list, dict, object etc
-    obj = {'hw_connected':0, 'status':-1, 'pressure':0}
+    obj = {'hw_connected':0, 'status':-1, 'temperatureA':0}
 
     # Factories for daemon and hardware connections
     # We need two different factories as the protocols are different
