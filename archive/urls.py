@@ -24,6 +24,9 @@ urlpatterns = [
 
     # Markdown
     #url(r'^about/(?P<path>.*)$', views_markdown.markdown_page, {'base':'about'}, name="markdown"),
+
+    # MONITOR proxy
+    url(r'^monitor/?$', views.monitor, name="monitor"),
 ]
 
 urlpatterns += staticfiles_urlpatterns()

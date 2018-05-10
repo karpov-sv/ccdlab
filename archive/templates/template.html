@@ -26,6 +26,8 @@
     <!-- Latest compiled and minified JavaScript -->
     <script src="/static/web/bootstrap/js/bootstrap.min.js"></script>
 
+    <link rel="stylesheet" href="/static/web/main.css">
+
     <!-- Our own -->
 
     {% block head %}{% endblock %}
@@ -70,7 +72,8 @@
         <!-- Collect the nav links, forms, and other content for toggling -->
         <div class="collapse navbar-collapse navbar-ex1-collapse">
           <ul class="nav navbar-nav">
-            <li><a href="{% url 'status' %}">System Status</a></li>
+            <li><a href="{% url 'monitor' %}">Monitor</a></li>
+            <li><a href="{% url 'status' %}">Status</a></li>
             <li><a href="{% url 'logs' %}">Logs</a></li>
           </ul>
         </div>

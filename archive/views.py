@@ -18,6 +18,9 @@ def current(request):
 
     return TemplateResponse(request, 'current.html', context=context)
 
+def monitor(request):
+    return TemplateResponse(request, 'monitor.html', context={})
+
 def logs_list(request, source='all'):
     if not source or source == 'all':
         logs = Log.objects.order_by('-time')
