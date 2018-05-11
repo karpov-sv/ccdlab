@@ -82,7 +82,7 @@ $(document).ready(function(){
         {{ id }}
         <ul>
           {% for id2,value2 in value.items %}
-            <li><a href="{% url 'status_plot' id id2 %}"  onclick="return popupImage(event, '{% url 'status_plot' id id2 %}', 'History', true);" title="Show history">{{ id2 }}</a> = {{ value2 }}</li>
+            <li><a href="{% url 'status_plot' id|add:'.'|add:id2 %}"  onclick="return popupImage(event, '{% url 'status_plot' id|add:'.'|add:id2 %}', 'History', true);" title="Show history">{{ id2 }}</a> = {{ value2 }}</li>
           {% endfor %}
         </ul>
       {% else %}

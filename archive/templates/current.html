@@ -16,10 +16,11 @@
 
 {% block ptitle %}Current : CCDLab{% endblock %}
 
-{% block title %}Laboratory status{% endblock %}
+{% block title %}Laboratory environment{% endblock %}
 
 {% block content %}
 
+  <!-- Pressure -->
   <div>
 
     <ul class="nav nav-tabs">
@@ -31,26 +32,37 @@
 
     <div class="tab-content">
       <div id="pressure-hour" class="tab-pane fade">
-        <img src="{% url 'status_plot' 'pfeiffer' 'pressure' %}?ylog=1&width=1000&height=400&hours=1&title=Pfeiffer&ylabel=Pressure [mbar]" class="img img-responsive center-block">
+        <img src="{% url 'status_plot' 'pfeiffer.pressure' %}?ylog=1&width=1000&height=400&hours=1&title=Pfeiffer&ylabel=Pressure [mbar]" class="img img-responsive center-block">
       </div>
       <div id="pressure-day" class="tab-pane fade in active">
-        <img src="{% url 'status_plot' 'pfeiffer' 'pressure' %}?ylog=1&width=1000&height=400&hours=24&title=Pfeiffer&ylabel=Pressure [mbar]" class="img img-responsive center-block">
+        <img src="{% url 'status_plot' 'pfeiffer.pressure' %}?ylog=1&width=1000&height=400&hours=24&title=Pfeiffer&ylabel=Pressure [mbar]" class="img img-responsive center-block">
       </div>
       <div id="pressure-week" class="tab-pane fade">
-        <img src="{% url 'status_plot' 'pfeiffer' 'pressure' %}?ylog=1&width=1000&height=400&hours=168&title=Pfeiffer&ylabel=Pressure [mbar]" class="img img-responsive center-block">
+        <img src="{% url 'status_plot' 'pfeiffer.pressure' %}?ylog=1&width=1000&height=400&hours=168&title=Pfeiffer&ylabel=Pressure [mbar]" class="img img-responsive center-block">
       </div>
     </div>
 
+  </div>
 
-    <div class="tab-content" id="pressure_tab">
-      <div class="tab-pane fade" id="pressure-hour" role="tabpanel" aria-labelledby="home-tab">
+  <!-- CryoCon -->
+  <div>
 
+    <ul class="nav nav-tabs">
+      <li class="nav-item disabled"><a class="nav-link disabled">Cryo-Con:</a></li>
+      <li class="nav-item"><a data-toggle="tab" href="#cryocon-hour">Last Hour</a></li>
+      <li class="nav-item active"><a data-toggle="tab" href="#cryocon-day">Last Day</a></li>
+      <li class="nav-item"><a data-toggle="tab" href="#cryocon-week">Last Week</a></li>
+    </ul>
+
+    <div class="tab-content">
+      <div id="cryocon-hour" class="tab-pane fade">
+<img src="{% url 'status_plot' 'cryo-con.temperatureA,cryo-con.temperatureB,cryo-con.temperatureC,cryo-con.temperatureD' %}?width=1000&height=400&hours=1&title=Cryo-Con&ylabel=Temperature [degrees]" class="img img-responsive center-block">
       </div>
-      <div class="tab-pane fade show active" id="profile" role="tabpanel" aria-labelledby="profile-tab">
-
+      <div id="cryocon-day" class="tab-pane fade in active">
+<img src="{% url 'status_plot' 'cryo-con.temperatureA,cryo-con.temperatureB,cryo-con.temperatureC,cryo-con.temperatureD' %}?width=1000&height=400&hours=24&title=Cryo-Con&ylabel=Temperature [degrees]" class="img img-responsive center-block">
       </div>
-      <div class="tab-pane fade" id="contact" role="tabpanel" aria-labelledby="contact-tab">
-
+      <div id="cryocon-week" class="tab-pane fade">
+<img src="{% url 'status_plot' 'cryo-con.temperatureA,cryo-con.temperatureB,cryo-con.temperatureC,cryo-con.temperatureD' %}?width=1000&height=400&hours=168&title=Cryo-Con&ylabel=Temperature [degrees]" class="img img-responsive center-block">
       </div>
     </div>
 
