@@ -20,7 +20,7 @@ from StringIO import StringIO
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.dates import DateFormatter
-from matplotlib.ticker import ScalarFormatter, LogLocator, LinearLocator
+from matplotlib.ticker import ScalarFormatter, LogLocator, LinearLocator, MaxNLocator
 
 from daemon import SimpleFactory, SimpleProtocol
 from command import Command
@@ -264,7 +264,7 @@ def make_plot(file, obj, client_name, plot_name, size=800):
             # Try to fix the ticks if the data span is too small
             axis = ax.get_yaxis()
             if np.ptp(np.log10(axis.get_data_interval())) < 1:
-                axis.set_major_locator(LinearLocator(numticks=6))
+                axis.set_major_locator(MaxNLocator())
 
     if has_data:
         if len(plot['values']) > 4:

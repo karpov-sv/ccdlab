@@ -5,7 +5,7 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.dates import DateFormatter
 from matplotlib.patches import Ellipse
-from matplotlib.ticker import ScalarFormatter, LogLocator, LinearLocator
+from matplotlib.ticker import ScalarFormatter, LogLocator, LinearLocator, MaxNLocator
 
 import numpy as np
 
@@ -103,7 +103,7 @@ def status_plot(request, client, param, width=1000.0, height=500.0, hours=24.0, 
         # Try to fix the ticks if the data span is too small
         axis = ax.get_yaxis()
         if np.ptp(np.log10(axis.get_data_interval())) < 1:
-            axis.set_major_locator(LinearLocator(numticks=6))
+            axis.set_major_locator(MaxNLocator())
 
     fig.autofmt_xdate()
 
