@@ -74,18 +74,17 @@ def status_plot(request, params, width=1000.0, height=500.0, hours=24.0, title=N
     if not ylabel and len(params) == 1:
         ylabel = params
 
+    labels = []
     for param in params:
         s = param.split('.') # Split
         select[s[0]+'.'+s[1]] = "(status #> '{%s}' #>> '{%s}')::float" % (s[0], s[1])
-
-    print select
+        labels.append(s[0]+'.'+s[1])
 
     ms = MonitorStatus.objects.extra(select=select).defer('status').order_by('time')
     ms = ms.filter(time__gt = datetime.datetime.utcnow() - datetime.timedelta(hours=hours))
 
     print datetime.datetime.utcnow() - datetime.timedelta(hours=hours)
 
-    labels = select.keys()
     values = [[getattr(_,__) for _ in ms] for __ in labels]
     time = [_.time for _ in ms]
 
