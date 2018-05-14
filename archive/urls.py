@@ -13,7 +13,7 @@ urlpatterns = [
     url(r'^$', views.current, name="current"),
 
     # Log view
-    url(r'^logs(/(?P<source>\w+)?)?$', views.logs_list, name='logs'),
+    url(r'^logs(/(?P<source>[a-zA-Z0-9_\-/.,]+)?)?$', views.logs_list, name='logs'),
 
     # Status
     url(r'^status/?$', views_status.status, name='status'),

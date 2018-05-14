@@ -39,8 +39,8 @@ INSTALLED_APPS = [
 #    'django.contrib.sessions',
 #    'django.contrib.messages',
     'django.contrib.staticfiles',
-    'archive',
     'el_pagination',
+    'archive',
     'archive.templatetags.filters',
     # 'debug_toolbar',
     # 'debug_toolbar_line_profiler',
@@ -78,7 +78,7 @@ ROOT_URLCONF = 'archive.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'archive/templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

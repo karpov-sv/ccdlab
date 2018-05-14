@@ -1,5 +1,5 @@
 <div class="btn-group">
 {% for page in pages %}
-    {{ page|default_if_none:'<span class="endless_separator">...</span>' }}
+    {{ page.render_link|default:'<span class="endless_separator btn btn-default btn-sm disabled">...</span>' }}
 {% endfor %}
 </div>
