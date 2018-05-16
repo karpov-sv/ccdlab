@@ -20,19 +20,22 @@ class DaemonProtocol(SimpleProtocol):
 
         if cmd.name == 'get_status':
             if self._simulator:
-                self.message('status hw_connected=1 status=0 temperatureA=%g  temperatureB=%g temperatureC=%g temperatureD=%g simulator=1' 
+                self.message('status hw_connected=1 status=0 temperatureA=%g  temperatureB=%g temperatureC=%g temperatureD=%g simulator=1'
                              % (np.random.uniform(1.0, 10.0),np.random.uniform(1.0, 10.0),np.random.uniform(1.0, 10.0),np.random.uniform(1.0, 10.0)))
             else:
-                self.message('status hw_connected=%s status=%s temperatureA=%g temperatureB=%g temperatureC=%g temperatureD=%g' 
-                             % (self.object['hw_connected'], self.object['status'], 
+                self.message('status hw_connected=%s status=%s temperatureA=%g temperatureB=%g temperatureC=%g temperatureD=%g'
+                             % (self.object['hw_connected'], self.object['status'],
                                 self.object['temperatureA'], self.object['temperatureB'], self.object['temperatureC'], self.object['temperatureD']))
         else:
             if obj['hw_connected']:
                 # Pass all other commands directly to hardware
                 hw.messageAll(string, name='hw', type='hw')
-                
+
 class HWProtocol(SimpleProtocol):
     _debug = False # Display all traffic for debug purposes
+
+    _tcp_keepidle = 1 # Faster detection of peer disconnection
+    _tcp_user_timeout = 3000 # Faster detection of peer disconnection
 
     @catch
     def connectionMade(self):
@@ -43,11 +46,11 @@ class HWProtocol(SimpleProtocol):
         # make sure the units are Celsius
         self.message('input a,b,c,d:units c')
 
-
     @catch
     def connectionLost(self, reason):
         self.object['hw_connected'] = 0
         SimpleProtocol.connectionLost(self, reason)
+        self.object['status'] = '----'
 
     @catch
     def processMessage(self, string):
@@ -59,25 +62,17 @@ class HWProtocol(SimpleProtocol):
             # values for channel a;b;c;d (....... means dot connected)
             sstring = string.split(';')
             status = ''
-            channel = ['temperatureA','temperatureB','temperatureC','temperatureD']
+            channel = ['temperatureA', 'temperatureB', 'temperatureC', 'temperatureD']
+
             for s in range(len(sstring)):
                 try:
                     sstring[s] = float(sstring[s])
-                    status = status+'1'
+                    status = status + '1'
                     self.object[channel[s]] = sstring[s]
                 except ValueError:
-                    status = status+'0'
+                    status = status + '0'
                     self.object[channel[s]] = np.nan
             self.object['status'] = status
-
-    @catch
-    def message(self, string):
-        """Sending outgoing message"""
-        if self._debug:
-            print ">> serial >>", string
-        self.transport.write(string)
-        self.transport.write("\n")
-
 
     @catch
     def update(self):
@@ -99,7 +94,7 @@ if __name__ == '__main__':
 
     # Object holding actual state and work logic.
     # May be anything that will be passed by reference - list, dict, object etc
-    obj = {'hw_connected':0, 'status':-1, 'temperatureA':0}
+    obj = {'hw_connected':0, 'status':'----', 'temperatureA':0, 'temperatureB':0, 'temperatureC':0, 'temperatureD':0}
 
     # Factories for daemon and hardware connections
     # We need two different factories as the protocols are different
