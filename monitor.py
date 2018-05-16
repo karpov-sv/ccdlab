@@ -429,8 +429,11 @@ if __name__ == '__main__':
     parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', type='string', default=obj['name'])
     parser.add_option('-d', '--debug', help='Debug output', action='store_true', dest='debug', default=False)
     parser.add_option('-s', '--server', help='Act as a TCP and HTTP server', action='store_true', dest='server', default=False)
+    parser.add_option('-i', '--interval', help='DB logging status inteval', dest='interval', type='float', default=60.0)
 
     (options,args) = parser.parse_args()
+
+    obj['db_status_interval'] = options.interval
 
     # Next parse command line positional args as name=host:port tokens
     for arg in args:
