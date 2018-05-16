@@ -432,8 +432,8 @@ if __name__ == '__main__':
     parser.add_option('-i', '--interval', help='DB logging status inteval', dest='interval', type='float', default=60.0)
 
     (options,args) = parser.parse_args()
-    
-    obj['db_status_interval']=options.interval
+
+    obj['db_status_interval'] = options.interval
 
     # Next parse command line positional args as name=host:port tokens
     for arg in args:
