@@ -10,6 +10,9 @@ Monitor = function(parent_id, base="/monitor", title="Monitor"){
     var rendered = $.templates(template).render(this);
     this.id = $(this.parent_id).html(rendered);
 
+    // Data-link the template to self
+    $.link(true, this.id, this);
+
     // Command line
     this.cmdline = $(this.id).find(".monitor-cmdline");
     this.cmdline.pressEnter($.proxy(function(event){
@@ -186,10 +189,9 @@ Monitor.prototype.updateStatus = function(status, clients){
                 widget.find(".monitor-client-hwstatus").html("HW disconnected").removeClass("label-success").addClass("label-danger");
             }
         }
-
     }
 
-    this.last_status = status;
+    $.observable(this.last_status).setProperty(status);
 }
 
 Monitor.prototype.makeClients = function(clients, status)
@@ -212,7 +214,6 @@ Monitor.prototype.makeClients = function(clients, status)
         client['template'] = getData('/template/' + clients[name]['template']);
         client['widget'] = $("<div/>").appendTo($(this.id).find('.monitor-clients'));
         client['status'] = typeof(status[name]) == 'object' ? status[name] : {};
-
 
         this.renderClient(client);
     }

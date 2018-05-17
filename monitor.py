@@ -148,9 +148,9 @@ class MonitorFactory(SimpleFactory):
     @catch
     def getStatus(self, as_dict=False):
         if as_dict:
-            status = {'nconnected':len(self.connections)}
+            status = {'nconnected':len(self.connections), 'db_status_interval':self.object['db_status_interval']}
         else:
-            status = 'status nconnected=%d' % len(self.connections)
+            status = 'status nconnected=%d db_status_interval=%g' % (len(self.connections), self.object['db_status_interval'])
 
         # Monitor only specified connections
         for name in self.object['clients']:
@@ -321,6 +321,10 @@ class WebMonitor(Resource):
             elif (cmd.name == 'broadcast' or cmd.name == 'send_all'):
                 self.factory.messageAll(" ".join(cmd.chunks[1:]))
 
+            elif (cmd.name == 'set'):
+                if cmd.has_key('interval'):
+                    self.object['db_status_interval'] = float(cmd.get('interval'))
+
             elif cmd.name in ['debug', 'info', 'message', 'error', 'warning']:
                 if self.object.has_key('ws'):
                     msgtype = {'debug':'debug',
@@ -429,7 +433,7 @@ if __name__ == '__main__':
     parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', type='string', default=obj['name'])
     parser.add_option('-d', '--debug', help='Debug output', action='store_true', dest='debug', default=False)
     parser.add_option('-s', '--server', help='Act as a TCP and HTTP server', action='store_true', dest='server', default=False)
-    parser.add_option('-i', '--interval', help='DB logging status inteval', dest='interval', type='float', default=60.0)
+    parser.add_option('-i', '--interval', help='DB logging status inteval', dest='interval', type='float', default=obj['db_status_interval'])
 
     (options,args) = parser.parse_args()
 

@@ -144,6 +144,10 @@ $.views.tags({
         aclass = (typeof aclass === 'undefined') ? '' : aclass;
         return '<span class="label label-primary '+aclass+'" style="margin-right: 0em" data-link="~root.status.' + name + '"> - </span>';
     },
+    root: function(name, aclass) {
+        aclass = (typeof aclass === 'undefined') ? '' : aclass;
+        return '<span class="label label-primary '+aclass+'" style="margin-right: 0em" data-link="~root.' + name + '"> - </span>';
+    },
     // Store value to our custom storage, to be later used by ~get helper
     set: function(name, value) {
         vars[name] = value;

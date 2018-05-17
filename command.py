@@ -15,10 +15,13 @@ class Command:
         self.parse(string)
 
     def name(self):
-            return self.name
+        return self.name
 
     def get(self, key, value=None):
-            return self.kwargs.get(key, value)
+        return self.kwargs.get(key, value)
+
+    def has_key(self, key):
+        return self.kwargs.has_key(key)
 
     def parse(self, string):
         self.chunks = shlex.split(string)
