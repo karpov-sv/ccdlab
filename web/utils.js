@@ -118,7 +118,8 @@ popupImage = function(url, title, ok)
 
 function isEmpty(obj) {
     for(var key in obj) {
-        if(obj.hasOwnProperty(key))
+        // FIXME: better way of filtering out jsViews observables?
+        if(obj.hasOwnProperty(key) && !key.startsWith('jQuery'))
             return false;
     }
     return true;
