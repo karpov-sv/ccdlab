@@ -254,20 +254,20 @@ def make_plot(file, obj, client_name, plot_name, size=800):
     elif len(plot['values']) == 1:
         ax.set_ylabel(plot['values'][1])
 
-    if plot['xscale'] != 'linear':
-        ax.set_xscale(plot['xscale'], nonposx='clip')
-
-    if plot['yscale'] != 'linear':
-        ax.set_yscale(plot['yscale'], nonposy='clip')
-
-        if plot['yscale'] == 'log':
-            # Try to fix the ticks if the data span is too small
-            axis = ax.get_yaxis()
-            if np.ptp(np.log10(axis.get_data_interval())) < 1:
-                axis.set_major_locator(MaxNLocator())
-                axis.set_minor_locator(NullLocator())
-
     if has_data:
+        if plot['xscale'] != 'linear':
+            ax.set_xscale(plot['xscale'], nonposx='clip')
+
+        if plot['yscale'] != 'linear':
+            ax.set_yscale(plot['yscale'], nonposy='clip')
+
+            if plot['yscale'] == 'log':
+                # Try to fix the ticks if the data span is too small
+                axis = ax.get_yaxis()
+                if np.ptp(np.log10(axis.get_data_interval())) < 1:
+                    axis.set_major_locator(MaxNLocator())
+                    axis.set_minor_locator(NullLocator())
+
         if len(plot['values']) > 4:
             ax.legend(frameon=True, loc=2, framealpha=0.99)
         elif len(plot['values']) > 2:
