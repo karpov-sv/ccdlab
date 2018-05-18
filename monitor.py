@@ -117,22 +117,10 @@ class MonitorProtocol(SimpleProtocol):
             self.log(msg, source=self.name, type=cmd.name)
 
     def log(self, msg, time=None, source=None, type='message'):
-        """Log the message to both console, web-interface and database, if connected"""
-        if time is None:
-            time = datetime.datetime.utcnow()
-
         if source is None:
             source = self.name
 
-        print "%s: %s > %s > %s" % (time, source, type, msg)
-
-        # DB
-        if self.object.has_key('db') and self.object['db'] is not None:
-            self.object['db'].log(msg, time=time, source=source, type=type)
-
-        # WebSockets
-        if self.object.has_key('ws'):
-            self.object['ws'].messageAll(json.dumps({'msg':msg, 'time':str(time), 'source':source, 'type':type}))
+        self.factory.log(msg, time=time, source=source, type=type)
 
     def update(self):
         for c in self.factory.connections:
@@ -172,6 +160,25 @@ class MonitorFactory(SimpleFactory):
         #         status += ' ' + c.name + '=1 ' + kwargsToString(c.status, prefix=c.name + '_')
 
         return status
+
+    @catch
+    def log(self, msg, time=None, source=None, type='message'):
+        """Log the message to both console, web-interface and database, if connected"""
+        if time is None:
+            time = datetime.datetime.utcnow()
+
+        if source is None:
+            source = 'monitor'
+
+        print "%s: %s > %s > %s" % (time, source, type, msg)
+
+        # DB
+        if self.object.has_key('db') and self.object['db'] is not None:
+            self.object['db'].log(msg, time=time, source=source, type=type)
+
+        # WebSockets
+        if self.object.has_key('ws'):
+            self.object['ws'].messageAll(json.dumps({'msg':msg, 'time':str(time), 'source':source, 'type':type}))
 
 class CmdlineProtocol(LineReceiver):
     delimiter = os.linesep.encode('ascii')
@@ -324,6 +331,7 @@ class WebMonitor(Resource):
             elif (cmd.name == 'set'):
                 if cmd.has_key('interval'):
                     self.object['db_status_interval'] = float(cmd.get('interval'))
+                    self.factory.log('DB status interval set to %g' % self.object['db_status_interval'], type='info')
 
             elif cmd.name in ['debug', 'info', 'message', 'error', 'warning']:
                 if self.object.has_key('ws'):
@@ -336,7 +344,7 @@ class WebMonitor(Resource):
                     msg = " ".join(cmd.chunks[1:])
                     time = datetime.datetime.utcnow()
 
-                    self.object['ws'].messageAll(json.dumps({'msg':msg, 'time':str(time), 'type':msgtype}));
+                    self.object['ws'].messageAll(json.dumps({'msg':msg, 'time':str(time), 'type':msgtype, 'source':'web'}));
 
             return serve_json(request)
 
