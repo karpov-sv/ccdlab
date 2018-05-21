@@ -48,7 +48,7 @@
   <div>
 
     <ul class="nav nav-tabs">
-      <li class="nav-item disabled"><a class="nav-link disabled">Cryo-Con:</a></li>
+      <li class="nav-item disabled"><a class="nav-link disabled">Cryo-Con temperature:</a></li>
       <li class="nav-item"><a data-toggle="tab" href="#cryocon-hour">Last Hour</a></li>
       <li class="nav-item active"><a data-toggle="tab" href="#cryocon-day">Last Day</a></li>
       <li class="nav-item"><a data-toggle="tab" href="#cryocon-week">Last Week</a></li>
@@ -63,6 +63,29 @@
       </div>
       <div id="cryocon-week" class="tab-pane fade">
 <img src="{% url 'status_plot' 'cryo-con.temperatureA,cryo-con.temperatureB,cryo-con.temperatureC,cryo-con.temperatureD' %}?width=1000&height=400&hours=168&title=Cryo-Con&ylabel=Temperature [degrees]" class="img img-responsive center-block">
+      </div>
+    </div>
+
+  </div>
+
+  <div>
+
+    <ul class="nav nav-tabs">
+      <li class="nav-item disabled"><a class="nav-link disabled">Cryo-Con power:</a></li>
+      <li class="nav-item"><a data-toggle="tab" href="#cryocon-power-hour">Last Hour</a></li>
+      <li class="nav-item active"><a data-toggle="tab" href="#cryocon-power-day">Last Day</a></li>
+      <li class="nav-item"><a data-toggle="tab" href="#cryocon-power-week">Last Week</a></li>
+    </ul>
+
+    <div class="tab-content">
+      <div id="cryocon-power-hour" class="tab-pane fade">
+        <img src="{% url 'status_plot' 'cryo-con.pwr_set1,cryo-con.pwr_actual1,cryo-con.pwr_set2,cryo-con.pwr_actual2' %}?width=1000&height=400&hours=1&title=Cryo-Con&ylabel=Power" class="img img-responsive center-block">
+      </div>
+      <div id="cryocon-power-day" class="tab-pane fade in active">
+        <img src="{% url 'status_plot' 'cryo-con.pwr_set1,cryo-con.pwr_actual1,cryo-con.pwr_set2,cryo-con.pwr_actual2' %}?width=1000&height=400&hours=24&title=Cryo-Con&ylabel=Power" class="img img-responsive center-block">
+      </div>
+      <div id="cryocon-power-week" class="tab-pane fade">
+        <img src="{% url 'status_plot' 'cryo-con.pwr_set1,cryo-con.pwr_actual1,cryo-con.pwr_set2,cryo-con.pwr_actual2' %}?width=1000&height=400&hours=168&title=Cryo-Con&ylabel=Power" class="img img-responsive center-block">
       </div>
     </div>
 
