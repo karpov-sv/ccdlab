@@ -20,6 +20,13 @@ Monitor = function(parent_id, base="/monitor", title="Monitor"){
         event.preventDefault();
     }, this));
 
+    $.prop(this.cmdline[0], 'title',
+           `Examples of commands:
+exit - Restarts the daemon
+set interval=10 - Changes the interval between storing the status to database
+message/info/warning/error <text> - Stores the message of corresponding type to database
+send <client> <command> - Sends the command to the given client`)
+
     //
     this.timer = 0;
     this.refreshDelay = 2000;
