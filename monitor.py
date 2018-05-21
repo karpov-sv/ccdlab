@@ -226,6 +226,11 @@ class CmdlineProtocol(LineReceiver):
         elif cmd.name == 'get_status':
             self.message(self.factory.getStatus())
 
+        elif cmd.name in ['debug', 'info', 'message', 'error', 'warning']:
+            msg = " ".join(cmd.chunks[1:])
+            time = datetime.datetime.utcnow()
+            self.factory.log(msg, time=time, source='web', type=cmd.name)
+
         self.transport.write(b'### ')
 
 def serve_json(request, **kwargs):
@@ -334,17 +339,9 @@ class WebMonitor(Resource):
                     self.factory.log('DB status interval set to %g' % self.object['db_status_interval'], type='info')
 
             elif cmd.name in ['debug', 'info', 'message', 'error', 'warning']:
-                if self.object.has_key('ws'):
-                    msgtype = {'debug':'debug',
-                               'info':'info',
-                               'error':'error',
-                               'warning':'warn',
-                               'message':'success'}.get(cmd.name, 'info')
-
-                    msg = " ".join(cmd.chunks[1:])
-                    time = datetime.datetime.utcnow()
-
-                    self.object['ws'].messageAll(json.dumps({'msg':msg, 'time':str(time), 'type':msgtype, 'source':'web'}));
+                msg = " ".join(cmd.chunks[1:])
+                time = datetime.datetime.utcnow()
+                self.factory.log(msg, time=time, source='web', type=cmd.name)
 
             return serve_json(request)
 
