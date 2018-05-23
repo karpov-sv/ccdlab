@@ -43,7 +43,7 @@ def status(request):
 
     return TemplateResponse(request, 'status.html', context=context)
 
-def status_plot(request, params, width=1000.0, height=500.0, hours=24.0, title=None, xlabel="Time, UT", ylabel=None, ylog=False):
+def status_plot(request, params, width=1000.0, height=500.0, hours=24.0, title=None, xlabel="Time, UT", ylabel=None, ylog=False, grid=True):
     hours = float(hours) if hours else 24.0
     # delay = int(delay) if delay else 0
 
@@ -113,6 +113,7 @@ def status_plot(request, params, width=1000.0, height=500.0, hours=24.0, title=N
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.set_title(title)
+    ax.grid(grid)
 
     if len(labels) > 1:
         ax.legend(frameon=True, loc=2, framealpha=0.99)

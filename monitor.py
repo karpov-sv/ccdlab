@@ -289,6 +289,9 @@ def make_plot(file, obj, client_name, plot_name, size=800):
         ax.set_title(plot['name'])
     ax.margins(0.01, 0.1)
 
+    # FIXME: make it configurable
+    ax.grid(True)
+
     # Return the image
     canvas = FigureCanvas(fig)
     canvas.print_png(file, bbox_inches='tight')
