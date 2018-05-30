@@ -13,19 +13,38 @@ Monitor = function(parent_id, base="/monitor", title="Monitor"){
     // Data-link the template to self
     $.link(true, this.id, this);
 
+    // Buttons
+    var monitor = this; // Will be re-defined inside .each()
+    $('button.monitor-button').each(function(i, button){
+        var command = $(button).attr('data-command');
+        var mode = $(button).attr('data-mode') || 'command';
+
+        if(mode == 'input'){
+            var prompt = $(button).attr('data-prompt');
+
+            $(button).click($.proxy(function(event){
+                bootbox.prompt(prompt, $.proxy(function(result){
+                    if(result){
+                        this.sendCommand(command.replace('${value}', result));
+                    }
+                }, monitor));
+            }, monitor));
+        } else if(mode == 'command' && command){
+            $(button).click($.proxy(function(event){
+                this.sendCommand(command);
+                event.preventDefault();
+            }, monitor));
+        } else {
+            $(button).addClass('disabled');
+        }
+    });
+
     // Command line
     this.cmdline = $(this.id).find(".monitor-cmdline");
     this.cmdline.pressEnter($.proxy(function(event){
         this.sendCommand(this.cmdline.val());
         event.preventDefault();
     }, this));
-
-    $.prop(this.cmdline[0], 'title',
-           `Examples of commands:
-exit - Restarts the daemon
-set interval=10 - Changes the interval between storing the status to database
-message/info/warning/error <text> - Stores the message of corresponding type to database
-send <client> <command> - Sends the command to the given client`)
 
     //
     this.timer = 0;

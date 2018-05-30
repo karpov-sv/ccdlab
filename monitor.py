@@ -116,6 +116,9 @@ class MonitorProtocol(SimpleProtocol):
             msg = " ".join(cmd.chunks[1:])
             self.log(msg, source=self.name, type=cmd.name)
 
+        elif cmd.name == 'reset_plots':
+            self.factory.reset_plots()
+
     def log(self, msg, time=None, source=None, type='message'):
         if source is None:
             source = self.name
@@ -180,6 +183,17 @@ class MonitorFactory(SimpleFactory):
         if self.object.has_key('ws'):
             self.object['ws'].messageAll(json.dumps({'msg':msg, 'time':str(time), 'source':source, 'type':type}))
 
+    @catch
+    def reset_plots(self):
+        values = self.object['values']
+
+        for client in values.keys():
+            for param in values[client].keys():
+                values[client][param] = []
+
+        self.log('Resetting plots', source='monitor', type='info')
+        pass
+
 class CmdlineProtocol(LineReceiver):
     delimiter = os.linesep.encode('ascii')
 
@@ -230,6 +244,9 @@ class CmdlineProtocol(LineReceiver):
             msg = " ".join(cmd.chunks[1:])
             time = datetime.datetime.utcnow()
             self.factory.log(msg, time=time, source='web', type=cmd.name)
+
+        elif cmd.name == 'reset_plots':
+            self.factory.reset_plots()
 
         self.transport.write(b'### ')
 
@@ -321,7 +338,7 @@ class WebMonitor(Resource):
             request.responseHeaders.setRawHeaders("Content-Length", [s.len])
             request.responseHeaders.setRawHeaders("Cache-Control", ['no-store, no-cache, must-revalidate, max-age=0'])
             return s.getvalue()
-        elif q.path == '/monitor/command':
+        elif q.path == '/monitor/command' and args.has_key('string'):
             cmd = Command(args['string'][0])
 
             # TODO: re-use the command processing code from TCP server part
@@ -346,7 +363,13 @@ class WebMonitor(Resource):
                 time = datetime.datetime.utcnow()
                 self.factory.log(msg, time=time, source='web', type=cmd.name)
 
+            elif cmd.name == 'reset_plots':
+                self.factory.reset_plots()
+
             return serve_json(request)
+
+        else:
+            return q.path;
 
 def loadINI(filename, obj):
     # We use ConfigObj library, docs: http://configobj.readthedocs.io/en/latest/index.html

@@ -25,11 +25,38 @@
         Clients:
         <span class="monitor-clients-state"></span>
       </li>
+      <li class="list-group-item">
+        <button class="btn btn-default monitor-button" data-command="reset_plots">Reset plots</button>
+
+        <span class="btn-group">
+          <button class="btn btn-default disabled">Interval:</button>
+          <button class="btn btn-default monitor-button" data-command="set interval=10">10 s</button>
+          <button class="btn btn-default monitor-button" data-command="set interval=30">30 s</button>
+          <button class="btn btn-default monitor-button" data-command="set interval=60">60 s</button>
+        </span>
+
+        <span class="btn-group">
+          <button class="btn btn-default disabled">Log:</button>
+          <button class="btn btn-default monitor-button" data-mode="input" data-prompt="Enter message to be stored to database" data-command="message ${value}">Message</button>
+          <button class="btn btn-default monitor-button" data-mode="input" data-prompt="Enter info message to be stored to database" data-command="info ${value}">Info</button>
+          <button class="btn btn-default monitor-button" data-mode="input" data-prompt="Enter error message to be stored to database" data-command="error ${value}">Error</button>
+        </span>
+
+        <!--
+        <button class="btn btn-default monitor-button" data-command="exit">Restart</button>
+        -->
+      </li>
+
       <div class="input-group">
         <span class="input-group-addon">
           Command:
         </span>
-        <input type="text" class="monitor-cmdline form-control" placeholder="Enter commands to be sent to daemon here"/>
+        <input type="text" class="monitor-cmdline form-control" placeholder="Enter commands to be sent to daemon here" title="Examples of commands:
+exit - Restarts the daemon
+set interval=10 - Changes the interval between storing the status to database
+message/info/warning/error <text> - Stores the message of corresponding type to database
+send <client> <command> - Sends the command to the given client
+reset_plots - Resets the values history displayed in real-time plots"/>
       </div>
     </ul>
 
