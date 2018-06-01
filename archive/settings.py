@@ -24,7 +24,7 @@ SECRET_KEY = '(#((9dc(bdy@ibrb5t7ud=0zm45bjm%52n1eyr6)7%#u$@5!44'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
-# DEBUG = False
+#DEBUG = True
 
 ALLOWED_HOSTS = '*'
 
@@ -54,7 +54,7 @@ MIDDLEWARE = [
     # 'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
+    # 'debug_toolbar.middleware.DebugToolbarMiddleware',
 ]
 
 DEBUG_TOOLBAR_PANELS = [
@@ -107,7 +107,7 @@ DATABASES = {
     'ccdlab': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2', # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.
         'NAME': 'ccdlab',                      # Or path to database file if using sqlite3.
-        'USER': 'karpov',                      # Not used with sqlite3.
+        # 'USER': 'karpov',                      # Not used with sqlite3.
         'PASSWORD': '',                  # Not used with sqlite3.
         'HOST': '',                      # Set to empty string for localhost. Not used with sqlite3.
         'PORT': '',                      # Set to empty string for default. Not used with sqlite3.
