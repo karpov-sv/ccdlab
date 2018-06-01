@@ -8,15 +8,21 @@
 <script src="{{ STATIC_URL }}/web/moment-with-locales.min.js"></script>
 <script src="{{ STATIC_URL }}/web/bootstrap-datetimepicker/bootstrap-datetimepicker.min.js"></script>
 
+<script src="{{ STATIC_URL }}/web/URI.js"></script>
+<script src="{{ STATIC_URL }}/web/moment.min.js"></script>
+
 {% include "popup_image.html" %}
 
 <script type="text/javascript">
 $(document).ready(function(){
-   var now = new Date();
-   now.setTime(now.getTime() + now.getTimezoneOffset()*60000);
+   var time = new Date();
+   time.setTime(time.getTime() + time.getTimezoneOffset()*60000);
+
+   hours = 24.0
 
    {% if timestamp %}
-   now = "{{ timestamp|date:"Y-m-d H:i:s" }}";
+   time = "{{ timestamp|date:"Y-m-d H:i:s" }}";
+   console.log(time);
    {% endif %}
 
    $('#datetimepicker').datetimepicker({
@@ -24,8 +30,8 @@ $(document).ready(function(){
      useSeconds: true,
      language: 'en',
      format: "YYYY.MM.DD HH:mm:ss",
-     minDate: new Date("june 1, 2014"),
-     defaultDate: now,
+     minDate: new Date("jan 1, 2018"),
+     defaultDate: time,
    });
  });
 </script>
@@ -82,7 +88,9 @@ $(document).ready(function(){
         {{ id }}
         <ul>
           {% for id2,value2 in value.items %}
-            <li><a href="{% url 'status_plot' id|add:'.'|add:id2 %}"  onclick="return popupImage(event, '{% url 'status_plot' id|add:'.'|add:id2 %}', 'History', true);" title="Show history">{{ id2 }}</a> = {{ value2 }}</li>
+            <li>
+              <a href="{% url 'status_plot' id|add:'.'|add:id2 %}?hours=24{% if time %}&time0={{ time|date:"Y-m-d H:i:s" }}&mark={{ time|date:"Y-m-d H:i:s" }}{% endif %}" onclick="return popupStatusImageThis(event)" title='History of {{ id|add:'.'|add:id2 }}'>{{ id2 }}</a> = {{ value2 }}
+            </li>
           {% endfor %}
         </ul>
       {% else %}

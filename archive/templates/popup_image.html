@@ -1,5 +1,8 @@
 <!-- Bootbox -->
+
 <script src="{{ STATIC_URL }}/web/bootbox.min.js"></script>
+<script src="{{ STATIC_URL }}/web/URI.js"></script>
+<script src="{{ STATIC_URL }}/web/moment.min.js"></script>
 
 <script language="javascript">
 
@@ -33,6 +36,124 @@
 
    return false;
  }
+
+ popupStatusImage = function(event, url, title)
+ {
+   // Fix for Safari CMD-click handled by onclick()
+   if(event.metaKey)
+     return true;
+
+   var body = $("<div/>", {class: ""});
+
+   var image = $("<img/>", {class:"img img-responsive center-block", src:url}).appendTo(body);
+   var uri = image.uri();
+   var query = uri.query(true);
+
+   if(!query['hours']){
+     query['hours'] = 24.0;
+   }
+
+   if(!query['time0']){
+     // Default is now - 0.5*hours
+     m = moment.utc().subtract(0.5*query['hours']*3600, 'seconds');
+     query['time0'] = m.format('YYYY-MM-DD HH:mm:ss');
+   }
+
+   var m = moment(query['time0'], 'YYYY-MM-DD HH:mm:ss');
+
+   globalimage = image;
+
+   params = {
+     title: title,
+     message: body,
+     onEscape: function() {},
+   };
+
+   params.buttons = {
+     before: {
+       label: " << ",
+       className: "btn-default",
+       callback: function() {
+         m.subtract(0.25*query['hours']*3600, 'seconds');
+         query['time0'] = m.format('YYYY-MM-DD HH:mm:ss');
+         uri.setQuery(query);
+         return false;}
+     },
+     before1: {
+       label: " < ",
+       className: "btn-default",
+       callback: function() {
+         m.subtract(0.05*query['hours']*3600, 'seconds');
+         query['time0'] = m.format('YYYY-MM-DD HH:mm:ss');
+         uri.setQuery(query);
+         return false;}
+     },
+     zoomin: {
+       label: "Zoom In",
+       className: "btn-default",
+       callback: function() {
+         query['hours'] /= 2;
+         uri.setQuery(query);
+         return false;}
+     },
+     zoomout: {
+       label: "Zoom Out",
+       className: "btn-default",
+       callback: function() {
+         query['hours'] *= 2;
+         uri.setQuery(query);
+         return false}
+     },
+     after1: {
+       label: " > ",
+       className: "btn-default",
+       callback: function() {
+         m.add(0.05*query['hours']*3600, 'seconds');
+         query['time0'] = m.format('YYYY-MM-DD HH:mm:ss');
+         uri.setQuery(query);
+         return false;}
+     },
+     after: {
+       label: " >> ",
+       className: "btn-default",
+       callback: function() {
+         m.add(0.25*query['hours']*3600, 'seconds');
+         query['time0'] = m.format('YYYY-MM-DD HH:mm:ss');
+         uri.setQuery(query);
+         return false;}
+     },
+     success: {
+       label: "Ok",
+       className: "btn-default",
+       callback: function() {}
+     }
+   };
+
+   bootbox.dialog(params);
+
+   return false;
+ }
+
+ popupThis = function(event)
+ {
+   var element = $(event.target);
+   var url = element.attr('src') || element.attr('href'); // IMG or A
+
+   var title = element.attr('title') || element.attr('alt') || " ";
+
+   return popupImage(event, url, title, true);
+ }
+
+ popupStatusImageThis = function(event)
+ {
+   var element = $(event.target);
+   var url = element.attr('src') || element.attr('href'); // IMG or A
+
+   var title = element.attr('title') || element.attr('alt') || " ";
+
+   return popupStatusImage(event, url, title);
+ }
+
 </script>
 
 <style>
