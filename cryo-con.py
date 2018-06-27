@@ -32,21 +32,93 @@ class DaemonProtocol(SimpleProtocol):
                                     self.object['htr_status1'], self.object['range1'], self.object['ctrl_type1'], self.object['pwr_set1'], self.object['pwr_actual1'],self.object['load1'],
                                     self.object['htr_status2'], self.object['range2'], self.object['ctrl_type2'], self.object['pwr_set2'], self.object['pwr_actual2'],self.object['load1']))
                 break
-            
+            regex=re.compile(r'(CONT|CONTR|CONTRO|CONTROL)\?')
+            if re.match(regex, STRING):
+                hw.messageAll(string, type='hw', keep=True, source=self.name)
+                break            
+            if STRING == 'STOP':
+                hw.messageAll(string, type='hw', keep=False, source=self.name)
+                break
+            regex=re.compile(r'(CONT|CONTR|CONTRO|CONTROL)')
+            if re.match(regex, STRING):
+                hw.messageAll(string, type='hw', keep=False, source=self.name)
+                break            
             if STRING == '*OPC?':
                 hw.messageAll(string, type='hw', keep=True, source=self.name)
                 break
             while STRING[:4] == 'LOOP':
-                regex=re.compile(r'LOOP [1-4]:SOURCE\?')
+                regex = re.compile(r'LOOP [1-4]:(SOUR|SOURC|SOURCE)\?')
                 if re.match(regex, STRING):
                     hw.messageAll(string, type='hw', keep=True, source=self.name)
                     STRING=""
                     continue
-                regex=re.compile(r'LOOP [1-4]:SOURCE [A-D]')
+                regex=re.compile(r'LOOP [1-4]:(SOUR|SOURC|SOURCE) [A-D]')
                 if re.match(regex, STRING):
                     hw.messageAll(string, type='hw', keep=False, source=self.name)
                     STRING=""
                     continue
+                regex=re.compile(r'LOOP [1-4]:(RANG|RANGE)\?')
+                if re.match(regex, STRING):
+                    hw.messageAll(string, type='hw', keep=True, source=self.name)
+                    STRING=""
+                    continue
+                regex=re.compile(r'LOOP 1:(RANG|RANGE) (HI|MID|LOW)')
+                if re.match(regex, STRING):
+                    hw.messageAll(string, type='hw', keep=False, source=self.name)
+                    STRING=""
+                    continue
+                regex=re.compile(r'LOOP 2:(RANG|RANGE) (HI|LOW)')
+                if re.match(regex, STRING):
+                    hw.messageAll(string, type='hw', keep=False, source=self.name)
+                    STRING=""
+                    continue
+                regex=re.compile(r'LOOP [3-4]:(RANG|RANGE) (5V|10V)')
+                if re.match(regex, STRING):
+                    hw.messageAll(string, type='hw', keep=False, source=self.name)
+                    STRING=""
+                    continue
+                regex=re.compile(r'LOOP [1-4]:([PID]GA|[PID]GAI|[PID]GAIN)\?')
+                if re.match(regex, STRING):
+                    hw.messageAll(string, type='hw', keep=True, source=self.name)
+                    STRING=""
+                    continue
+                regex=re.compile(r'LOOP [1-4]:([PID]GA|[PID]GAI|[PID]GAIN) (\d+?)?\.?(\d+?$)?$')
+                if re.match(regex, STRING):
+                    if float(STRING.split()[-1])<0 or float(STRING.split()[-1])>1000:
+                        daemon.log('WARNING value out of range: '+string+' from connection '+self.name)
+                    hw.messageAll(string, type='hw', keep=False, source=self.name)
+                    STRING=""
+                    continue
+                regex=re.compile(r'LOOP [1-4]:(SET|SETP|SETPT)\?')
+                if re.match(regex, STRING):
+                    hw.messageAll(string, type='hw', keep=True, source=self.name)
+                    STRING=""
+                    continue
+
+                regex=re.compile(r'LOOP [1-4]:(SET|SETP|SETPT) -?(\d+?)?\.?(\d+?$)?$')
+                if re.match(regex, STRING):
+                    #if float(STRING.split()[-1])<0 or float(STRING.split()[-1])>1000:
+                        #daemon.log('WARNING value out of range: '+string+' from connection '+self.name)
+                    hw.messageAll(string, type='hw', keep=False, source=self.name)
+                    STRING=""
+                    continue
+
+                regex=re.compile(r'LOOP [1-4]:(TYP|TYPE)\?$')
+                if re.match(regex, STRING):
+                    hw.messageAll(string, type='hw', keep=True, source=self.name)
+                    STRING=""
+                    continue
+                regex=re.compile(r'LOOP [1-2]:(TYP|TYPE) (OFF|PID|MAN|TABLE|RAMPP)$')
+                if re.match(regex, STRING):
+                    hw.messageAll(string, type='hw', keep=False, source=self.name)
+                    STRING=""
+                    continue
+                regex=re.compile(r'LOOP [3-4]:(TYP|TYPE) (OFF|PID|MAN|TABLE|RAMPP|SCALE)$')
+                if re.match(regex, STRING):
+                    hw.messageAll(string, type='hw', keep=False, source=self.name)
+                    STRING=""
+                    continue
+                daemon.log('WARNING unidentified command: '+string+' from connection '+self.name)
                 STRING=""
             else:
                 break
