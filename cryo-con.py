@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, sys, datetime
+import os, sys, datetime, re
 import numpy as np
 
 from daemon import SimpleFactory, SimpleProtocol
@@ -17,26 +17,43 @@ class DaemonProtocol(SimpleProtocol):
         cmd = SimpleProtocol.processMessage(self, string)
         obj = self.object # Object holding the state
         hw = obj['hw'] # HW factory
-
-        if cmd.name == 'get_status':
-            if self._simulator:
-                self.message('status hw_connected=1 status=0 temperatureA=%g  temperatureB=%g temperatureC=%g temperatureD=%g simulator=1'
-                             % (np.random.uniform(1.0, 10.0),np.random.uniform(1.0, 10.0),np.random.uniform(1.0, 10.0),np.random.uniform(1.0, 10.0)))
+        STRING=string.upper()
+        while True:
+            if cmd.name == 'get_status':
+                if self._simulator:
+                    self.message('status hw_connected=1 status=0 temperatureA=%g  temperatureB=%g temperatureC=%g temperatureD=%g simulator=1'
+                                % (np.random.uniform(1.0, 10.0),np.random.uniform(1.0, 10.0),np.random.uniform(1.0, 10.0),np.random.uniform(1.0, 10.0)))
+                else:
+                    self.message('status hw_connected=%s status=%s temperatureA=%g temperatureB=%g temperatureC=%g temperatureD=%g \
+                                htr_status1=%s range1=%s ctrl_type1=%s pwr_set1=%g pwr_actual1=%g load1=%g \
+                                htr_status2=%s range2=%s ctrl_type2=%s pwr_set2=%g pwr_actual2=%g load2=%g'
+                                % (self.object['hw_connected'], self.object['status'],
+                                    self.object['temperatureA'], self.object['temperatureB'], self.object['temperatureC'], self.object['temperatureD'],
+                                    self.object['htr_status1'], self.object['range1'], self.object['ctrl_type1'], self.object['pwr_set1'], self.object['pwr_actual1'],self.object['load1'],
+                                    self.object['htr_status2'], self.object['range2'], self.object['ctrl_type2'], self.object['pwr_set2'], self.object['pwr_actual2'],self.object['load1']))
+                break
+            
+            if STRING == '*OPC?':
+                hw.messageAll(string, type='hw', keep=True, source=self.name)
+                break
+            while STRING[:4] == 'LOOP':
+                regex=re.compile(r'LOOP [1-4]:SOURCE\?')
+                if re.match(regex, STRING):
+                    hw.messageAll(string, type='hw', keep=True, source=self.name)
+                    STRING=""
+                    continue
+                regex=re.compile(r'LOOP [1-4]:SOURCE [A-D]')
+                if re.match(regex, STRING):
+                    hw.messageAll(string, type='hw', keep=False, source=self.name)
+                    STRING=""
+                    continue
+                STRING=""
             else:
-                self.message('status hw_connected=%s status=%s temperatureA=%g temperatureB=%g temperatureC=%g temperatureD=%g \
-                             htr_status1=%s range1=%s ctrl_type1=%s pwr_set1=%g pwr_actual1=%g load1=%g \
-                             htr_status2=%s range2=%s ctrl_type2=%s pwr_set2=%g pwr_actual2=%g load2=%g'
-                             % (self.object['hw_connected'], self.object['status'],
-                                self.object['temperatureA'], self.object['temperatureB'], self.object['temperatureC'], self.object['temperatureD'],
-                                self.object['htr_status1'], self.object['range1'], self.object['ctrl_type1'], self.object['pwr_set1'], self.object['pwr_actual1'],self.object['load1'],
-                                self.object['htr_status2'], self.object['range2'], self.object['ctrl_type2'], self.object['pwr_set2'], self.object['pwr_actual2'],self.object['load1']))
-        elif string.upper() == '*OPC?':
-            hw.messageAll(string, type='hw', keep=True, source=self.name)
-        else:
+                break
             if obj['hw_connected']:
                 # Pass all other commands directly to hardware
                 hw.messageAll(string, name='hw', type='hw')
-                
+            break
 
 class CryoConProtocol(SimpleProtocol):
     _debug = False # Display all traffic for debug purposes
@@ -81,7 +98,7 @@ class CryoConProtocol(SimpleProtocol):
     
         pwrfactor = {'HI':1.,'MID':0.1,'LOW':0.01}
         
-        if len(self.commands):
+        if len(self.commands) and string!="\r":
             if self._debug:
                 print "last command which expects reply was:", self.commands[0]['cmd']
                 print "received reply:", string
