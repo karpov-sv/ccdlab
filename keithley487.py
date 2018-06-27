@@ -125,7 +125,7 @@ class KeithleyProtocol(SimpleProtocol):
             self.commands.append({'cmd':cmd.name,'source':source,'timeStamp':datetime.datetime.utcnow(),'keep':keep})
             SimpleProtocol.message(self, '?$%s' % cmd.name)
         else:
-            SimpleProtocol.message(self, string.name)
+            SimpleProtocol.message(self, cmd.name)
 
 if __name__ == '__main__':
     from optparse import OptionParser

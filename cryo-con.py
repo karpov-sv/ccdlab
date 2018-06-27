@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, sys
+import os, sys, datetime
 import numpy as np
 
 from daemon import SimpleFactory, SimpleProtocol
@@ -30,17 +30,27 @@ class DaemonProtocol(SimpleProtocol):
                                 self.object['temperatureA'], self.object['temperatureB'], self.object['temperatureC'], self.object['temperatureD'],
                                 self.object['htr_status1'], self.object['range1'], self.object['ctrl_type1'], self.object['pwr_set1'], self.object['pwr_actual1'],self.object['load1'],
                                 self.object['htr_status2'], self.object['range2'], self.object['ctrl_type2'], self.object['pwr_set2'], self.object['pwr_actual2'],self.object['load1']))
+        elif string.upper() == '*OPC?':
+            hw.messageAll(string, type='hw', keep=True, source=self.name)
         else:
             if obj['hw_connected']:
                 # Pass all other commands directly to hardware
                 hw.messageAll(string, name='hw', type='hw')
+                
 
-class HWProtocol(SimpleProtocol):
+class CryoConProtocol(SimpleProtocol):
     _debug = False # Display all traffic for debug purposes
 
     _tcp_keepidle = 1 # Faster detection of peer disconnection
     _tcp_user_timeout = 3000 # Faster detection of peer disconnection
-
+    
+    @catch
+    def __init__(self):
+        SimpleProtocol.__init__(self)
+        self.commands = [] # Queue of command sent to the device which will provide replies, each entry is a dict with keys "cmd","source","timeStamp"
+        self.name = 'hw'
+        self.type = 'hw'
+        
     @catch
     def connectionMade(self):
         self.object['hw_connected'] = 1
@@ -60,49 +70,79 @@ class HWProtocol(SimpleProtocol):
     def processMessage(self, string):
         # Process the device reply
         if self._debug:
-            print "hw > %s" % string
+            print "hw cc > %s" % string
             
+        obj = self.object # Object holding the state
+        daemon = obj['daemon']
+
+        # Update the last reply timestamp
+        obj['hw_last_reply_time'] = datetime.datetime.utcnow()
+        obj['hw_connected'] = 1
+    
         pwrfactor = {'HI':1.,'MID':0.1,'LOW':0.01}
         
-        if len(string):
-            # reply to parse looks like this:
-            # 20.806670;20.800480;20.896670;20.853670;--Htr OK--;HI ;MAN  ;50;0.000000;   0%;0.000A; 0.00V;--Htr OK--;LOW;MAN  ;50;0.000000;   0%;0.000A; 0.00V
-            # values for channel a;b;c;d (....... means dot connected)
-            sstring = string.split(';')
-            status = ''
-            channel = ['temperatureA', 'temperatureB', 'temperatureC', 'temperatureD']
+        if len(self.commands):
+            if self._debug:
+                print "last command which expects reply was:", self.commands[0]['cmd']
+                print "received reply:", string
+            if self.commands[0]['cmd'] == "input? a,b,c,d;:loop 1:err?;rang?;type?;load?;outp?;htrr?;:loop 2:err?;rang?;type?;load?;outp?;htrr?;":                
+                if len(string):
+                    # reply to parse looks like this:
+                    # 20.806670;20.800480;20.896670;20.853670;--Htr OK--;HI ;MAN  ;50;0.000000;   0%;0.000A; 0.00V;--Htr OK--;LOW;MAN  ;50;0.000000;   0%;0.000A; 0.00V
+                    # values for channel a;b;c;d (....... means dot connected)
+                    sstring = string.split(';')
+                    status = ''
+                    channel = ['temperatureA', 'temperatureB', 'temperatureC', 'temperatureD']
 
-            # temperatures
-            for s in range(4):
-                try:
-                    sstring[s] = float(sstring[s])
-                    status = status + '1'
-                    self.object[channel[s]] = sstring[s]
-                except ValueError:
-                    status = status + '0'
-                    self.object[channel[s]] = np.nan
-            self.object['status'] = status
-            # heater loop 1
-            self.object['htr_status1'] = sstring[4].replace(' ','-')
-            self.object['range1'] = sstring[5].replace(' ','')
-            self.object['ctrl_type1'] = sstring[6].replace(' ','')
-            self.object['load1'] = float(sstring[7])
-            self.object['pwr_set1'] = float(sstring[8])*pwrfactor[self.object['range1']]*self.object['load1']/100.
-            self.object['pwr_actual1'] = float(sstring[9].replace('%',''))*pwrfactor[self.object['range1']]*self.object['load1']/100.
-            self.object['htr_status2'] = sstring[10].replace(' ','-')
-            self.object['range2'] = sstring[11].replace(' ','')
-            self.object['ctrl_type1'] = sstring[12].replace(' ','')
-            self.object['load2'] = float(sstring[13])
-            self.object['pwr_set2'] = float(sstring[14])*pwrfactor[self.object['range2']]*self.object['load2']*0.5/100.
-            self.object['pwr_actual2'] = float(sstring[15].replace('%',''))*pwrfactor[self.object['range2']]*self.object['load2']*0.5/100.
+                    # temperatures
+                    for s in range(4):
+                        try:
+                            sstring[s] = float(sstring[s])
+                            status = status + '1'
+                            self.object[channel[s]] = sstring[s]
+                        except ValueError:
+                            status = status + '0'
+                            self.object[channel[s]] = np.nan
+                    self.object['status'] = status
+                    # heater loop 1
+                    self.object['htr_status1'] = sstring[4].replace(' ','-')
+                    self.object['range1'] = sstring[5].replace(' ','')
+                    self.object['ctrl_type1'] = sstring[6].replace(' ','')
+                    self.object['load1'] = float(sstring[7])
+                    self.object['pwr_set1'] = float(sstring[8])*pwrfactor[self.object['range1']]*self.object['load1']/100.
+                    self.object['pwr_actual1'] = float(sstring[9].replace('%',''))*pwrfactor[self.object['range1']]*self.object['load1']/100.
+                    self.object['htr_status2'] = sstring[10].replace(' ','-')
+                    self.object['range2'] = sstring[11].replace(' ','')
+                    self.object['ctrl_type1'] = sstring[12].replace(' ','')
+                    self.object['load2'] = float(sstring[13])
+                    self.object['pwr_set2'] = float(sstring[14])*pwrfactor[self.object['range2']]*self.object['load2']*0.5/100.
+                    self.object['pwr_actual2'] = float(sstring[15].replace('%',''))*pwrfactor[self.object['range2']]*self.object['load2']*0.5/100.
+                self.commands.pop(0)
+            else:
+                # not recognized command, just pass the output
+                daemon.messageAll(string,self.commands[0]['source'])
+                self.commands.pop(0)
             
-            
-
     @catch
     def update(self):
         # Request the hardware state from the device
-        #self.message('input? a,b,c,d')
-        self.message('input? a,b,c,d;:loop 1:err?;rang?;type?;load?;outp?;htrr?;:loop 2:err?;rang?;type?;load?;outp?;htrr?;')
+        if len(self.commands):
+            SimpleProtocol.message(self, self.commands[0]['cmd'])
+            if not self.commands[0]['keep']:
+                self.commands.pop(0) 
+        else:
+            self.commands.append({'cmd':'input? a,b,c,d;:loop 1:err?;rang?;type?;load?;outp?;htrr?;:loop 2:err?;rang?;type?;load?;outp?;htrr?;', 'source':'itself','timeStamp':datetime.datetime.utcnow(),'keep':True})
+            SimpleProtocol.message(self, self.commands[0]['cmd'])
+
+    @catch
+    def message(self, string, keep=False, source='itself'):
+        """
+        Send the message to the controller. If keep=True, expect reply
+        """
+        print "msg", string, keep, source
+        self.commands.append({'cmd':string,'source':source,'timeStamp':datetime.datetime.utcnow(),'keep':keep})
+
+        
 if __name__ == '__main__':
     from optparse import OptionParser
 
@@ -126,7 +166,7 @@ if __name__ == '__main__':
     # Factories for daemon and hardware connections
     # We need two different factories as the protocols are different
     daemon = SimpleFactory(DaemonProtocol, obj)
-    hw = SimpleFactory(HWProtocol, obj)
+    hw = SimpleFactory(CryoConProtocol, obj)
 
     daemon.name = options.name
 
