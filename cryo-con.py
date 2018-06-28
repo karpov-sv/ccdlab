@@ -21,12 +21,20 @@ class DaemonProtocol(SimpleProtocol):
         while True:
             if cmd.name == 'get_status':
                 self.message('status hw_connected=%s status=%s temperatureA=%g temperatureB=%g temperatureC=%g temperatureD=%g \
-                            htr_status1=%s range1=%s ctrl_type1=%s pwr_set1=%g pwr_actual1=%g load1=%g \
-                            htr_status2=%s range2=%s ctrl_type2=%s pwr_set2=%g pwr_actual2=%g load2=%g'
+                            htr_status1=%s range1=%s ctrl_type1=%s pwr_set1=%g pwr_actual1=%g load1=%g source1=%s set_point1=%g ramp1=%s rate1=%g \
+                            htr_status2=%s range2=%s ctrl_type2=%s pwr_set2=%g pwr_actual2=%g load2=%g source2=%s set_point2=%g ramp2=%s rate2=%g \
+                            htr_status3=%s range3=%s ctrl_type3=%s pwr_set3=%s pwr_actual3=%s load3=%s source3=%s set_point3=%g ramp3=%s rate3=%g \
+                            htr_status4=%s range4=%s ctrl_type4=%s pwr_set4=%s pwr_actual4=%s load4=%s source4=%s set_point4=%g ramp4=%s rate4=%g'
                             % (self.object['hw_connected'], self.object['status'],
                                 self.object['temperatureA'], self.object['temperatureB'], self.object['temperatureC'], self.object['temperatureD'],
                                 self.object['htr_status1'], self.object['range1'], self.object['ctrl_type1'], self.object['pwr_set1'], self.object['pwr_actual1'],self.object['load1'],
-                                self.object['htr_status2'], self.object['range2'], self.object['ctrl_type2'], self.object['pwr_set2'], self.object['pwr_actual2'],self.object['load1']))
+                                self.object['source1'],self.object['set_point1'],self.object['ramp1'],self.object['rate1'],
+                                self.object['htr_status2'], self.object['range2'], self.object['ctrl_type2'], self.object['pwr_set2'], self.object['pwr_actual2'],self.object['load2'],
+                                self.object['source2'],self.object['set_point2'],self.object['ramp2'],self.object['rate2'],
+                                self.object['htr_status3'], self.object['range3'], self.object['ctrl_type3'], self.object['pwr_set3'], self.object['pwr_actual3'],self.object['load3'],
+                                self.object['source3'],self.object['set_point3'],self.object['ramp3'],self.object['rate3'],
+                                self.object['htr_status4'], self.object['range4'], self.object['ctrl_type4'], self.object['pwr_set4'], self.object['pwr_actual4'],self.object['load4'],
+                                self.object['source4'],self.object['set_point4'],self.object['ramp4'],self.object['rate4'],))
                 break
             regex=re.compile(r'(CONT|CONTR|CONTRO|CONTROL)\?')
             if re.match(regex, STRING):
@@ -85,12 +93,12 @@ class DaemonProtocol(SimpleProtocol):
                     hw.messageAll(string, type='hw', keep=False, source=self.name)
                     STRING=""
                     continue
-                regex=re.compile(r'LOOP [1-4]:(SET|SETP|SETPT)\?')
+                regex=re.compile(r'LOOP [1-4]:(SETP|SETPT)\?')
                 if re.match(regex, STRING):
                     hw.messageAll(string, type='hw', keep=True, source=self.name)
                     STRING=""
                     continue
-                regex=re.compile(r'LOOP [1-4]:(SET|SETP|SETPT) -?(\d+?)?\.?(\d+?$)?$')
+                regex=re.compile(r'LOOP [1-4]:(SETP|SETPT) -?(\d+?)?\.?(\d+?$)?$')
                 if re.match(regex, STRING):
                     hw.messageAll(string, type='hw', keep=False, source=self.name)
                     STRING=""
@@ -213,13 +221,18 @@ class CryoConProtocol(SimpleProtocol):
 
     _tcp_keepidle = 1 # Faster detection of peer disconnection
     _tcp_user_timeout = 3000 # Faster detection of peer disconnection
-    
     @catch
     def __init__(self):
         SimpleProtocol.__init__(self)
         self.commands = [] # Queue of command sent to the device which will provide replies, each entry is a dict with keys "cmd","source","timeStamp"
         self.name = 'hw'
         self.type = 'hw'
+        self.status_commands=["input? a,b,c,d;",
+                              ":loop 1:err?;rang?;type?;load?;outp?;htrr?;sour?;setp?;ramp?;rate?;",
+                              ":loop 2:err?;rang?;type?;load?;outp?;htrr?;sour?;setp?;ramp?;rate?;",
+                              ":loop 3:err?;rang?;type?;load?;outp?;htrr?;sour?;setp?;ramp?;rate?;",
+                              ":loop 4:err?;rang?;type?;load?;outp?;htrr?;sour?;setp?;ramp?;rate?;"]
+        
         
     @catch
     def connectionMade(self):
@@ -228,7 +241,7 @@ class CryoConProtocol(SimpleProtocol):
         self.type = 'hw'
         SimpleProtocol.connectionMade(self)
         # make sure the units are Celsius
-        self.message('input a,b,c,d:units c;:loop 1:load 50')
+        self.message('input a,b,c,d:units c;:loop 1:load 50;:loop 2:load 0;')
 
     @catch
     def connectionLost(self, reason):
@@ -255,42 +268,51 @@ class CryoConProtocol(SimpleProtocol):
             if self._debug:
                 print "last command which expects reply was:", self.commands[0]['cmd']
                 print "received reply:", string
-            if self.commands[0]['cmd'] == "input? a,b,c,d;:loop 1:err?;rang?;type?;load?;outp?;htrr?;:loop 2:err?;rang?;type?;load?;outp?;htrr?;":                
+            if self.commands[0]['cmd'] in self.status_commands:                
                 if len(string):
                     # reply to parse looks like this:
                     # 20.806670;20.800480;20.896670;20.853670;--Htr OK--;HI ;MAN  ;50;0.000000;   0%;--Htr OK--;LOW;MAN  ;50;0.000000;   0%
                     # values for channel a;b;c;d (....... means not connected)
                     sstring = string.split(';')
-                    status = ''
-                    channel = ['temperatureA', 'temperatureB', 'temperatureC', 'temperatureD']
-                    # temperatures
-                    for s in range(4):
-                        try:
-                            sstring[s] = float(sstring[s])
-                            status = status + '1'
-                            self.object[channel[s]] = sstring[s]
-                        except ValueError:
-                            status = status + '0'
-                            self.object[channel[s]] = np.nan
-                    self.object['status'] = status
-                    # heater loop 1
-                    self.object['htr_status1'] = sstring[4].replace(' ','-')
-                    self.object['range1'] = sstring[5].replace(' ','')
-                    self.object['ctrl_type1'] = sstring[6].replace(' ','')
-                    self.object['load1'] = float(sstring[7])
-                    self.object['pwr_set1'] = float(sstring[8])*pwrfactor[self.object['range1']]*self.object['load1']/100.
-                    self.object['pwr_actual1'] = float(sstring[9].replace('%',''))*pwrfactor[self.object['range1']]*self.object['load1']/100.
-                    self.object['htr_status2'] = sstring[10].replace(' ','-')
-                    self.object['range2'] = sstring[11].replace(' ','')
-                    self.object['ctrl_type2'] = sstring[12].replace(' ','')
-                    self.object['load2'] = float(sstring[13])
-                    self.object['pwr_set2'] = float(sstring[14])*pwrfactor[self.object['range2']]*self.object['load2']*0.5/100.
-                    self.object['pwr_actual2'] = float(sstring[15].replace('%',''))*pwrfactor[self.object['range2']]*self.object['load2']*0.5/100.
-                self.commands.pop(0)
+                    if self.commands[0]['cmd'] == self.status_commands[0]:
+                        status = ''
+                        channel = ['temperatureA', 'temperatureB', 'temperatureC', 'temperatureD']
+                        # temperatures
+                        for s in range(4):
+                            try:
+                                sstring[s] = float(sstring[s])
+                                status = status + '1'
+                                self.object[channel[s]] = sstring[s]
+                            except ValueError:
+                                status = status + '0'
+                                self.object[channel[s]] = np.nan
+                        self.object['status'] = status
+                    else:
+                        nn=self.status_commands.index(self.commands[0]['cmd'])                  
+                        self.object['htr_status'+str(nn)] = sstring[0].replace(' ','-'); 
+                        self.object['range'+str(nn)]      = sstring[1].replace(' ','')
+                        self.object['ctrl_type'+str(nn)]  = sstring[2].replace(' ','')
+                        if nn==1:
+                            self.object['load'+str(nn)]       = float(sstring[3])
+                            self.object['pwr_set'+str(nn)]    = float(sstring[4])*pwrfactor[self.object['range'+str(nn)]]*self.object['load'+str(nn)]/100.
+                            self.object['pwr_actual'+str(nn)] = float(sstring[5].replace('%',''))*pwrfactor[self.object['range'+str(nn)]]*self.object['load'+str(nn)]/100.
+                        elif nn==2:
+                            self.object['load'+str(nn)]       = 0.
+                            self.object['pwr_set'+str(nn)]    = float(sstring[4])*pwrfactor[self.object['range'+str(nn)]]*self.object['load'+str(nn)]/100.
+                            self.object['pwr_actual'+str(nn)] = float(sstring[5].replace('%',''))*pwrfactor[self.object['range'+str(nn)]]*self.object['load'+str(nn)]/100.
+                        else:
+                            self.object['load'+str(nn)]       = sstring[3]
+                            self.object['pwr_set'+str(nn)]    = sstring[4]+'%'
+                            self.object['pwr_actual'+str(nn)] = sstring[5].replace(' ','')
+                        self.object['source'+str(nn)]     = sstring[6]
+                        self.object['set_point'+str(nn)]  = float(sstring[7][:-2])
+                        self.object['ramp'+str(nn)]       = sstring[8]
+                        self.object['rate'+str(nn)]       = float(sstring[9])
+                        
             else:
                 # not recognized command, just pass the output
                 daemon.messageAll(string,self.commands[0]['source'])
-                self.commands.pop(0)
+            self.commands.pop(0)
             
     @catch
     def update(self):
@@ -300,16 +322,16 @@ class CryoConProtocol(SimpleProtocol):
             if not self.commands[0]['keep']:
                 self.commands.pop(0) 
         else:
-            self.commands.append({'cmd':'input? a,b,c,d;:loop 1:err?;rang?;type?;load?;outp?;htrr?;:loop 2:err?;rang?;type?;load?;outp?;htrr?;', 'source':'itself','timeStamp':datetime.datetime.utcnow(),'keep':True})
-            SimpleProtocol.message(self, self.commands[0]['cmd'])
+            for k in self.status_commands:
+                self.commands.append({'cmd':k, 'source':'itself','keep':True})
+                SimpleProtocol.message(self, self.commands[0]['cmd'])
 
     @catch
     def message(self, string, keep=False, source='itself'):
         """
         Send the message to the controller. If keep=True, expect reply
         """
-        print "msg", string, keep, source
-        self.commands.append({'cmd':string,'source':source,'timeStamp':datetime.datetime.utcnow(),'keep':keep})
+        self.commands.append({'cmd':string,'source':source,'keep':keep})
 
         
 if __name__ == '__main__':
@@ -329,8 +351,10 @@ if __name__ == '__main__':
     # May be anything that will be passed by reference - list, dict, object etc
     obj = {'hw_connected':0, 
            'status':'----', 'temperatureA':0, 'temperatureB':0, 'temperatureC':0, 'temperatureD':0,
-           'htr_status1':'-','range1':'-','ctrl_type1':'-','pwr_set1':0,'pwr_actual1':0,'load1':0,'current1':0,
-           'htr_status2':'-','range2':'-','ctrl_type2':'-','pwr_set2':0,'pwr_actual2':0,'load2':0,'current2':0}
+           'htr_status1':'-','range1':'-','ctrl_type1':'-','pwr_set1':0,'pwr_actual1':0,'load1':0,'source1':'-','set_point1':np.nan,'ramp1':'-','rate1':np.nan,
+           'htr_status2':'-','range2':'-','ctrl_type2':'-','pwr_set2':0,'pwr_actual2':0,'load2':0,'source2':'-','set_point2':np.nan,'ramp2':'-','rate2':np.nan,
+           'htr_status3':'-','range3':'-','ctrl_type3':'-','pwr_set3':0,'pwr_actual3':0,'load3':0,'source3':'-','set_point3':np.nan,'ramp3':'-','rate3':np.nan,
+           'htr_status4':'-','range4':'-','ctrl_type4':'-','pwr_set4':0,'pwr_actual4':0,'load4':0,'source4':'-','set_point4':np.nan,'ramp4':'-','rate4':np.nan}
 
     # Factories for daemon and hardware connections
     # We need two different factories as the protocols are different
