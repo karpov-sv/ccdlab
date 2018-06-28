@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, sys, datetime, re
+import os, sys, re
 import numpy as np
 
 from daemon import SimpleFactory, SimpleProtocol
@@ -224,7 +224,7 @@ class CryoConProtocol(SimpleProtocol):
     @catch
     def __init__(self):
         SimpleProtocol.__init__(self)
-        self.commands = [] # Queue of command sent to the device which will provide replies, each entry is a dict with keys "cmd","source","timeStamp"
+        self.commands = [] # Queue of command sent to the device which will provide replies, each entry is a dict with keys "cmd","source"
         self.name = 'hw'
         self.type = 'hw'
         self.status_commands=["input? a,b,c,d;",
@@ -258,8 +258,6 @@ class CryoConProtocol(SimpleProtocol):
         obj = self.object # Object holding the state
         daemon = obj['daemon']
 
-        # Update the last reply timestamp
-        obj['hw_last_reply_time'] = datetime.datetime.utcnow()
         obj['hw_connected'] = 1
     
         pwrfactor = {'HI':1.,'MID':0.1,'LOW':0.01}
