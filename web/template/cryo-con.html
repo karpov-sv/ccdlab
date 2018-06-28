@@ -1,0 +1,83 @@
+<!-- Default layout for a client widget -->
+<div class="panel panel-default">
+  <!-- Title bar with connection and hardware connection status flags -->
+  <div class="panel-heading">
+    <h3 class="panel-title">
+      <span class="monitor-client-title" style="margin-right: 0.5em">{{> params.description }}</span>
+      <span class="monitor-client-connstatus label label-default" style="margin-right: 0.5em"></span>
+      <span class="monitor-client-hwstatus label label-default" style="margin-right: 0.5em" ></span>
+      {{!--
+      <span class="monitor-client-hwstatus label label-default" style="margin-right: 0.5em" data-link="class{: (status.hw_connected == 0) ? 'label label-danger' : 'label label-success' } {:(status.hw_connected == 0) ? 'HW Disconnected' : 'HW Connected'}"></span>
+      --}}
+    </h3>
+  </div>
+  <!-- Main body, hidden when disconnected -->
+  <ul class="monitor-client-body list-group hide">
+    <!-- Progress bar -->
+    <li class="monitor-client-progressdiv list-group-item progress hide" style="margin: 0; padding: 0">
+      <div class="monitor-client-progress progress-bar" style="width: 0%">
+      </div>
+    </li>
+
+    <!-- Main content -->
+
+    <!-- Show all key=value pairs from the status -->
+    <li class="list-group-item" style="padding: 5px">
+    </li>
+    <li class="list-group-item clearfix" style="padding: 5px">
+      <!-- Subsystems -->
+      <img src="/monitor/plot/{{> ~root.params.name }}/temperatures" class="monitor-plot-{{> ~root.params.name }}-temperatures img pull-right"/><br>
+      {{for ~list('temperatureA', 'temperatureB', 'temperatureC', 'temperatureD') itemVar="~prefix" }}
+      <div>
+        {{: ~prefix }}: {{status ~prefix /}}
+      </div>
+      {{/for}}
+    </li>
+
+    <li class="list-group-item clearfix" style="padding: 5px">
+      <!-- Subsystems -->
+      <img src="/monitor/plot/{{> ~root.params.name }}/plot_power" class="monitor-plot-{{> ~root.params.name }}-plot_power img pull-right"/><br>
+      {{for ~list('pwr_set1','pwr_actual1','pwr_set2','pwr_actual2') itemVar="~prefix" }}
+      <div>
+        {{: ~prefix }}: {{status ~prefix /}}
+      </div>
+      {{/for}}
+    </li>
+
+    <li class="list-group-item" style="padding: 5px">
+      <table class='table table-condensed'>
+        {{for ~list('0', '1', '2', '3', '4') itemVar="~id" }}
+        <tbody>
+          <tr>
+            {{if ~id == 0 }}
+            <th>LOOP</th>
+            {{else}}
+            <td>{{: ~id }}</td>
+            {{/if}}
+
+            {{for ~list('pwr_set', 'pwr_actual', 'range', 'load', 'source', 'set_point', 'ctrl_type', 'ramp', 'rate') itemVar="~field"}}
+
+            {{if ~id == 0}}
+            <th>{{:~field}}</th>
+            {{else}}
+            <td>{{status ~field+~id /}}</td>
+            {{/if}}
+
+            {{/for}}
+          </tr>
+        </tbody>
+        {{/for}}
+      </table>
+    </li>
+
+    <!-- Show all pre-configured plots -->
+    {{!--
+    <li class="monitor-client-plots" style="padding: 5px">
+      {{props params.plots }}
+      <img src="/monitor/plot/{{> ~root.params.name }}/{{> key }}" class="monitor-plot-{{> ~root.params.name }}-{{> key }} img img-responsive center-block"/><br>
+      {{/props}}
+    </li>
+    --}}
+  </ul>
+
+</div>

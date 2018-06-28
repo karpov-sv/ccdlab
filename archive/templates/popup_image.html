@@ -61,6 +61,9 @@
 
    var m = moment(query['time0'], 'YYYY-MM-DD HH:mm:ss');
 
+   var orig_time0 = query['time0'];
+   var orig_hours = query['hours'];
+
    globalimage = image;
 
    params = {
@@ -119,6 +122,16 @@
        callback: function() {
          m.add(0.25*query['hours']*3600, 'seconds');
          query['time0'] = m.format('YYYY-MM-DD HH:mm:ss');
+         uri.setQuery(query);
+         return false;}
+     },
+     reset: {
+       label: "Reset",
+       className: "btn-default",
+       callback: function() {
+         query['time0'] = orig_time0;
+         query['hours'] = orig_hours;
+         m = moment(query['time0'], 'YYYY-MM-DD HH:mm:ss');
          uri.setQuery(query);
          return false;}
      },
