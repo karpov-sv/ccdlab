@@ -20,17 +20,13 @@ class DaemonProtocol(SimpleProtocol):
         STRING=string.upper()
         while True:
             if cmd.name == 'get_status':
-                if self._simulator:
-                    self.message('status hw_connected=1 status=0 temperatureA=%g  temperatureB=%g temperatureC=%g temperatureD=%g simulator=1'
-                                % (np.random.uniform(1.0, 10.0),np.random.uniform(1.0, 10.0),np.random.uniform(1.0, 10.0),np.random.uniform(1.0, 10.0)))
-                else:
-                    self.message('status hw_connected=%s status=%s temperatureA=%g temperatureB=%g temperatureC=%g temperatureD=%g \
-                                htr_status1=%s range1=%s ctrl_type1=%s pwr_set1=%g pwr_actual1=%g load1=%g \
-                                htr_status2=%s range2=%s ctrl_type2=%s pwr_set2=%g pwr_actual2=%g load2=%g'
-                                % (self.object['hw_connected'], self.object['status'],
-                                    self.object['temperatureA'], self.object['temperatureB'], self.object['temperatureC'], self.object['temperatureD'],
-                                    self.object['htr_status1'], self.object['range1'], self.object['ctrl_type1'], self.object['pwr_set1'], self.object['pwr_actual1'],self.object['load1'],
-                                    self.object['htr_status2'], self.object['range2'], self.object['ctrl_type2'], self.object['pwr_set2'], self.object['pwr_actual2'],self.object['load1']))
+                self.message('status hw_connected=%s status=%s temperatureA=%g temperatureB=%g temperatureC=%g temperatureD=%g \
+                            htr_status1=%s range1=%s ctrl_type1=%s pwr_set1=%g pwr_actual1=%g load1=%g \
+                            htr_status2=%s range2=%s ctrl_type2=%s pwr_set2=%g pwr_actual2=%g load2=%g'
+                            % (self.object['hw_connected'], self.object['status'],
+                                self.object['temperatureA'], self.object['temperatureB'], self.object['temperatureC'], self.object['temperatureD'],
+                                self.object['htr_status1'], self.object['range1'], self.object['ctrl_type1'], self.object['pwr_set1'], self.object['pwr_actual1'],self.object['load1'],
+                                self.object['htr_status2'], self.object['range2'], self.object['ctrl_type2'], self.object['pwr_set2'], self.object['pwr_actual2'],self.object['load1']))
                 break
             regex=re.compile(r'(CONT|CONTR|CONTRO|CONTROL)\?')
             if re.match(regex, STRING):
@@ -94,15 +90,11 @@ class DaemonProtocol(SimpleProtocol):
                     hw.messageAll(string, type='hw', keep=True, source=self.name)
                     STRING=""
                     continue
-
                 regex=re.compile(r'LOOP [1-4]:(SET|SETP|SETPT) -?(\d+?)?\.?(\d+?$)?$')
                 if re.match(regex, STRING):
-                    #if float(STRING.split()[-1])<0 or float(STRING.split()[-1])>1000:
-                        #daemon.log('WARNING value out of range: '+string+' from connection '+self.name)
                     hw.messageAll(string, type='hw', keep=False, source=self.name)
                     STRING=""
                     continue
-
                 regex=re.compile(r'LOOP [1-4]:(TYP|TYPE)\?$')
                 if re.match(regex, STRING):
                     hw.messageAll(string, type='hw', keep=True, source=self.name)
@@ -118,6 +110,95 @@ class DaemonProtocol(SimpleProtocol):
                     hw.messageAll(string, type='hw', keep=False, source=self.name)
                     STRING=""
                     continue
+                regex=re.compile(r'LOOP [1-4]:(MAXP|MAXPW|MAXPWR)\?')
+                if re.match(regex, STRING):
+                    hw.messageAll(string, type='hw', keep=True, source=self.name)
+                    STRING=""
+                    continue
+                regex=re.compile(r'LOOP [1-4]:(MAXP|MAXPW|MAXPWR) (\d+?)?\.?(\d+?$)?$')
+                if re.match(regex, STRING):
+                    if float(STRING.split()[-1])<0 or float(STRING.split()[-1])>100:
+                        daemon.log('WARNING value out of range: '+string+' from connection '+self.name)
+                    hw.messageAll(string, type='hw', keep=False, source=self.name)
+                    STRING=""
+                    continue
+                regex=re.compile(r'LOOP [1-4]:(PMAN|PMANU|PMANUA|PMANUAL)\?')
+                if re.match(regex, STRING):
+                    hw.messageAll(string, type='hw', keep=True, source=self.name)
+                    STRING=""
+                    continue
+                regex=re.compile(r'LOOP [1-4]:(PMAN|PMANU|PMANUA|PMANUAL) ?(\d+?)?\.?(\d+?$)?$')
+                if re.match(regex, STRING):
+                    if float(STRING.split()[-1])<0 or float(STRING.split()[-1])>100:
+                        daemon.log('WARNING value out of range: '+string+' from connection '+self.name)
+                    hw.messageAll(string, type='hw', keep=False, source=self.name)
+                    STRING=""
+                    continue
+                regex=re.compile(r'LOOP [1-4]:RAMP\?')
+                if re.match(regex, STRING):
+                    hw.messageAll(string, type='hw', keep=True, source=self.name)
+                    STRING=""
+                    continue
+                regex=re.compile(r'LOOP [1-4]:(RAT|RATE) ?(\d+?)?\.?(\d+?$)?$')
+                if re.match(regex, STRING):
+                    if float(STRING.split()[-1])<0 or float(STRING.split()[-1])>100:
+                        daemon.log('WARNING value out of range: '+string+' from connection '+self.name)
+                    hw.messageAll(string, type='hw', keep=False, source=self.name)
+                    STRING=""
+                    continue
+                regex=re.compile(r'LOOP [1-4]:(RAT|RATE)\?')
+                if re.match(regex, STRING):
+                    hw.messageAll(string, type='hw', keep=True, source=self.name)
+                    STRING=""
+                    continue
+                regex=re.compile(r'LOOP [1-4]:(AUT|AUTO|AUTOT|AUTOTU|AUTOTUN|AUTOTUNE):(STAR|START|EXIT|SAVE)')
+                if re.match(regex, STRING):
+                    hw.messageAll(string, type='hw', keep=False, source=self.name)
+                    STRING=""
+                    continue
+                regex=re.compile(r'LOOP [1-4]:(AUT|AUTO|AUTOT|AUTOTU|AUTOTUN|AUTOTUNE):(MOD|MODE)\?')
+                if re.match(regex, STRING):
+                    hw.messageAll(string, type='hw', keep=True, source=self.name)
+                    STRING=""
+                    continue
+                regex=re.compile(r'LOOP [1-4]:(AUT|AUTO|AUTOT|AUTOTU|AUTOTUN|AUTOTUNE):(MOD|MODE) (P--|PI-|PID)')
+                if re.match(regex, STRING):
+                    hw.messageAll(string, type='hw', keep=False, source=self.name)
+                    STRING=""
+                    continue
+                regex=re.compile(r'LOOP [1-4]:(AUT|AUTO|AUTOT|AUTOTU|AUTOTUN|AUTOTUNE):(DELT|DELTA|DELTAP)\?')
+                if re.match(regex, STRING):
+                    hw.messageAll(string, type='hw', keep=True, source=self.name)
+                    STRING=""
+                    continue
+                regex=re.compile(r'LOOP [1-4]:(AUT|AUTO|AUTOT|AUTOTU|AUTOTUN|AUTOTUNE):(DELT|DELTA|DELTAP) ?(\d+?)?\.?(\d+?$)?$')
+                if re.match(regex, STRING):
+                    if float(STRING.split()[-1])<0 or float(STRING.split()[-1])>100:
+                        daemon.log('WARNING value out of range: '+string+' from connection '+self.name)                    
+                    hw.messageAll(string, type='hw', keep=False, source=self.name)
+                    STRING=""
+                    continue
+                regex=re.compile(r'LOOP [1-4]:(AUT|AUTO|AUTOT|AUTOTU|AUTOTUN|AUTOTUNE):(TIM|TIME|TIMEO|TIMEOU|TIMEOUT)\?')
+                if re.match(regex, STRING):
+                    hw.messageAll(string, type='hw', keep=True, source=self.name)
+                    STRING=""
+                    continue
+                regex=re.compile(r'LOOP [1-4]:(AUT|AUTO|AUTOT|AUTOTU|AUTOTUN|AUTOTUNE):(TIM|TIME|TIMEO|TIMEOU|TIMEOUT) ?(\d+?)?\.?(\d+?$)?$')
+                if re.match(regex, STRING):               
+                    hw.messageAll(string, type='hw', keep=False, source=self.name)
+                    STRING=""
+                    continue
+                regex=re.compile(r'LOOP [1-4]:(AUT|AUTO|AUTOT|AUTOTU|AUTOTUN|AUTOTUNE):([PID]GA|[PID]GAI|[PID]GAIN)\?')
+                if re.match(regex, STRING):
+                    hw.messageAll(string, type='hw', keep=True, source=self.name)
+                    STRING=""
+                    continue
+                regex=re.compile(r'LOOP [1-4]:(AUT|AUTO|AUTOT|AUTOTU|AUTOTUN|AUTOTUNE):(STAT|STATU|STATUS)\?')
+                if re.match(regex, STRING):
+                    hw.messageAll(string, type='hw', keep=True, source=self.name)
+                    STRING=""
+                    continue
+                
                 daemon.log('WARNING unidentified command: '+string+' from connection '+self.name)
                 STRING=""
             else:
@@ -177,12 +258,11 @@ class CryoConProtocol(SimpleProtocol):
             if self.commands[0]['cmd'] == "input? a,b,c,d;:loop 1:err?;rang?;type?;load?;outp?;htrr?;:loop 2:err?;rang?;type?;load?;outp?;htrr?;":                
                 if len(string):
                     # reply to parse looks like this:
-                    # 20.806670;20.800480;20.896670;20.853670;--Htr OK--;HI ;MAN  ;50;0.000000;   0%;0.000A; 0.00V;--Htr OK--;LOW;MAN  ;50;0.000000;   0%;0.000A; 0.00V
-                    # values for channel a;b;c;d (....... means dot connected)
+                    # 20.806670;20.800480;20.896670;20.853670;--Htr OK--;HI ;MAN  ;50;0.000000;   0%;--Htr OK--;LOW;MAN  ;50;0.000000;   0%
+                    # values for channel a;b;c;d (....... means not connected)
                     sstring = string.split(';')
                     status = ''
                     channel = ['temperatureA', 'temperatureB', 'temperatureC', 'temperatureD']
-
                     # temperatures
                     for s in range(4):
                         try:
@@ -202,7 +282,7 @@ class CryoConProtocol(SimpleProtocol):
                     self.object['pwr_actual1'] = float(sstring[9].replace('%',''))*pwrfactor[self.object['range1']]*self.object['load1']/100.
                     self.object['htr_status2'] = sstring[10].replace(' ','-')
                     self.object['range2'] = sstring[11].replace(' ','')
-                    self.object['ctrl_type1'] = sstring[12].replace(' ','')
+                    self.object['ctrl_type2'] = sstring[12].replace(' ','')
                     self.object['load2'] = float(sstring[13])
                     self.object['pwr_set2'] = float(sstring[14])*pwrfactor[self.object['range2']]*self.object['load2']*0.5/100.
                     self.object['pwr_actual2'] = float(sstring[15].replace('%',''))*pwrfactor[self.object['range2']]*self.object['load2']*0.5/100.
