@@ -23,13 +23,13 @@ class DaemonProtocol(SimpleProtocol):
         STRING = string.upper()
         while True:
             if cmd.name == 'get_status':
-                self.message('status hw_connected=%s status=%s temperatureA=%g temperatureB=%g temperatureC=%g temperatureD=%g \
+                self.message('status hw_connected=%s status=%s temperatureA=%g temperatureB=%g temperatureC=%g temperatureD=%g control=%s\
                             htr_status1=%s range1=%s ctrl_type1=%s pwr_set1=%g pwr_actual1=%g load1=%g source1=%s set_point1=%g ramp1=%s rate1=%g \
                             htr_status2=%s range2=%s ctrl_type2=%s pwr_set2=%g pwr_actual2=%g load2=%g source2=%s set_point2=%g ramp2=%s rate2=%g \
                             htr_status3=%s range3=%s ctrl_type3=%s pwr_set3=%s pwr_actual3=%s load3=%s source3=%s set_point3=%g ramp3=%s rate3=%g \
                             htr_status4=%s range4=%s ctrl_type4=%s pwr_set4=%s pwr_actual4=%s load4=%s source4=%s set_point4=%g ramp4=%s rate4=%g'
                              % (self.object['hw_connected'], self.object['status'],
-                                self.object['temperatureA'], self.object['temperatureB'], self.object['temperatureC'], self.object['temperatureD'],
+                                self.object['temperatureA'], self.object['temperatureB'], self.object['temperatureC'], self.object['temperatureD'], self.object['control'],
                                 self.object['htr_status1'], self.object['range1'], self.object['ctrl_type1'], self.object[
                                     'pwr_set1'], self.object['pwr_actual1'], self.object['load1'],
                                 self.object['source1'], self.object['set_point1'], self.object['ramp1'], self.object['rate1'],
@@ -288,7 +288,7 @@ class CryoConProtocol(SimpleProtocol):
         self.commands = []  # Queue of command sent to the device which will provide replies, each entry is a dict with keys "cmd","source"
         self.name = 'hw'
         self.type = 'hw'
-        self.status_commands = ["input? a,b,c,d;",
+        self.status_commands = ["input? a,b,c,d;:cont?",
                                 ":loop 1:err?;rang?;type?;load?;outp?;htrr?;sour?;setp?;ramp?;rate?;",
                                 ":loop 2:err?;rang?;type?;load?;outp?;htrr?;sour?;setp?;ramp?;rate?;",
                                 ":loop 3:err?;rang?;type?;load?;outp?;htrr?;sour?;setp?;ramp?;rate?;",
@@ -345,6 +345,7 @@ class CryoConProtocol(SimpleProtocol):
                             except ValueError:
                                 status = status + '0'
                                 self.object[channel[s]] = np.nan
+                        self.object['control'] = sstring[4]
                         self.object['status'] = status
                     else:
                         nn = self.status_commands.index(
@@ -426,7 +427,7 @@ if __name__ == '__main__':
     # Object holding actual state and work logic.
     # May be anything that will be passed by reference - list, dict, object etc
     obj = {'hw_connected': 0,
-           'status': '----', 'temperatureA': 0, 'temperatureB': 0, 'temperatureC': 0, 'temperatureD': 0,
+           'status': '----', 'temperatureA': 0, 'temperatureB': 0, 'temperatureC': 0, 'temperatureD': 0, 'control':'-',
            'htr_status1': '-', 'range1': '-', 'ctrl_type1': '-', 'pwr_set1': 0, 'pwr_actual1': 0, 'load1': 0, 'source1': '-', 'set_point1': np.nan, 'ramp1': '-', 'rate1': np.nan,
            'htr_status2': '-', 'range2': '-', 'ctrl_type2': '-', 'pwr_set2': 0, 'pwr_actual2': 0, 'load2': 0, 'source2': '-', 'set_point2': np.nan, 'ramp2': '-', 'rate2': np.nan,
            'htr_status3': '-', 'range3': '-', 'ctrl_type3': '-', 'pwr_set3': 0, 'pwr_actual3': 0, 'load3': 0, 'source3': '-', 'set_point3': np.nan, 'ramp3': '-', 'rate3': np.nan,
