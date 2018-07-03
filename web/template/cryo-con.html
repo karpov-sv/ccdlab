@@ -35,7 +35,7 @@
       <!-- Subsystems -->
       <img src="/monitor/plot/{{> ~root.params.name }}/plot_power" class="monitor-plot-{{> ~root.params.name }}-plot_power img pull-right"/><br>
       <span class="monitor-client-controlstatus label label-default" style="margin-right: 0.5em" data-link="class{: (status.control == 'ON') ? 'label label-danger' : 'label label-success' } {:(status.control == 'ON') ? 'Control Engaged' : 'Control Disengaged'}"></span>
-      {{for ~list('pwr_set1','pwr_actual1','pwr_set2','pwr_actual2','control') itemVar="~prefix" }}
+      {{for ~list('pwr_set1','pwr_actual1','pwr_set2','pwr_actual2') itemVar="~prefix" }}
       <div>
         {{: ~prefix }}: {{status ~prefix /}}
       </div>
@@ -55,14 +55,9 @@
             {{for ~list('pwr_set', 'pwr_actual', 'range', 'load', 'source', 'set_point', 'ctrl_type', 'ramp', 'rate') itemVar="~field"}}
             {{if ~id == 0}}
             <th>{{:~field}}</th>
-	    {{else ~field == 'ctrl_type'}}
-	    <td><span class="monitor-client-controlstatus label label-default" style="margin-right: 0.5em" data-link="class{: (~root.status['ctrl_type'+{{: ~id}}] == 'OFF') ? 'label label-success' : 'label label-danger' } {: ~root.status['ctrl_type'+{{: ~id}}] }"></span></td>
-	    {{else ~field == 'ramp'}}
-	    <td><span class="monitor-client-controlstatus label label-default" style="margin-right: 0.5em" data-link="class{: (~root.status['ramp'+{{: ~id}}] == 'YES') ? 'label label-danger' : 'label label-success' } {: ~root.status['ramp'+{{: ~id}}] }"></span></td>
 	    {{else}}
             <td>{{status ~field+~id /}}</td>
             {{/if}}
-
             {{/for}}
           </tr>
         </tbody>
