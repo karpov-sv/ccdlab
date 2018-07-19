@@ -1,0 +1,41 @@
+<!-- Default layout for a client widget -->
+<div class="panel panel-default">
+  <!-- Title bar with connection and hardware connection status flags -->
+  <div class="panel-heading">
+    <h3 class="panel-title">
+      <span class="monitor-client-title" style="margin-right: 0.5em">{{> params.description }}</span>
+      <span class="monitor-client-connstatus label label-default" style="margin-right: 0.5em"></span>
+      <span class="monitor-client-hwstatus label label-default" style="margin-right: 0.5em"></span>
+    </h3>
+  </div>
+  <!-- Main body, hidden when disconnected -->
+  <div class="monitor-client-body panel-body hide" style="padding: 1px; margin: 1px;">
+    <!-- Progress bar -->
+    <div class="monitor-client-progressdiv progress hide" style="margin: 0; padding: 0">
+      <div class="monitor-client-progress progress-bar" style="width: 0%">
+      </div>
+    </div>
+
+    <!-- Main content -->
+    <div class="monitor-client-main" style="padding: 5px">
+      <span class="btn-group">
+        <!-- Set of buttons that send value changing commands and disable/enable the buttons according to current value -->
+        <button class="btn btn-default disabled">Val1:</button>
+        <button class="btn btn-default monitor-button" data-command="send example set val1=-1" data-link="disabled{: status.val1 == -1 }">-1</button>
+        <button class="btn btn-default monitor-button" data-command="send example set val1=0" data-link="disabled{: status.val1 == 0 }">0</button>
+        <button class="btn btn-default monitor-button" data-command="send example set val1=1" data-link="disabled{: status.val1 == 1 }">1</button>
+      </span>
+
+      <!-- Generic button that sends a command -->
+      <button class="btn btn-default monitor-button" data-command="send example exit">Restart</button>
+    </div>
+
+    <!-- Show all key=value pairs from the status -->
+    <div class="monitor-client-main" style="padding: 5px">
+      {^{props status}}
+      {^{: key }}:&nbsp;{{status key /}}
+      {{/props}}
+    </div>
+
+  </div>
+</div>

@@ -14,30 +14,7 @@ Monitor = function(parent_id, base="/monitor", title="Monitor"){
     $.link(true, this.id, this);
 
     // Buttons
-    var monitor = this; // Will be re-defined inside .each()
-    $('button.monitor-button').each(function(i, button){
-        var command = $(button).attr('data-command');
-        var mode = $(button).attr('data-mode') || 'command';
-
-        if(mode == 'input'){
-            var prompt = $(button).attr('data-prompt');
-
-            $(button).click($.proxy(function(event){
-                bootbox.prompt(prompt, $.proxy(function(result){
-                    if(result){
-                        this.sendCommand(command.replace('${value}', result));
-                    }
-                }, monitor));
-            }, monitor));
-        } else if(mode == 'command' && command){
-            $(button).click($.proxy(function(event){
-                this.sendCommand(command);
-                event.preventDefault();
-            }, monitor));
-        } else {
-            $(button).addClass('disabled');
-        }
-    });
+    this.activateButtons(this.id);
 
     // Command line
     this.cmdline = $(this.id).find(".monitor-cmdline");
@@ -254,6 +231,9 @@ Monitor.prototype.renderClient = function(client)
     for(var name in client['params']['plots']){
         new Updater(client['widget'].find('.monitor-plot-'+client['name']+'-'+name), 10000);
     }
+
+    // Buttons
+    this.activateButtons(client['widget']);
 }
 
 Monitor.prototype.addLog = function(message, time, source, type)
@@ -279,4 +259,32 @@ Monitor.prototype.addLog = function(message, time, source, type)
     // Notification message
     var notifytype = {'message':'base', 'info':'info', 'warning':'warn', 'error':'error', 'success':'success'}[type];
     $.notify(source + ' : ' + message, notifytype);
+}
+
+Monitor.prototype.activateButtons = function(parent)
+{
+    var monitor = this; // Will be re-defined inside .each()
+    parent.find('button.monitor-button').each(function(i, button){
+        var command = $(button).attr('data-command');
+        var mode = $(button).attr('data-mode') || 'command';
+
+        if(mode == 'input'){
+            var prompt = $(button).attr('data-prompt');
+
+            $(button).click($.proxy(function(event){
+                bootbox.prompt(prompt, $.proxy(function(result){
+                    if(result){
+                        this.sendCommand(command.replace('${value}', result));
+                    }
+                }, monitor));
+            }, monitor));
+        } else if(mode == 'command' && command){
+            $(button).click($.proxy(function(event){
+                this.sendCommand(command);
+                event.preventDefault();
+            }, monitor));
+        } else {
+            $(button).addClass('disabled');
+        }
+    });
 }

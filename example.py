@@ -17,7 +17,11 @@ class DaemonProtocol(SimpleProtocol):
         hw = obj['hw'] # HW factory
 
         if cmd.name == 'get_status':
-            self.message('status hw_connected=%s' % self.object['hw_connected'])
+            self.message('status hw_connected=%s val1=%s val2=%s val3=%s' % (self.object['hw_connected'], self.object['val1'], self.object['val2'], self.object['val3']))
+        elif cmd.name == 'set':
+            for varname in ['val1', 'val2', 'val3', 'hw_connected']:
+                if cmd.has_key(varname):
+                    self.object[varname] = cmd.get(varname)
         else:
             if obj['hw_connected']:
                 # Pass all other commands directly to hardware
@@ -57,7 +61,7 @@ if __name__ == '__main__':
 
     # Object holding actual state and work logic.
     # May be anything that will be passed by reference - list, dict, object etc
-    obj = {'hw_connected':0}
+    obj = {'hw_connected':0, 'val1':0, 'val2':0, 'val3':0}
 
     # Factories for daemon and hardware connections
     # We need two different factories as the protocols are different
