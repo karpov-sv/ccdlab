@@ -30,6 +30,16 @@
       <button class="btn btn-default monitor-button" data-command="send example exit">Restart</button>
     </div>
 
+    <!-- Custom displays with manual formatting -->
+    <div class="monitor-client-main" style="padding: 5px">
+      <!-- Completely manual handling using 'switch' helper -->
+      Val1: <span class="label label-primary" style="margin-right: 0em" data-link="{:status.val1}  class{:~switch(status.val1, -1, 'label label-danger', 0, 'label label-primary', 1, 'label label-success')}"> - </span>
+      <!-- Data-linked value with default or user-provided CSS class -->
+      {{status 'val1' /}}
+      <!-- Data-linked value with CSS class depending on the value itself, provided as a list of 'value'-'class' pairs -->
+      {{status_switch 'val1' '-1' 'label label-danger' '0' 'label label-primary' '1' 'label label-success' /}}
+    </div>
+
     <!-- Show all key=value pairs from the status -->
     <div class="monitor-client-main" style="padding: 5px">
       {^{props status}}

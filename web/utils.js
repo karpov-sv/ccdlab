@@ -136,7 +136,9 @@ $.views.helpers({
     // Shortcut for getting a status by its name
     status: function(name) {return this.root.data.status[name];},
     // Get value from our custom storage by name
-    get: function(name) {return vars[name];}
+    get: function(name) {return vars[name];},
+    // Simple switch-case helper
+    switch: function(value, ...arr) {for(var i = 0; i < arr.length; i+=2) if(value == arr[i]) return arr[i+1];},
 });
 
 $.views.tags({
@@ -144,6 +146,13 @@ $.views.tags({
     status: function(name, aclass) {
         aclass = (typeof aclass === 'undefined') ? '' : aclass;
         return '<span class="label label-primary '+aclass+'" style="margin-right: 0em" data-link="~root.status.' + name + '"> - </span>';
+    },
+    // The same with CSS class depending on the value using list of value-class pairs
+    status_switch: function(name, ...arr) {
+        text = '';
+        for(var i = 0; i < arr.length; i+=2) text += ', \'' + arr[i] + '\', \'' + arr[i+1] + '\'';
+
+        return '<span class="label label-primary" style="margin-right: 0em" data-link="{:~root.status.' + name + '} class{:~switch(~root.status.' + name + text + ')}"> - </span>';
     },
     root: function(name, aclass) {
         aclass = (typeof aclass === 'undefined') ? '' : aclass;
