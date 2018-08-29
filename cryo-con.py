@@ -20,7 +20,8 @@ class DaemonProtocol(SimpleProtocol):
         cmd = SimpleProtocol.processMessage(self, string)
         obj = self.object  # Object holding the state
         hw = obj['hw']  # HW factory
-        STRING = string[:-1].upper()
+        string=string.strip()
+        STRING = string.upper()
         while True:
             if cmd.name == 'get_status':
                 self.message('status hw_connected=%s status=%s temperatureA=%g temperatureB=%g temperatureC=%g temperatureD=%g control=%s\
