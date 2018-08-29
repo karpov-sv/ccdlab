@@ -34,7 +34,7 @@
     <li class="list-group-item clearfix" style="padding: 5px">
       <!-- Subsystems -->
       <img src="/monitor/plot/{{> ~root.params.name }}/plot_power" class="monitor-plot-{{> ~root.params.name }}-plot_power img pull-right"/><br>
-      <span class="monitor-client-controlstatus label label-default" style="margin-right: 0.5em" data-link="class{: (status.control == 'ON') ? 'label label-danger' : 'label label-success' } {:(status.control == 'ON') ? 'Control Engaged' : 'Control Disengaged'}"></span>
+      <span class="monitor-client-controlstatus label label-default" style="margin-right: 0.5em" data-link="class{: (status.control == 'ON') ? 'label label-danger' : 'label label-default' } {:(status.control == 'ON') ? 'Control Engaged' : 'Control Disengaged'}"></span>
       {{for ~list('pwr_set1','pwr_actual1','pwr_set2','pwr_actual2') itemVar="~prefix" }}
       <div>
         {{: ~prefix }}: {{status ~prefix /}}
@@ -42,22 +42,34 @@
       {{/for}}
     </li>
 
+    <button class="btn btn-danger monitor-button" data-command="send cryo-con control" data-link="disabled{: status.control == 'ON' }">Start Control</button>
+    <button class="btn btn-default monitor-button" data-command="send cryo-con stop" data-link="disabled{: status.control == 'OFF' }">Stop Control</button>
+    
+
     <li class="list-group-item" style="padding: 5px">
       <table class='table table-condensed'>
         {{for ~list('0', '1', '2', '3', '4') itemVar="~id" }}
         <tbody>
           <tr>
             {{if ~id == 0 }}
-            <th>LOOP</th>
+                <th>LOOP</th>
             {{else}}
-            <td>{{: ~id }}</td>
+                <td>{{: ~id }}</td>
             {{/if}}
-            {{for ~list('pwr_set', 'pwr_actual', 'range', 'load', 'source', 'set_point', 'ctrl_type', 'ramp', 'rate') itemVar="~field"}}
-            {{if ~id == 0}}
-            <th>{{:~field}}</th>
-	    {{else}}
-            <td>{{status ~field+~id /}}</td>
-            {{/if}}
+            {{for ~list('pwr_set', 'pwr_actual', 'pwr_man', 'range', 'load', 'source', 'set_point', 'ctrl_type', 'ramp', 'rate') itemVar="~field"}}
+                {{if ~id == 0}}
+                    <th>{{:~field}}</th>
+                {{else}}
+                    <td>
+                    {{if ~field == 'ctrl_type'}}
+                        {{status_switch ~field+~id 'OFF' 'label label-default' 'MAN' 'label label-danger' 'PID' 'label label-warning' 'RAMPP' 'label label-success' 'RAMPT' 'label label-success'/}}
+                    {{else ~field == 'ramp'}}
+                        {{status_switch ~field+~id 'NO' 'label label-default' 'YES' 'label label-danger'/}}
+                    {{else}}
+                        {{status ~field+~id /}}
+                    {{/if}}
+                    </td>
+                {{/if}}
             {{/for}}
           </tr>
         </tbody>
