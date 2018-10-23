@@ -23,7 +23,7 @@ class DaemonProtocol(SimpleProtocol):
             if cmd.name == 'id':
                 break
             if cmd.name == 'get_status':
-                self.message('status hw_connected=%s Current=%g Voltage=%g zero_check=%s zero_check_performed=%s V_source=%s I_auto_range=%s I_range=%s V_range=%s V_limit=%s' %
+                self.message('status hw_connected=%s Current=%g Voltage=%g zero_check=%s zero_check_performed=%s V_source=%s I_auto_range=%s I_range=%s V_range=%s I_limit=%s' %
                              (self.object['hw_connected'],
                               self.object['Current'],
                               self.object['Voltage'],
@@ -33,8 +33,8 @@ class DaemonProtocol(SimpleProtocol):
                               self.object['I_auto_range'],
                               self.object['I_range'],
                               self.object['V_range'],
-                              self.object['V_limit']))
-                if self.object['V_limit'] != '-' and self.object['zero_check_performed'] == 'no':  # i.e. comunication established , getting some statusupdates
+                              self.object['I_limit']))
+                if self.object['I_limit'] != '-' and self.object['zero_check_performed'] == 'no':  # i.e. comunication established , getting some statusupdates
                     cmd.name = 'zero_check'  # forse a zero check
                     self.object['zero_check_performed'] = 'auto_sheduled'
                 else:
@@ -71,7 +71,6 @@ class DaemonProtocol(SimpleProtocol):
                 if volt_pars[3] not in ['0', '1']:
                     raise ValueError('KEITHLEY487: unable to parse current limit')
                     return
-                print "sending " + 'V' + volt_pars[1] + ',' + volt_pars[2] + ',' + volt_pars[3]
                 self.sendCommand('V' + volt_pars[1] + ',' + volt_pars[2] + ',' + volt_pars[3], keep=False)
                 break
             if cmd.name == 'get_current':
@@ -79,9 +78,9 @@ class DaemonProtocol(SimpleProtocol):
                 break
             if cmd.name == 'zero_check':
                 if self.object['zero_check_performed'] == 'auto_sheduled':
-                    self.object['zero_check_performed'] = 'auto'
+                    self.object['zero_check_performed'] = 'auto_performing'
                 else:
-                    self.object['zero_check_performed'] = 'manual'
+                    self.object['zero_check_performed'] = 'manual_performing'
                 self.sendCommand('C1X', keep=False)
                 for curr_range in range(1, 8):
                     self.sendCommand('R' + str(curr_range) + 'X', keep=False)
@@ -172,8 +171,12 @@ class KeithleyProtocol(SimpleProtocol):
                 obj['I_auto_range'] = 'disabled' if string[32:34] == 'R0' else 'enabled'
                 obj['I_range'] = self.Iranges[string[34]]
                 obj['V_range'] = '50V' if string[39:41] == 'V0' else '500V'
-                obj['V_limit'] = '25uA' if string[41] == '1' else '25mA'
+                obj['I_limit'] = '25uA' if string[41] == '1' else '25mA'
                 self.commands.pop(0)
+                if self.object['zero_check_performed'] == 'auto_performing':
+                    self.object['zero_check_performed'] = 'auto'
+                if self.object['zero_check_performed'] == 'manual_performing':
+                    self.object['zero_check_performed'] = 'manual'
                 break
             daemon.messageAll(string, self.commands[0]['source'])
             self.commands.pop(0)
@@ -242,7 +245,7 @@ if __name__ == '__main__':
         'I_auto_range': '-',
         'I_range': '-',
         'V_range': '-',
-        'V_limit': '-', }
+        'I_limit': '-', }
 
     # Factories for daemon and hardware connections
     # We need two different factories as the protocols are different
