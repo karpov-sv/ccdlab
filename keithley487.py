@@ -23,12 +23,22 @@ class DaemonProtocol(SimpleProtocol):
             if cmd.name == 'id':
                 break
             if cmd.name == 'get_status':
-                self.message(
-                    'status hw_connected=%s Current=%g Voltage=%g' %
-                    (self.object['hw_connected'],
-                     self.object['Current'],
-                     self.object['Voltage']))
-                break
+                self.message('status hw_connected=%s Current=%g Voltage=%g zero_check=%s zero_check_performed=%s V_source=%s I_auto_range=%s I_range=%s V_range=%s V_limit=%s' %
+                             (self.object['hw_connected'],
+                              self.object['Current'],
+                              self.object['Voltage'],
+                              self.object['zero_check'],
+                              self.object['zero_check_performed'],
+                              self.object['V_source'],
+                              self.object['I_auto_range'],
+                              self.object['I_range'],
+                              self.object['V_range'],
+                              self.object['V_limit']))
+                if self.object['V_limit'] != '-' and self.object['zero_check_performed'] == 'no':  # i.e. comunication established , getting some statusupdates
+                    cmd.name = 'zero_check'  # forse a zero check
+                    self.object['zero_check_performed'] = 'auto_sheduled'
+                else:
+                    break
             if cmd.name == 'reset':
                 daemon.log('Resetting Keithley 487')
                 self.sendCommand('L0X')
@@ -44,49 +54,43 @@ class DaemonProtocol(SimpleProtocol):
                 # the format is set_voltage,val1,val2,val3
                 # val1 -> voltage in V; val2 -> range, 0 is 50V, 1 is 500V;
                 # val3 -> curr. limit, 0 is 20 uA, 1 is 2 mA
-                print "------------------- here -------------------"
                 volt_pars = cmd.name.split(',')
                 if len(volt_pars) != 4:
-                    raise ValueError(
-                        'KEITHLEY487: unable to parse voltage command')
+                    raise ValueError('KEITHLEY487: unable to parse voltage command')
                     return
                 if volt_pars[2] == '0':
                     vlim = 50
                 elif volt_pars[2] == '1':
                     vlim = 500
                 else:
-                    raise ValueError(
-                        'KEITHLEY487: unable to parse voltage range')
+                    raise ValueError('KEITHLEY487: unable to parse voltage range')
                     return
                 if abs(float(volt_pars[1])) > vlim:
-                    raise ValueError(
-                        'KEITHLEY487: requested voltage out of range')
+                    raise ValueError('KEITHLEY487: requested voltage out of range')
                     return
                 if volt_pars[3] not in ['0', '1']:
-                    raise ValueError(
-                        'KEITHLEY487: unable to parse current limit')
+                    raise ValueError('KEITHLEY487: unable to parse current limit')
                     return
-                print "sending " + 'V' + \
-                    volt_pars[1] + ',' + volt_pars[2] + ',' + volt_pars[3]
-                self.sendCommand(
-                    'V' +
-                    volt_pars[1] +
-                    ',' +
-                    volt_pars[2] +
-                    ',' +
-                    volt_pars[3],
-                    keep=False)
+                print "sending " + 'V' + volt_pars[1] + ',' + volt_pars[2] + ',' + volt_pars[3]
+                self.sendCommand('V' + volt_pars[1] + ',' + volt_pars[2] + ',' + volt_pars[3], keep=False)
                 break
             if cmd.name == 'get_current':
                 self.sendCommand('B0X', keep=True)
                 break
             if cmd.name == 'zero_check':
+                if self.object['zero_check_performed'] == 'auto_sheduled':
+                    self.object['zero_check_performed'] = 'auto'
+                else:
+                    self.object['zero_check_performed'] = 'manual'
                 self.sendCommand('C1X', keep=False)
-                for curr_range in range(1,8):
-                    self.sendCommand('R'+str(curr_range)+'X', keep=False)
+                for curr_range in range(1, 8):
+                    self.sendCommand('R' + str(curr_range) + 'X', keep=False)
                     self.sendCommand('C2X', keep=False)
+                    # this requests a read value, not so important which one, but makes it wait for the command to finish
+                    self.sendCommand('++srq', keep=True)
                 self.sendCommand('C0X', keep=False)
                 self.sendCommand('R0X', keep=False)
+                break
             # We need to recognize query cmd somehow - adding \'?\' to those commands, although the command set for K487 has no such thing
             if cmd.name[-1] == '?':
                 self.sendCommand(cmd.name.rstrip('?'), keep=True)
@@ -115,6 +119,13 @@ class KeithleyProtocol(SimpleProtocol):
         self.name = 'hw'
         self.type = 'hw'
         self.lastAutoRead = datetime.datetime.utcnow()
+        self.Iranges = {'1': '2nA',
+                        '2': '20nA',
+                        '3': '200nA',
+                        '4': '2uA',
+                        '5': '20uA',
+                        '6': '200uA',
+                        '7': '2mA'}
 
     @catch
     def connectionMade(self):
@@ -122,8 +133,11 @@ class KeithleyProtocol(SimpleProtocol):
         # We will set this flag when we receive any reply from the device
         self.object['hw_connected'] = 0
         SimpleProtocol.message(self, 'set_addr %d' % self.object['addr'])
-        SimpleProtocol.message(self, '?$L0XK0XU0X')  # enable EOI and holdoff
-        SimpleProtocol.message(self, 'R0X') # set autorange
+        SimpleProtocol.message(self, 'L0X')
+        SimpleProtocol.message(self, 'K0X')
+        SimpleProtocol.message(self, '?$U0X')  # enable EOI and holdoff
+        SimpleProtocol.message(self, 'R0X')  # set autorange
+
     @catch
     def connectionLost(self, reason):
         self.object['hw_connected'] = 0
@@ -137,10 +151,6 @@ class KeithleyProtocol(SimpleProtocol):
 
         if self._debug:
             print 'KEITHLEY487 >> %s' % string
-            print 'comands Q: -----------------'
-            for cmd in self.commands:
-                print cmd
-            print '----------------------------'
 
         # Update the last reply timestamp
         obj['hw_last_reply_time'] = datetime.datetime.utcnow()
@@ -153,18 +163,25 @@ class KeithleyProtocol(SimpleProtocol):
                 self.commands.pop(0)
                 break
             if self.commands[0]['cmd'] == 'U8X' and self.commands[0]['source'] == 'itself':
-                obj['Voltage'] = float(string[4:-2])
+                obj['Voltage'] = float(string[3:-2])
                 self.commands.pop(0)
                 break
-
+            if self.commands[0]['cmd'] == 'U0X' and self.commands[0]['source'] == 'itself':
+                obj['zero_check'] = 'disabled' if string[7:9] == 'C0' else 'enabled'
+                obj['V_source'] = 'disabled' if string[28:30] == 'O0' else 'enabled'
+                obj['I_auto_range'] = 'disabled' if string[32:34] == 'R0' else 'enabled'
+                obj['I_range'] = self.Iranges[string[34]]
+                obj['V_range'] = '50V' if string[39:41] == 'V0' else '500V'
+                obj['V_limit'] = '25uA' if string[41] == '1' else '25mA'
+                self.commands.pop(0)
+                break
             daemon.messageAll(string, self.commands[0]['source'])
             self.commands.pop(0)
             break
 
     @catch
     def update(self):
-        if (datetime.datetime.utcnow() -
-                obj['hw_last_reply_time']).total_seconds() > 100:
+        if (datetime.datetime.utcnow() - obj['hw_last_reply_time']).total_seconds() > 100:
             # We did not get any reply from device during last 100 seconds,
             # probably it is disconnected?
             self.object['hw_connected'] = 0
@@ -179,6 +196,7 @@ class KeithleyProtocol(SimpleProtocol):
             # Request the hardware state from the device
             self.message('B0X', keep=True, source='itself')
             self.message('U8X', keep=True, source='itself')
+            self.message('U0X', keep=True, source='itself')
             self.lastAutoRead = datetime.datetime.utcnow()
 
     @catch
@@ -202,49 +220,12 @@ if __name__ == '__main__':
     from optparse import OptionParser
 
     parser = OptionParser(usage="usage: %prog [options] arg")
-    parser.add_option(
-        '-H',
-        '--hw-host',
-        help='GPIB multiplexor host to connect',
-        action='store',
-        dest='hw_host',
-        default='localhost')
-    parser.add_option(
-        '-P',
-        '--hw-port',
-        help='GPIB multiplexor port to connect',
-        action='store',
-        dest='hw_port',
-        type='int',
-        default=7020)
-    parser.add_option(
-        '-a',
-        '--addr',
-        help='GPIB bus address of the device',
-        action='store',
-        dest='addr',
-        default=15)
-    parser.add_option(
-        '-p',
-        '--port',
-        help='Daemon port',
-        action='store',
-        dest='port',
-        type='int',
-        default=7022)
-    parser.add_option(
-        '-n',
-        '--name',
-        help='Daemon name',
-        action='store',
-        dest='name',
-        default='keithley487')
-    parser.add_option(
-        "-D",
-        '--debug',
-        help='Debug mode',
-        action="store_true",
-        dest="debug")
+    parser.add_option('-H', '--hw-host', help='GPIB multiplexor host to connect', action='store', dest='hw_host', default='localhost')
+    parser.add_option('-P', '--hw-port', help='GPIB multiplexor port to connect', action='store', dest='hw_port', type='int', default=7020)
+    parser.add_option('-a', '--addr', help='GPIB bus address of the device', action='store', dest='addr', default=15)
+    parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7022)
+    parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='keithley487')
+    parser.add_option("-D", '--debug', help='Debug mode', action="store_true", dest="debug")
 
     (options, args) = parser.parse_args()
 
@@ -255,7 +236,13 @@ if __name__ == '__main__':
         'addr': options.addr,
         'Current': 0,
         'Voltage': 0,
-        'range': 0}
+        'zero_check': '-',
+        'zero_check_performed': 'no',
+        'V_source': '-',
+        'I_auto_range': '-',
+        'I_range': '-',
+        'V_range': '-',
+        'V_limit': '-', }
 
     # Factories for daemon and hardware connections
     # We need two different factories as the protocols are different
@@ -271,8 +258,7 @@ if __name__ == '__main__':
     obj['daemon'] = daemon
     obj['hw'] = hw
 
-    obj['hw_last_reply_time'] = datetime.datetime(
-        1970, 1, 1)  # Arbitrarily old time moment
+    obj['hw_last_reply_time'] = datetime.datetime(1970, 1, 1)  # Arbitrarily old time moment
 
     # Incoming connections
     daemon.listen(options.port)
