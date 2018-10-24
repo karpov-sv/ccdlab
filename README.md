@@ -218,7 +218,15 @@ The following Python packages are necessary in order to run the system:
     * ``apt-get install python-django``
     * ``pip install django-el-pagination``
 
-...
+To set up the database:
+  * **PostgreSQL** installation
+    * ``apt-get install postgresql-10``
+    
+  * Configure the database
+    * ``sudo -u postgres createuser --superuser $USER``
+    * ``createdb ccdlab``
+    * ``psql ccdlab < db/log.sql``
+    * ``psql ccdlab < db/monitor.sql``
 
 # TODO
 

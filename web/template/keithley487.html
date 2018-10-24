@@ -1,0 +1,55 @@
+<!-- Default layout for a client widget -->
+<div class="panel panel-default">
+  <!-- Title bar with connection and hardware connection status flags -->
+  <div class="panel-heading">
+    <h3 class="panel-title">
+      <span class="monitor-client-title" style="margin-right: 0.5em">{{> params.description }}</span>
+      <span class="monitor-client-connstatus label label-default" style="margin-right: 0.5em"></span>
+      <span class="monitor-client-hwstatus label label-default" style="margin-right: 0.5em" ></span>
+    </h3>
+  </div>
+  <!-- Main body, hidden when disconnected -->
+  <ul class="monitor-client-body list-group hide">
+    <!-- Progress bar -->
+    <li class="monitor-client-progressdiv list-group-item progress hide" style="margin: 0; padding: 0">
+      <div class="monitor-client-progress progress-bar" style="width: 0%">
+      </div>
+    </li>
+    <!-- Main content -->
+    <!-- Show all key=value pairs from the status -->
+    <li class="list-group-item" style="padding: 5px">
+    </li>
+    
+    <li class="list-group-item clearfix" style="padding: 5px">
+      <!-- Subsystems -->
+      <img src="/monitor/plot/{{> ~root.params.name }}/current" class="monitor-plot-{{> ~root.params.name }}-current img pull-right"/>
+      <img src="/monitor/plot/{{> ~root.params.name }}/voltage" class="monitor-plot-{{> ~root.params.name }}-voltage img pull-right"/>
+      {{for ~list('Current','I_auto_range','I_range','I_limit','Voltage','V_source','V_range','zero_check','zero_check_performed') itemVar="~prefix" }}
+        <div>
+            {{if ~prefix == 'I_auto_range'}}
+                {{: ~prefix }}: {{status_switch ~prefix 'enabled' 'label label-success' 'disabled' 'label label-default'/}}
+            {{else ~prefix == 'Voltage'}}
+                {{: ~prefix }}: <span data-link="class{: (~root.status.V_source == 'disabled') ? 'label label-default' : 'label label-success' } {:(~root.status.Voltage)+'V'}"></span>
+            {{else ~prefix == 'V_source'}}
+                {{: ~prefix }}: {{status_switch ~prefix 'enabled' 'label label-success' 'disabled' 'label label-default'/}}
+            {{else ~prefix == 'zero_check'}}
+                {{: ~prefix }}: {{status_switch ~prefix 'disabled' 'label label-success' 'enabled' 'label label-danger'/}}
+            {{else ~prefix == 'Current'}}
+                {{: ~prefix }}: <span data-link="class{: (~root.status.V_source == 'disabled') ? 'label label-default' : 'label label-success'} {:(~root.status.Current)+'A'}"></span>
+            {{else ~prefix == 'zero_check_performed'}}
+                {{: ~prefix }}: {{status_switch ~prefix  'auto' 'label label-success' 'manual' 'label label-success' 'auto_performing' 'label label-danger' 'manual_performing' 'label label-danger' 'no' 'label label-defaul'/}}
+            {{else}}
+                {{: ~prefix }}: {{status ~prefix /}}
+            {{/if}}    
+        </div>
+      {{/for}}
+      <button class="btn btn-danger monitor-button" data-command="send keithley487 zero_check" data-link="disabled{: status.zero_check == 'auto_performing' || status.zero_check == 'manual_performing'}">Perform Zero Check</button><br><br>
+      <button class="btn btn-danger monitor-button" data-command="send keithley487 set_v_on" data-link="disabled{: status.V_source == 'enabled' || status.zero_check == 'auto_performing' || status.zero_check == 'manual_performing'}">Voltage Source Engage</button>
+      <button class="btn btn-default monitor-button" data-command="send keithley487 set_v_off" data-link="disabled{: status.V_source == 'disabled' || status.zero_check == 'auto_performing' || status.zero_check == 'manual_performing'}">Voltage Source Standby</button>
+    </li>
+    
+
+  </ul>
+
+</div>
+
