@@ -149,7 +149,6 @@ class GPIBProtocol(SimpleProtocol):
                 if self._debug:
                     print "Last addr not found (perhaps disconnected meanwhile), switching to the first (", self.next_addr, ")"
             if len(self.daemonQs[self.next_addr]):
-                print self.daemonQs[self.next_addr]
                 if self.object['current_addr'] != self.next_addr:
                     SimpleProtocol.message(self, '++addr %i' % self.next_addr)
                     self.object['current_addr'] = self.next_addr

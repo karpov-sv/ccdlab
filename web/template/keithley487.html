@@ -16,7 +16,6 @@
       </div>
     </li>
     <!-- Main content -->
-
     <!-- Show all key=value pairs from the status -->
     <li class="list-group-item" style="padding: 5px">
     </li>
@@ -26,12 +25,27 @@
       <img src="/monitor/plot/{{> ~root.params.name }}/current" class="monitor-plot-{{> ~root.params.name }}-current img pull-right"/>
       <img src="/monitor/plot/{{> ~root.params.name }}/voltage" class="monitor-plot-{{> ~root.params.name }}-voltage img pull-right"/>
       {{for ~list('Current','Voltage','I_auto_range','I_range','V_source','V_range','I_limit','zero_check','zero_check_performed') itemVar="~prefix" }}
-      <div>
-        {{: ~prefix }}: {{status ~prefix /}}
-      </div>
+        <div>
+            {{if ~prefix == 'I_auto_range'}}
+                {{: ~prefix }}: {{status_switch ~prefix 'enabled' 'label label-success' 'disabled' 'label label-default'/}}
+            {{else ~prefix == 'Voltage'}}
+                {{: ~prefix }}: <span data-link="class{: (~root.status.V_source == 'disabled') ? 'label label-default' : 'label label-success' } {:(~root.status.Voltage)}"></span> V
+            {{else ~prefix == 'V_source'}}
+                {{: ~prefix }}: {{status_switch ~prefix 'enabled' 'label label-success' 'disabled' 'label label-default'/}}
+            {{else ~prefix == 'zero_check'}}
+                {{: ~prefix }}: {{status_switch ~prefix 'disabled' 'label label-success' 'enabled' 'label label-danger'/}}
+            {{else ~prefix == 'Current'}}
+                {{: ~prefix }}: {{status ~prefix /}} A
+            {{else ~prefix == 'zero_check_performed'}}
+                {{: ~prefix }}: {{status_switch ~prefix  'auto' 'label label-success' 'manual' 'label label-success' 'auto_performing' 'label label-danger' 'manual_performing' 'label label-danger' 'no' 'label label-defaul'/}}
+            {{else}}
+                {{: ~prefix }}: {{status ~prefix /}}
+            {{/if}}    
+        </div>
       {{/for}}
     </li>
     
   </ul>
 
 </div>
+

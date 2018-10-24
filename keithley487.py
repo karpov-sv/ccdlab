@@ -90,6 +90,12 @@ class DaemonProtocol(SimpleProtocol):
                 self.sendCommand('C0X', keep=False)
                 self.sendCommand('R0X', keep=False)
                 break
+            if cmd.name == 'set_v_on':
+                self.sendCommand('O1X', keep=False)
+                break
+            if cmd.name == 'set_v_off':
+                self.sendCommand('O0X', keep=False)
+                break
             # We need to recognize query cmd somehow - adding \'?\' to those commands, although the command set for K487 has no such thing
             if cmd.name[-1] == '?':
                 self.sendCommand(cmd.name.rstrip('?'), keep=True)
