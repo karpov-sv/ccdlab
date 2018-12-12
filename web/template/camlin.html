@@ -1,0 +1,59 @@
+<!-- Default layout for a client widget -->
+<div class="panel panel-default">
+  <!-- Title bar with connection and hardware connection status flags -->
+  <div class="panel-heading">
+    <h3 class="panel-title">
+      <span class="monitor-client-title" style="margin-right: 0.5em">{{> params.description }}</span>
+      <span class="monitor-client-connstatus label label-default" style="margin-right: 0.5em"></span>
+      <span class="monitor-client-hwstatus label label-default" style="margin-right: 0.5em"></span>
+    </h3>
+  </div>
+  <!-- Main body, hidden when disconnected -->
+  <div class="monitor-client-body panel-body hide" style="padding: 1px; margin: 1px;">
+    <!-- Progress bar -->
+    <div class="monitor-client-progressdiv progress hide" style="margin: 0; padding: 0">
+      <div class="monitor-client-progress progress-bar" style="width: 0%">
+      </div>
+    </div>
+
+    <!-- Main content -->
+
+    <!-- Show all key=value pairs from the status -->
+    <div id="test" class="monitor-client-main" style="padding: 5px" data-link="class{:~switch(status.hw_connected, 0, 'monitor-client-main disabled-controls', 1, 'monitor-client-main')}">
+
+      Wavelength: {{status 'wavelength' /}} nm
+      <button class="btn btn-default monitor-button" data-mode="input" data-prompt="Set wavelength (nm)" data-command="send camlin set wavelength=${value}">Change</button>
+
+      <span class="btn-group">
+        <button class="btn btn-default disabled">Grating:</button>
+        <button class="btn btn-default monitor-button" data-command="send camlin set grating=1" data-link="disabled{: status.grating == 1 } class{:~switch(status.grating, 1, 'btn btn-success monitor-button', 'btn btn-default monitor-button')}">1</button>
+        <button class="btn btn-default monitor-button" data-command="send camlin set grating=2" data-link="disabled{: status.grating == 2 } class{:~switch(status.grating, 2, 'btn btn-success monitor-button', 'btn btn-default monitor-button')}">2</button>
+      </span>
+
+       : Blaze {{status 'blaze' 'label-info' /}} nm {{status 'grooves' 'label-info' /}} g/mm
+
+      <span class="btn-group">
+        <button class="btn btn-default disabled">Shutter:</button>
+        <button class="btn btn-default monitor-button" data-command="send camlin set shutter=0" data-link="disabled{: status.shutter == 0 }  class{:~switch(status.shutter, 0, 'btn btn-success monitor-button', 1, 'btn btn-default monitor-button', 'btn btn-default monitor-button')}">Close</button>
+        <button class="btn btn-default monitor-button" data-command="send camlin set shutter=1" data-link="disabled{: status.shutter == 1 } class{:~switch(status.shutter, 0, 'btn btn-default monitor-button', 1, 'btn btn-danger monitor-button', 'btn btn-default monitor-button')}">Open</button>
+      </span>
+
+      <span class="btn-group">
+        <button class="btn btn-default disabled" data-link>Filter:</button>
+        <button class="btn btn-default monitor-button" data-command="send camlin set filter=1" data-link="disabled{: status.filter == 1 } class{:~switch(status.filter, 1, 'btn btn-success monitor-button', 'btn btn-default monitor-button')}">-</button>
+        <button class="btn btn-default monitor-button" data-command="send camlin set filter=2" data-link="disabled{: status.filter == 2 } class{:~switch(status.filter, 2, 'btn btn-success monitor-button', 'btn btn-default monitor-button')}">395</button>
+        <button class="btn btn-default monitor-button" data-command="send camlin set filter=3" data-link="disabled{: status.filter == 3 } class{:~switch(status.filter, 3, 'btn btn-success monitor-button', 'btn btn-default monitor-button')}">695</button>
+        <button class="btn btn-default monitor-button" data-command="send camlin set filter=4" data-link="disabled{: status.filter == 4 } class{:~switch(status.filter, 4, 'btn btn-success monitor-button', 'btn btn-default monitor-button')}">1000</button>
+        <button class="btn btn-default monitor-button" data-command="send camlin set filter=5" data-link="disabled{: status.filter == 5 } class{:~switch(status.filter, 5, 'btn btn-success monitor-button', 'btn btn-default monitor-button')}">-</button>
+        <button class="btn btn-default monitor-button" data-command="send camlin set filter=6" data-link="disabled{: status.filter == 6 } class{:~switch(status.filter, 6, 'btn btn-success monitor-button', 'btn btn-default monitor-button')}">-</button>
+      </span>
+    </div>
+
+    <!-- Show all pre-configured plots -->
+    <div class="monitor-client-plots" style="padding: 5px">
+      {{props params.plots }}
+      <img src="/monitor/plot/{{> ~root.params.name }}/{{> key }}" class="monitor-plot-{{> ~root.params.name }}-{{> key }} img img-responsive center-block"/><br>
+      {{/props}}
+    </div>
+  </div>
+</div>

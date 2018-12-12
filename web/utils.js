@@ -138,7 +138,7 @@ $.views.helpers({
     // Get value from our custom storage by name
     get: function(name) {return vars[name];},
     // Simple switch-case helper
-    switch: function(value, ...arr) {for(var i = 0; i < arr.length; i+=2) if(value == arr[i]) return arr[i+1];},
+    switch: function(value, ...arr) {for(var i = 0; i < Math.floor(arr.length/2)*2; i+=2) if(value == arr[i]) return arr[i+1]; return arr[arr.length-1]},
 });
 
 $.views.tags({
