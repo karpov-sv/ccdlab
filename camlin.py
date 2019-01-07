@@ -90,7 +90,7 @@ class DaemonProtocol(SimpleProtocol):
             obj['filter'] = hw.get_filterwheel_position(obj['hw_filterwheel'])
             obj['shutter'] = 1 if hw.is_shutter_open(obj['hw_shutter']) else 0
 
-            if obj['wavelength'] is None:
+            if obj['grooves'] is None:
                 obj['hw_connected'] = 0
 
 if __name__ == '__main__':
