@@ -136,12 +136,20 @@ class GPIBProtocol(SimpleProtocol):
 
     @catch
     def update(self):
+        if self._debug:
+            print "Busy flag", self.readBusy
         if self.readBusy:
             return
         self.update_daemonQs()
-        if len(self.gpibAddrList):
+        if self._debug:
+            print "daemonQs:", self.daemonQs
+        
+        last_addr=self.next_addr
+        no_commands = True
+        for k in range(len(self.gpibAddrList)):
             try:
-                self.next_addr = self.gpibAddrList[self.gpibAddrList.index(self.next_addr) - 1]
+                d=self.gpibAddrList.index(last_addr) - k - 1
+                self.next_addr = self.gpibAddrList[d]
                 if self._debug:
                     print "Found last addr, switching to the next (", self.next_addr, ")"
             except BaseException:
@@ -152,13 +160,16 @@ class GPIBProtocol(SimpleProtocol):
                 if self.object['current_addr'] != self.next_addr:
                     SimpleProtocol.message(self, '++addr %i' % self.next_addr)
                     self.object['current_addr'] = self.next_addr
-                    # time.sleep(0.3) # we need to wait a bit here to allow the controller to finish changing the addr
+                    time.sleep(0.2) # we need to wait a bit here to allow the controller to finish changing the addr
                 cmd = self.daemonQs[self.next_addr].pop(0)
+                no_commands = False
                 if cmd['cmd'] in ['++read', '++addr', '++srq']:
                     self.readBusy = True
-                SimpleProtocol.message(self, cmd['cmd'])
-        elif not self.readBusy:
-            # There is either no GPIB connections, or nothing to do for them
+                SimpleProtocol.message(self, cmd['cmd'])  
+                break
+        if no_commands:
+            if self._debug:
+                print "There is either no GPIB connections, or nothing to do for them, doing ++addr to keep the connection alive"
             self.message('++addr', keep=True)
             self.readBusy = True
 
