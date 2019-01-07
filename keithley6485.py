@@ -67,7 +67,7 @@ class KeithleyProtocol(SimpleProtocol):
         SimpleProtocol.message(self, 'set_addr %d' % self.object['addr'])
         SimpleProtocol.message(self, '*rst')
         SimpleProtocol.message(self, '?$*opc?')
-        self.commands.append({'cmd':'*opc?','source':'itself','timeStamp':datetime.datetime.utcnow(),'keep':'keep'})
+        self.commands=[{'cmd':'*opc?','source':'itself','timeStamp':datetime.datetime.utcnow(),'keep':'keep'}]
        
     @catch
     def connectionLost(self, reason):
@@ -82,6 +82,7 @@ class KeithleyProtocol(SimpleProtocol):
 
         if self._debug:
             print 'KEITHLEY6485 >> %s' % string
+            print 'commands Q:', self.commands
         # Update the last reply timestamp
         obj['hw_last_reply_time'] = datetime.datetime.utcnow()
         obj['hw_connected'] = 1

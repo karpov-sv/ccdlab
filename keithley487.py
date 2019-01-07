@@ -135,6 +135,7 @@ class KeithleyProtocol(SimpleProtocol):
     @catch
     def connectionMade(self):
         SimpleProtocol.connectionMade(self)
+        self.commands = []
         # We will set this flag when we receive any reply from the device
         self.object['hw_connected'] = 0
         SimpleProtocol.message(self, 'set_addr %d' % self.object['addr'])
@@ -156,6 +157,7 @@ class KeithleyProtocol(SimpleProtocol):
 
         if self._debug:
             print 'KEITHLEY487 >> %s' % string
+            print 'commands Q:', self.commands
 
         # Update the last reply timestamp
         obj['hw_last_reply_time'] = datetime.datetime.utcnow()
