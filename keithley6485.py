@@ -96,12 +96,12 @@ class KeithleyProtocol(SimpleProtocol):
             elif self.commands[0]['cmd'] == '*idn?' and self.commands[0]['source']=='itself':
                 # Example of how to broadcast some message to be printed on screen and stored to database
                 daemon.log(string)
-            elif self.commands[0]['cmd'] == 'read?' and self.commands[0]['source']=='itself':
+            elif self.commands[0]['cmd'] == 'fetch?' and self.commands[0]['source']=='itself':
                 s = string.split(',')
                 obj['value'] = float(s[0][:-1])
                 obj['units'] = s[0][-1]
                 obj['timestamp'] = float(s[1])
-            elif self.commands[0]['cmd'] == 'read?' and not self.commands[0]['source']=='itself':
+            elif self.commands[0]['cmd'] == 'fetch?' and not self.commands[0]['source']=='itself':
                 daemon.messageAll(string,self.commands[0]['source'])
             elif self.commands[0]['cmd'] == 'CURR:RANGE?':
                 daemon.messageAll(string,self.commands[0]['source'])
@@ -135,7 +135,8 @@ class KeithleyProtocol(SimpleProtocol):
 
         elif (datetime.datetime.utcnow()-self.lastAutoRead).total_seconds()>2. and len(self.commands)==0:
             # Request the hardware state from the device
-            self.message('read?', keep=True, source='itself')
+            self.message('init', keep=False, source='itself')
+            self.message('fetch?', keep=True, source='itself')
             self.lastAutoRead=datetime.datetime.utcnow()
 
 if __name__ == '__main__':

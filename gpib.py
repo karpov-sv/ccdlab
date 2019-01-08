@@ -67,7 +67,7 @@ class GPIBProtocol(SimpleProtocol):
         self.next_addr = -1
         self.daemonQs = {}  # queues for GPIB devices commands, the key as the address
         self.gpibAddrList = []  # a list of the active GPIB connection addresses
-        self.readBusy = False
+        self.readBusy = [False,time.time()]
 
     @catch
     def connectionMade(self):
@@ -85,7 +85,7 @@ class GPIBProtocol(SimpleProtocol):
     @catch
     def processMessage(self, string):
         if self._debug:
-            print "GPIB >> ", string
+            print "GPIB >> ", repr(string)
 
         SimpleProtocol.processMessage(self, string)
         daemon = self.object['daemon']
@@ -99,7 +99,7 @@ class GPIBProtocol(SimpleProtocol):
                 if conn.addr == self.object['current_addr'] and self.object['current_addr'] >= 0:
                     # Send the device reply to the client connection with given address
                     conn.message(string)
-        self.readBusy = False
+        self.readBusy = [False,time.time()]
 
     @catch
     def message(self, string, keep=False, source='self'):
@@ -114,7 +114,7 @@ class GPIBProtocol(SimpleProtocol):
             self.daemonQs[source].append({'cmd': string})
 
             if keep and source != 'itself' and string not in ['++srq']:
-                self.daemonQs[source].append({'cmd': '++read'})
+                self.daemonQs[source].append({'cmd': '++read eoi'})
         else:
             # Handle non-GPIB messages as usual
             SimpleProtocol.message(self, '%s' % (string))
@@ -138,7 +138,10 @@ class GPIBProtocol(SimpleProtocol):
     def update(self):
         if self._debug:
             print "Busy flag", self.readBusy
-        if self.readBusy:
+        if self.readBusy[0]:
+            if time.time()-self.readBusy[1]>3:
+                SimpleProtocol.message(self, '++read eoi') 
+                self.readBusy[1]=time.time()
             return
         self.update_daemonQs()
         if self._debug:
@@ -151,27 +154,29 @@ class GPIBProtocol(SimpleProtocol):
                 d=self.gpibAddrList.index(last_addr) - k - 1
                 self.next_addr = self.gpibAddrList[d]
                 if self._debug:
-                    print "Found last addr, switching to the next (", self.next_addr, ")"
+                    print "Found last addr (", self.next_addr, ")"
             except BaseException:
                 self.next_addr = self.gpibAddrList[0]
                 if self._debug:
                     print "Last addr not found (perhaps disconnected meanwhile), switching to the first (", self.next_addr, ")"
             if len(self.daemonQs[self.next_addr]):
                 if self.object['current_addr'] != self.next_addr:
+                    if self._debug:
+                        print "switching to addr (", self.next_addr, ")"
                     SimpleProtocol.message(self, '++addr %i' % self.next_addr)
                     self.object['current_addr'] = self.next_addr
-                    time.sleep(0.2) # we need to wait a bit here to allow the controller to finish changing the addr
+                    time.sleep(0.1) # we need to wait a bit here to allow the controller to finish changing the addr
                 cmd = self.daemonQs[self.next_addr].pop(0)
                 no_commands = False
-                if cmd['cmd'] in ['++read', '++addr', '++srq']:
-                    self.readBusy = True
+                if cmd['cmd'] in ['++read eoi', '++addr', '++srq']:
+                    self.readBusy = [True,time.time()]
                 SimpleProtocol.message(self, cmd['cmd'])  
                 break
         if no_commands:
             if self._debug:
                 print "There is either no GPIB connections, or nothing to do for them, doing ++addr to keep the connection alive"
             self.message('++addr', keep=True)
-            self.readBusy = True
+            self.readBusy = [True,time.time()]
 
 
 if __name__ == '__main__':
