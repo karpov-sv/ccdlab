@@ -52,7 +52,8 @@ class DaemonProtocol(SimpleProtocol):
                 break
             if cmd.name.split(',')[0] == 'set_voltage':
                 # the format is set_voltage,val1,val2,val3
-                # val1 -> voltage in V; val2 -> range, 0 is 50V, 1 is 500V;
+                # val1 -> voltage in V;
+                # val2 -> range, 0 is 50V, 1 is 500V;
                 # val3 -> curr. limit, 0 is 20 uA, 1 is 2 mA
                 volt_pars = cmd.name.split(',')
                 if len(volt_pars) != 4:
@@ -151,7 +152,6 @@ class KeithleyProtocol(SimpleProtocol):
 
     @catch
     def processMessage(self, string):
-        SimpleProtocol.processMessage(self, string)
         obj = self.object  # Object holding the state
         daemon = obj['daemon']
 
@@ -218,13 +218,13 @@ class KeithleyProtocol(SimpleProtocol):
         """
         cmd = Command(string)
         if keep:
-            self.commands.append({'cmd': cmd.name,
+            self.commands.append({'cmd': string,
                                   'source': source,
                                   'timeStamp': datetime.datetime.utcnow(),
                                   'keep': keep})
-            SimpleProtocol.message(self, '?$%s' % cmd.name)
+            SimpleProtocol.message(self, '?$%s' % string)
         else:
-            SimpleProtocol.message(self, cmd.name)
+            SimpleProtocol.message(self, string)
 
 
 if __name__ == '__main__':

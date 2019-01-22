@@ -20,6 +20,9 @@ class DaemonProtocol(SimpleProtocol):
     def processMessage(self, string):
         # It will handle some generic messages and return pre-parsed Command object
         cmd = SimpleProtocol.processMessage(self, string)
+        if cmd is None:
+            return
+        
         obj = self.object  # Object holding the state
         daemon = self.factory
         hw = obj['hw']  # HW factory
@@ -119,8 +122,7 @@ class GPIBProtocol(SimpleProtocol):
             # Handle non-GPIB messages as usual
             SimpleProtocol.message(self, '%s' % (string))
             if keep:
-                cmd = Command(string)
-                self.commands.append(cmd.name)
+                self.commands.append(string)
 
     @catch
     def update_daemonQs(self):
@@ -165,14 +167,14 @@ class GPIBProtocol(SimpleProtocol):
                         print "switching to addr (", self.next_addr, ")"
                     SimpleProtocol.message(self, '++addr %i' % self.next_addr)
                     self.object['current_addr'] = self.next_addr
-                    time.sleep(0.1) # we need to wait a bit here to allow the controller to finish changing the addr
+                    #time.sleep(0.1) # we need to wait a bit here to allow the controller to finish changing the addr
                 cmd = self.daemonQs[self.next_addr].pop(0)
                 no_commands = False
                 if cmd['cmd'] in ['++read eoi', '++addr', '++srq']:
                     self.readBusy = [True,time.time()]
                 SimpleProtocol.message(self, cmd['cmd'])  
                 break
-        if no_commands:
+        if no_commands and (time.time()-self.readBusy[1])>1.:
             if self._debug:
                 print "There is either no GPIB connections, or nothing to do for them, doing ++addr to keep the connection alive"
             self.message('++addr', keep=True)
