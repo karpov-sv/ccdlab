@@ -13,15 +13,13 @@ class DaemonProtocol(SimpleProtocol):
         # It will handle some generic messages and return pre-parsed Command
         # object
         cmd = SimpleProtocol.processMessage(self, string)
+        if cmd is None:
+            return
         obj = self.object  # Object holding the state
         daemon = self.factory
         hw = obj['hw']  # HW factory
 
         while True:
-            if cmd.name == 'get_id':
-                break
-            if cmd.name == 'id':
-                break
             if cmd.name == 'get_status':
                 self.message('status hw_connected=%s Current=%g Voltage=%g zero_check=%s zero_check_performed=%s V_source=%s I_auto_range=%s I_range=%s V_range=%s I_limit=%s' %
                              (self.object['hw_connected'],
