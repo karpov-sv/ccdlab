@@ -1,74 +1,122 @@
 #!/usr/bin/env python
 
-import os, sys, datetime
+import os
+import sys
+import datetime
+import re
 
 from daemon import SimpleFactory, SimpleProtocol
 from command import Command
 from daemon import catch
 
+
 class DaemonProtocol(SimpleProtocol):
-    _debug = False # Display all traffic for debug purposes
+    _debug = False  # Display all traffic for debug purposes
 
     @catch
     def processMessage(self, string):
         # It will handle some generic messages and return pre-parsed Command object
         cmd = SimpleProtocol.processMessage(self, string)
-        obj = self.object # Object holding the state
+        if cmd is None:
+            return
+        obj = self.object  # Object holding the state
         daemon = self.factory
-        hw = obj['hw'] # HW factory
+        hw = obj['hw']  # HW factory
 
-        if cmd.name == 'get_status':
-            self.message('status hw_connected=%s value=%g units=%s timestamp=%g' % (self.object['hw_connected'], self.object['value'], self.object['units'], self.object['timestamp']))
-        elif cmd.name in ['reset']:
-            daemon.log('Resetting Keithley 6485')
-            self.sendCommand('*RST')
-        elif cmd.name in ['idn']:
-            self.sendCommand('*idn?', keep=True)
-        elif cmd.name in ['get_curr_range']:
-            self.sendCommand('CURR:RANGE?', keep=True)
-        elif cmd.name in ['zero_check_on']:
-            self.sendCommand('SYST:ZCH ON')
-        elif cmd.name in ['trigger']:
-            self.sendCommand('INIT')
-        elif cmd.name in ['zero_check_aquire']:
-            self.sendCommand('SYST:ZCOR:ACQ')
-        elif cmd.name in ['zero_check_do']:
-            self.sendCommand('SYST:ZCOR ON')
-        elif cmd.name in ['set_curr_range_auto']:    
-            self.sendCommand('CURR:RANG:AUTO ON')
-        elif cmd.name in ['zero_check_off']:
-            self.sendCommand('SYST:ZCH OFF')
+        string = string.strip()
+        STRING = string.upper()
 
-        elif string and string[0] == '*':
-            # For debug purposes only
-            self.sendCommand(string)
+        while True:
+            if string == 'get_status':
+                self.message('status hw_connected=%s value=%g units=%s timestamp=%g' %
+                             (self.object['hw_connected'], self.object['value'], self.object['units'], self.object['timestamp']))
+                break
+            if string == 'reset':
+                daemon.log('Resetting Keithley 6485')
+                self.sendCommand('*RST')
+                daemon.log('Device reset')
+                break
+            if string == 'idn':
+                self.sendCommand('*idn?', keep=True)
+                break
+
+            regex = re.compile(r'\:?(SYST|SYSTE|SYSTEM)\:(ZCH|ZCHE|ZCHEC|ZCHECK)\:(STAT|STATE)\?')
+            if re.match(regex, STRING) or string == 'get_zcheck_state':
+                hw.messageAll(':SYST:ZCH:STAT?\n', type='hw', keep=True, source=self.name)
+                break
+
+            regex = re.compile(r'(\:?(SYST|SYSTE|SYSTEM)\:(ZCH|ZCHE|ZCHEC|ZCHECK)\:(STAT|STATE)|SET_ZCHECK_STATE) (?P<state>(ON|OFF))')
+            match = re.match(regex, STRING)
+            if match:
+                hw.messageAll(':SYST:ZCH:STAT ' + match.group('state') + '\n', type='hw', keep=False, source=self.name)
+                daemon.log('Zero-check state set to ' + match.group('state'))
+                break
+
+            regex = re.compile(r'(\:?(CURR|CURRE|CURREN|CURRENT):(RANG|RANGE)|SET_CURRENT_RANGE) (?P<val>(0\.\d+?$|2E\-\d?$))')
+            match = re.match(regex, STRING)
+            if match:
+                allowed_values = [2E-2, 2E-3, 2E-4, 2E-5, 2E-6, 2E-7, 2E-8, 2E-9]
+                if float(match.group('val')) not in allowed_values:
+                    daemon.log('WARNING wrong range value ' + match.group('val'))
+                    break
+                else:
+                    hw.messageAll(':CURR:RANG ' + match.group('val') + '\n', type='hw', keep=False, source=self.name)
+                    daemon.log('Range set to ' + match.group('val'))
+                    break
+
+            if cmd.name in ['get_curr_range']:
+                self.sendCommand('CURR:RANGE?', keep=True)
+                break
+            if cmd.name in ['zero_check_on']:
+                self.sendCommand('SYST:ZCH ON')
+                break
+            if cmd.name in ['trigger']:
+                self.sendCommand('INIT')
+                break
+            if cmd.name in ['zero_check_aquire']:
+                self.sendCommand('SYST:ZCOR:ACQ')
+                break
+            if cmd.name in ['zero_check_do']:
+                self.sendCommand('SYST:ZCOR ON')
+                break
+            if cmd.name in ['set_curr_range_auto']:
+                self.sendCommand('CURR:RANG:AUTO ON')
+                break
+
+            if cmd.name[-1] == '?':
+                print 'unrecog query cmd', cmd.name
+                self.sendCommand(cmd.name, keep=True)
+            else:
+                self.sendCommand(cmd.name, keep=False)
+            break
 
     @catch
     def sendCommand(self, string, keep=False):
-        obj = self.object # Object holding the state
-        hw = obj['hw'] # HW factory
+        obj = self.object  # Object holding the state
+        hw = obj['hw']  # HW factory
         hw.messageAll(string, type='hw', keep=keep, source=self.name)
 
+
 class KeithleyProtocol(SimpleProtocol):
-    _debug = False # Display all traffic for debug purposes
+    _debug = False  # Display all traffic for debug purposes
     _refresh = 0.1
 
     def __init__(self):
         SimpleProtocol.__init__(self)
-        self.commands = [] # Queue of command sent to the device which will provide replies, each entry is a dict with keys "cmd","source","timeStamp"
+        self.commands = []  # Queue of command sent to the device which will provide replies, each entry is a dict with keys "cmd","source","timeStamp"
         self.name = 'hw'
         self.type = 'hw'
-        self.lastAutoRead=datetime.datetime.utcnow()
+        self.lastAutoRead = datetime.datetime.utcnow()
 
     @catch
     def connectionMade(self):
         SimpleProtocol.connectionMade(self)
-        self.object['hw_connected'] = 0 # We will set this flag when we receive any reply from the device
+        self.object['hw_connected'] = 0  # We will set this flag when we receive any reply from the device
         SimpleProtocol.message(self, 'set_addr %d' % self.object['addr'])
         SimpleProtocol.message(self, '*rst')
         SimpleProtocol.message(self, '?$*opc?')
-        self.commands=[{'cmd':'*opc?','source':'itself','timeStamp':datetime.datetime.utcnow(),'keep':'keep'}]
-       
+        self.commands = [{'cmd': '*opc?', 'source': 'itself', 'timeStamp': datetime.datetime.utcnow(), 'keep': 'keep'}]
+
     @catch
     def connectionLost(self, reason):
         self.object['hw_connected'] = 0
@@ -76,8 +124,7 @@ class KeithleyProtocol(SimpleProtocol):
 
     @catch
     def processMessage(self, string):
-        SimpleProtocol.processMessage(self, string)
-        obj = self.object # Object holding the state
+        obj = self.object  # Object holding the state
         daemon = obj['daemon']
 
         if self._debug:
@@ -86,28 +133,37 @@ class KeithleyProtocol(SimpleProtocol):
         # Update the last reply timestamp
         obj['hw_last_reply_time'] = datetime.datetime.utcnow()
         obj['hw_connected'] = 1
-                
+
         # Process the device reply
-        if len(self.commands):
+        while len(self.commands):
             # We have some sent commands in the queue - let's check what was the oldest one
-            if self.commands[0]['cmd'] == '*opc?' and self.commands[0]['source']=='itself':
+            if self.commands[0]['cmd'] == '*opc?' and self.commands[0]['source'] == 'itself':
                 # not used at the moment
-                pass
-            elif self.commands[0]['cmd'] == '*idn?' and self.commands[0]['source']=='itself':
+                break
+            if self.commands[0]['cmd'] == '*idn?' and self.commands[0]['source'] == 'itself':
                 # Example of how to broadcast some message to be printed on screen and stored to database
                 daemon.log(string)
-            elif self.commands[0]['cmd'] == 'fetch?' and self.commands[0]['source']=='itself':
+                break
+            if self.commands[0]['cmd'] == 'fetch?' and self.commands[0]['source'] == 'itself':
                 s = string.split(',')
                 obj['value'] = float(s[0][:-1])
                 obj['units'] = s[0][-1]
                 obj['timestamp'] = float(s[1])
-            elif self.commands[0]['cmd'] == 'fetch?' and not self.commands[0]['source']=='itself':
-                daemon.messageAll(string,self.commands[0]['source'])
-            elif self.commands[0]['cmd'] == 'CURR:RANGE?':
-                daemon.messageAll(string,self.commands[0]['source'])
-            else:
-                daemon.log('WARNING responce to unidentified command: '+self.commands[0]['cmd']+' from connection '+self.commands[0]['source'])
-            self.commands.pop(0)   
+                break
+            if self.commands[0]['cmd'] == 'fetch?' and not self.commands[0]['source'] == 'itself':
+                daemon.messageAll(string, self.commands[0]['source'])
+                break
+            if self.commands[0]['cmd'] == 'CURR:RANGE?':
+                daemon.messageAll(string, self.commands[0]['source'])
+                break
+            if self.commands[0]['cmd'] == 'CURR:RANGE?':
+                daemon.messageAll(string, self.commands[0]['source'])
+                break
+            daemon.messageAll(string, self.commands[0]['source'])
+            break
+        else:
+            return
+        self.commands.pop(0)
 
     @catch
     def message(self, string, keep=False, source='itself'):
@@ -115,8 +171,12 @@ class KeithleyProtocol(SimpleProtocol):
         Send the message to the controller. If keep=True, append the command name to
         internal queue so that we may properly recognize the reply
         """
+
         if keep:
-            self.commands.append({'cmd':string,'source':source,'timeStamp':datetime.datetime.utcnow(),'keep':keep})
+            self.commands.append({'cmd': string,
+                                  'source': source,
+                                  'timeStamp': datetime.datetime.utcnow(),
+                                  'keep': keep})
             SimpleProtocol.message(self, '?$%s' % string)
         else:
             SimpleProtocol.message(self, string)
@@ -126,18 +186,19 @@ class KeithleyProtocol(SimpleProtocol):
         if (datetime.datetime.utcnow() - obj['hw_last_reply_time']).total_seconds() > 10:
             # We did not get any reply from device during last 10 seconds, probably it is disconnected?
             self.object['hw_connected'] = 0
-             # TODO: should we clear the command queue here?
-             
-        #first check if device is hw_connected
+            # TODO: should we clear the command queue here?
+
+        # first check if device is hw_connected
         if self.object['hw_connected'] == 0:
-            #if not connected do not send any commands
+            # if not connected do not send any commands
             return
 
-        elif (datetime.datetime.utcnow()-self.lastAutoRead).total_seconds()>2. and len(self.commands)==0:
+        elif (datetime.datetime.utcnow() - self.lastAutoRead).total_seconds() > 2. and len(self.commands) == 0:
             # Request the hardware state from the device
             self.message('init', keep=False, source='itself')
             self.message('fetch?', keep=True, source='itself')
-            self.lastAutoRead=datetime.datetime.utcnow()
+            self.lastAutoRead = datetime.datetime.utcnow()
+
 
 if __name__ == '__main__':
     from optparse import OptionParser
@@ -150,27 +211,27 @@ if __name__ == '__main__':
     parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='keithley6485')
     parser.add_option("-D", '--debug', help='Debug mode', action="store_true", dest="debug")
 
-    (options,args) = parser.parse_args()
+    (options, args) = parser.parse_args()
 
     # Object holding actual state and work logic.
     # May be anything that will be passed by reference - list, dict, object etc
-    obj = {'hw_connected':0, 'addr':options.addr, 'value':0, 'units':'', 'timestamp':0, range:0}
+    obj = {'hw_connected': 0, 'addr': options.addr, 'value': 0, 'units': '', 'timestamp': 0, range: 0}
 
     # Factories for daemon and hardware connections
     # We need two different factories as the protocols are different
     daemon = SimpleFactory(DaemonProtocol, obj)
     hw = SimpleFactory(KeithleyProtocol, obj)
-    
+
     if options.debug:
-        daemon._protocol._debug=True
-        hw._protocol._debug=True
+        daemon._protocol._debug = True
+        hw._protocol._debug = True
 
     daemon.name = options.name
 
     obj['daemon'] = daemon
     obj['hw'] = hw
 
-    obj['hw_last_reply_time'] = datetime.datetime(1970, 1, 1) # Arbitrarily old time moment
+    obj['hw_last_reply_time'] = datetime.datetime(1970, 1, 1)  # Arbitrarily old time moment
 
     # Incoming connections
     daemon.listen(options.port)

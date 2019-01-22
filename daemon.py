@@ -151,8 +151,10 @@ class SimpleProtocol(Protocol):
         elif cmd.name == 'exit':
             # Stops the daemon
             self.factory._reactor.stop()
-
-        return cmd
+        else:
+            return cmd
+        
+        return None
 
     def processBinary(self, data):
         """Process binary data when completely read out"""
@@ -242,4 +244,4 @@ class SimpleFactory(Factory):
     def log(self, message, type='info'):
         """Generic interface for sending system-level log messages, to be stored to DB and shown in GUI"""
         # TODO: should we send it to specific names/types only?
-        self.messageAll(type + ' ' + message)
+        self.messageAll(type + ' ' + message, name = 'monitor')

@@ -16,6 +16,9 @@ class DaemonProtocol(SimpleProtocol):
     def processMessage(self, string):
         # It will handle some generic messages and return pre-parsed Command object
         cmd = SimpleProtocol.processMessage(self, string)
+        if cmd is None:
+            return
+
         obj = self.object # Object holding the state
         daemon = self.factory
         hw = obj['hw'] # HW factory
