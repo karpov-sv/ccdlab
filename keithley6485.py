@@ -64,6 +64,33 @@ class DaemonProtocol(SimpleProtocol):
                     daemon.log('Range set to ' + match.group('val'))
                     break
 
+#            regex = re.compiler(r'(\:?(SYST|SYST|SYSTEM)\:(ZCOR|ZCORR|ZCORRE|ZCORREC|ZCORRECT)\:(STAT|STATE)|SET_ZCOR_STATE) (?P<state>(ON|OFF))')
+#            match = re.match(regex, STRING)
+#            if match:
+#                hw.messageAll(':SYST:ZCOR:STAT' + match.group('state') + '\n', type='hw', keep=False, source=self.name)
+#                daemon.log('Zero-correct state set to' + match.group('state'))
+#                break
+
+
+#            regex = re.compile(r'do_zero_check (?P<val>(0\.\d+?$|2E\-\d?$)))')
+#            match = re.match(regex, string)
+#            if match :
+#                if  match.group('val') = '0' :
+#                    val = '2E-2'
+#                else :
+#                    val = match.group('val')
+#                if float(match.group('val')) not in allowed_values:
+#                    daemon.log('WARNING wrong range value ' + match.group('val'))
+#                    break
+#                else :
+#                      hw.messageAll(':SYST:ZCH ON\n', type='hw', keep=True, source=self.name)
+#                      hw.messageAll(':CURR:RANG ' + val + '\n', type='hw', keep=False, source=self.name)
+#                      hw.messageAll(':INIT')
+#                      hw.messageAll(':SYST:ZCOR:ACQ'\n, type='hw', keep=True, source=self.name)
+#                      hw.messageAll(':SYST:ZCH OFF\n', type='hw', keep=True, source=self.name)
+#	               hw.messageAll(':SYSR:ZCOR ON'\n', type='hw', keep=True, source=self.name))
+#                      break
+
             if cmd.name in ['get_curr_range']:
                 self.sendCommand('CURR:RANGE?', keep=True)
                 break
