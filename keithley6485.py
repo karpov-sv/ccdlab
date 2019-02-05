@@ -69,7 +69,7 @@ class DaemonProtocol(SimpleProtocol):
                 daemon.log('Zero-correct state set to' + match.group('state'))
                 break
 
-            regex = re.compile(r'(\:?(CURR|CURRE|CURREN|CURRENT)\:(RANG|RANGE)|SET_CURRENT_RANGE) (?P<val>(AUTO|0\.\d+?$|2E\-\d?$))')
+            regex = re.compile(r'(\:?(CURR|CURRE|CURREN|CURRENT)\:(RANG|RANGE)|SET_CURRENT_RANGE) (?P<val>(AUTO|0\.\d+?$|2e\-\d?$|2E\-\d?$))')
             match = re.match(regex, STRING)
             if match:
                 if match.group('val') == 'AUTO':
@@ -95,7 +95,7 @@ class DaemonProtocol(SimpleProtocol):
                 break
 
             regex = re.compile(
-                r'(\:?(CURR|CURRE|CURREN|CURRENT)\:(RANG|RANGE)\:(AUTO)\:(ULIM|ULIMI|ULIMIT)|SET_CURRENT_AUTO_ULIM) (?P<val>(0\.\d+?$|2E\-\d?$))')
+                r'(\:?(CURR|CURRE|CURREN|CURRENT)\:(RANG|RANGE)\:(AUTO)\:(ULIM|ULIMI|ULIMIT)|SET_CURRENT_AUTO_ULIM) (?P<val>(0\.\d+?$|2e\-\d?$|2E\-\d?$))')
             match = re.match(regex, STRING)
             if match:
                 if match.group('val') not in self._allowed_IRange_values:
@@ -108,7 +108,7 @@ class DaemonProtocol(SimpleProtocol):
                 break
 
             regex = re.compile(
-                r'(\:?(CURR|CURRE|CURREN|CURRENT)\:(RANG|RANGE)\:(AUTO)\:(LLIM|LLIMI|LLIMIT)|SET_CURRENT_AUTO_LLIM) (?P<val>(0\.\d+?$|2E\-\d?$))')
+                r'(\:?(CURR|CURRE|CURREN|CURRENT)\:(RANG|RANGE)\:(AUTO)\:(LLIM|LLIMI|LLIMIT)|SET_CURRENT_AUTO_LLIM) (?P<val>(0\.\d+?$|2e\-\d?$|2E\-\d?$))')
             match = re.match(regex, STRING)
             if match:
                 if match.group('val') not in self._allowed_IRange_values:
@@ -134,10 +134,10 @@ class DaemonProtocol(SimpleProtocol):
                 hw.messageAll(':CURR:RANGE:AUTO:LLIM?\n', type='hw', keep=True, source=self.name)
                 break
 
-            regex = re.compile(r'(do_zero_check (?P<val>(0|0\.\d+?$|2E\-\d?$)))')
+            regex = re.compile(r'do_zero_check (?P<val>(0$|0\.\d+?$|2e\-\d?$|2E\-\d?$))')
             match = re.match(regex, string)
             if match:
-                if match.group('val') == '0':
+                if match.group('val') == 0:
                     val = 2E-9
                 else:
                     val = match.group('val')
@@ -184,6 +184,14 @@ class KeithleyProtocol(SimpleProtocol):
         SimpleProtocol.message(self, 'set_addr %d' % self.object['addr'])
         SimpleProtocol.message(self, '*rst')
         SimpleProtocol.message(self, '*cls')
+        SimpleProtocol.message(self, ':SYST:ZCH ON')
+        SimpleProtocol.message(self, ':CURR:RANG 2E-9')
+        SimpleProtocol.message(self, ':INIT')
+        SimpleProtocol.message(self, ':SYST:ZCOR:ACQ')
+        SimpleProtocol.message(self, ':SYST:ZCH OFF')
+        SimpleProtocol.message(self, ':SYSR:ZCOR ON')
+        SimpleProtocol.message(self, ':CURR:RANG:AUTO ON')
+        
         SimpleProtocol.message(self, '?$*opc?')
         self.commands = [{'cmd': '*opc?', 'source': 'itself', 'timeStamp': datetime.datetime.utcnow(), 'keep': 'keep'}]
 
