@@ -12,6 +12,7 @@ from daemon import catch
 
 class DaemonProtocol(SimpleProtocol):
     _debug = False  # Display all traffic for debug purposes
+    _allowed_IRange_values = [2E-2, 2E-3, 2E-4, 2E-5, 2E-6, 2E-7, 2E-8, 2E-9]
 
     @catch
     def processMessage(self, string):
@@ -28,16 +29,19 @@ class DaemonProtocol(SimpleProtocol):
 
         while True:
             if string == 'get_status':
-                self.message('status hw_connected=%s value=%g units=%s timestamp=%g' %
-                             (self.object['hw_connected'], self.object['value'], self.object['units'], self.object['timestamp']))
+                self.message('status hw_connected=%s value=%g units=%s timestamp=%g I_range=%g Zero_Check=%s Auto=%s Auto_Ulim=%g Auto_Llim=%g ErrorQ=%i' %
+                             (self.object['hw_connected'], self.object['value'], self.object['units'], self.object['timestamp'], self.object['I_range'], self.object['Zero_Check'], self.object['Auto'], self.object['Auto_Ulim'], self.object['Auto_Llim'], obj['ErrorQ']))
                 break
             if string == 'reset':
                 daemon.log('Resetting Keithley 6485')
                 self.sendCommand('*RST')
-                daemon.log('Device reset')
                 break
-            if string == 'idn':
-                self.sendCommand('*idn?', keep=True)
+            if STRING == '*IDN?':
+                self.sendCommand('*IDN?', keep=True)
+                break
+
+            if STRING == 'INIT':
+                hw.messageAll('INIT\n', type='hw', keep=False, source=self.name)
                 break
 
             regex = re.compile(r'\:?(SYST|SYSTE|SYSTEM)\:(ZCH|ZCHE|ZCHEC|ZCHECK)\:(STAT|STATE)\?')
@@ -50,22 +54,6 @@ class DaemonProtocol(SimpleProtocol):
             if match:
                 hw.messageAll(':SYST:ZCH:STAT ' + match.group('state') + '\n', type='hw', keep=False, source=self.name)
                 daemon.log('Zero-check state set to ' + match.group('state'))
-                break
-
-            regex = re.compile(r'(\:?(CURR|CURRE|CURREN|CURRENT)\:(RANG|RANGE)|SET_CURRENT_RANGE) (?P<val>(0\.\d+?$|2E\-\d?$))')
-            match = re.match(regex, STRING)
-            if match:
-                allowed_values = [2E-2, 2E-3, 2E-4, 2E-5, 2E-6, 2E-7, 2E-8, 2E-9]
-                if float(match.group('val')) not in allowed_values:
-                    daemon.log('WARNING wrong range value ' + match.group('val'))
-                    break
-                else:
-                    hw.messageAll(':CURR:RANG ' + match.group('val') + '\n', type='hw', keep=False, source=self.name)
-                    daemon.log('Range set to ' + match.group('val'))
-                    break
-
-            if STRING == 'INIT':
-                hw.messageAll('INIT\n', type='hw', keep=False, source=self.name)
                 break
 
             regex = re.compile(r'(\:?(SYST|SYST|SYSTEM)\:(ZCOR|ZCORR|ZCORRE|ZCORREC|ZCORRECT)\:(ACQ|ACQU|ACQUI|ACQUIR|AQUIRE))')
@@ -81,39 +69,94 @@ class DaemonProtocol(SimpleProtocol):
                 daemon.log('Zero-correct state set to' + match.group('state'))
                 break
 
-            regex = re.compile(r'(do_zero_check (?P<val>(0\.\d+?$|2E\-\d?$)))')
-            match = re.match(regex, string)
-
+            regex = re.compile(r'(\:?(CURR|CURRE|CURREN|CURRENT)\:(RANG|RANGE)|SET_CURRENT_RANGE) (?P<val>(AUTO|0\.\d+?$|2E\-\d?$))')
+            match = re.match(regex, STRING)
             if match:
-                allowed_values = [2E-2, 2E-3, 2E-4, 2E-5, 2E-6, 2E-7, 2E-8, 2E-9]
-                if match.group('val') == '0':
-                    val = '2E-9'
-                else:
-                    val = match.group('val')
-                if float(match.group('val')) not in allowed_values:
+                if match.group('val') == 'AUTO':
+                    hw.messageAll(':CURR:RANG:AUTO ON\n', type='hw', keep=False, source=self.name)
+                    daemon.log('Range set to AUTO')
+                    break
+                if match.group('val') not in self._allowed_IRange_values:
                     daemon.log('WARNING wrong range value ' + match.group('val'))
                     break
+                hw.messageAll(':CURR:RANG:AUTO OFF\n', type='hw', keep=False, source=self.name)
+                hw.messageAll(':CURR:RANG ' + match.group('val') + '\n', type='hw', keep=False, source=self.name)
+                daemon.log('Range set to ' + match.group('val'))
+                break
+
+            regex = re.compile(r'(\:?(CURR|CURRE|CURREN|CURRENT)\:(RANG|RANGE)\?)|GET_CURRENT_RANGE$')
+            if re.match(regex, STRING):
+                hw.messageAll(':CURR:RANG?\n', type='hw', keep=True, source=self.name)
+                break
+
+            regex = re.compile(r'(\:?(CURR|CURRE|CURREN|CURRENT)\:(RANG|RANGE):AUTO\?)|GET_CURRENT_RANGE_AUTO')
+            if re.match(regex, STRING):
+                hw.messageAll(':CURR:RANG:AUTO?\n', type='hw', keep=True, source=self.name)
+                break
+
+            regex = re.compile(
+                r'(\:?(CURR|CURRE|CURREN|CURRENT)\:(RANG|RANGE)\:(AUTO)\:(ULIM|ULIMI|ULIMIT)|SET_CURRENT_AUTO_ULIM) (?P<val>(0\.\d+?$|2E\-\d?$))')
+            match = re.match(regex, STRING)
+            if match:
+                if match.group('val') not in self._allowed_IRange_values:
+                    daemon.log('WARNING wrong range value ' + match.group('val'))
+                    break
+                if match.group('val')<obj['Auto_Llim']:
+                    daemon.log('WARNING the upper limit to be set is bellow the lower limit ' + match.group('val'))
+                    break
+                hw.messageAll(':CURR:RANGE:AUTO:ULIM' + match.group('val') + '\n', type='hw', keep=False, source=self.name)
+                break
+
+            regex = re.compile(
+                r'(\:?(CURR|CURRE|CURREN|CURRENT)\:(RANG|RANGE)\:(AUTO)\:(LLIM|LLIMI|LLIMIT)|SET_CURRENT_AUTO_LLIM) (?P<val>(0\.\d+?$|2E\-\d?$))')
+            match = re.match(regex, STRING)
+            if match:
+                if match.group('val') not in self._allowed_IRange_values:
+                    daemon.log('WARNING wrong range value ' + match.group('val'))
+                    break
+                if match.group('val')>obj['Auto_Ulim']:
+                    daemon.log('WARNING the lower limit to be set is above the upper limit ' + match.group('val'))
+                    break
+                hw.messageAll(':CURR:RANGE:AUTO:LLIM' + match.group('val') + '\n', type='hw', keep=False, source=self.name)
+                break
+
+            regex = re.compile(
+                r'(\:?(CURR|CURRE|CURREN|CURRENT)\:(RANG|RANGE)\:(AUTO)\:(ULIM|ULIMI|ULIMIT)\?|GET_CURRENT_AUTO_ULIM)')
+            match = re.match(regex, STRING)
+            if match:
+                hw.messageAll(':CURR:RANGE:AUTO:ULIM?\n', type='hw', keep=True, source=self.name)
+                break
+
+            regex = re.compile(
+                r'(\:?(CURR|CURRE|CURREN|CURRENT)\:(RANG|RANGE)\:(AUTO)\:(LLIM|LLIMI|LLIMIT)\?|GET_CURRENT_AUTO_LLIM)')
+            match = re.match(regex, STRING)
+            if match:
+                hw.messageAll(':CURR:RANGE:AUTO:LLIM?\n', type='hw', keep=True, source=self.name)
+                break
+
+            regex = re.compile(r'(do_zero_check (?P<val>(0|0\.\d+?$|2E\-\d?$)))')
+            match = re.match(regex, string)
+            if match:
+                if match.group('val') == '0':
+                    val = 2E-9
                 else:
-                    hw.messageAll(':SYST:ZCH ON\n', type='hw', keep=False, source=self.name)
-                    hw.messageAll(':CURR:RANG ' + val + '\n', type='hw', keep=False, source=self.name)
-                    hw.messageAll(':INIT', type='hw', keep=False, source=self.name)
-                    hw.messageAll(':SYST:ZCOR:ACQ\n', type='hw', keep=False, source=self.name)
-                    hw.messageAll(':SYST:ZCH OFF\n', type='hw', keep=False, source=self.name)
-                    hw.messageAll(':SYSR:ZCOR ON\n', type='hw', keep=False, source=self.name)
+                    val = match.group('val')
+                if float(match.group('val')) not in self._allowed_IRange_values:
+                    daemon.log('WARNING wrong range value ' + match.group('val'))
+                    break
+                hw.messageAll(':SYST:ZCH ON\n', type='hw', keep=False, source=self.name)
+                hw.messageAll(':CURR:RANG ' + val + '\n', type='hw', keep=False, source=self.name)
+                hw.messageAll(':INIT', type='hw', keep=False, source=self.name)
+                hw.messageAll(':SYST:ZCOR:ACQ\n', type='hw', keep=False, source=self.name)
+                hw.messageAll(':SYST:ZCH OFF\n', type='hw', keep=False, source=self.name)
+                hw.messageAll(':SYSR:ZCOR ON\n', type='hw', keep=False, source=self.name)
                 break
 
-            if cmd.name in ['get_curr_range']:
-                self.sendCommand('CURR:RANGE?', keep=True)
-                break
-            if cmd.name in ['set_curr_range_auto']:
-                self.sendCommand('CURR:RANG:AUTO ON')
-                break
-
-            if cmd.name[-1] == '?':
-                print 'unrecog query cmd', cmd.name
-                self.sendCommand(cmd.name, keep=True)
+            if string[-1] == '?':
+                print 'unrecog query cmd', string
+                hw.messageAll(string, type='hw', keep=True, source=self.name)
             else:
-                self.sendCommand(cmd.name, keep=False)
+                hw.messageAll(string, type='hw', keep=False, source=self.name)
             break
 
     @catch
@@ -140,6 +183,7 @@ class KeithleyProtocol(SimpleProtocol):
         self.object['hw_connected'] = 0  # We will set this flag when we receive any reply from the device
         SimpleProtocol.message(self, 'set_addr %d' % self.object['addr'])
         SimpleProtocol.message(self, '*rst')
+        SimpleProtocol.message(self, '*cls')
         SimpleProtocol.message(self, '?$*opc?')
         self.commands = [{'cmd': '*opc?', 'source': 'itself', 'timeStamp': datetime.datetime.utcnow(), 'keep': 'keep'}]
 
@@ -166,26 +210,45 @@ class KeithleyProtocol(SimpleProtocol):
             if self.commands[0]['cmd'] == '*opc?' and self.commands[0]['source'] == 'itself':
                 # not used at the moment
                 break
-            if self.commands[0]['cmd'] == '*idn?' and self.commands[0]['source'] == 'itself':
+            if self.commands[0]['cmd'] == '*IDN?' and self.commands[0]['source'] == 'itself':
                 # Example of how to broadcast some message to be printed on screen and stored to database
                 daemon.log(string)
                 break
-            if self.commands[0]['cmd'] == 'fetch?' and self.commands[0]['source'] == 'itself':
+            if not self.commands[0]['source'] == 'itself':
+                # in case the origin of the query was not itself, forward the answer to the origin
+                daemon.messageAll(string, self.commands[0]['source'])
+
+            if self.commands[0]['cmd'] == 'fetch?':
                 s = string.split(',')
                 obj['value'] = float(s[0][:-1])
                 obj['units'] = s[0][-1]
                 obj['timestamp'] = float(s[1])
                 break
-            if self.commands[0]['cmd'] == 'fetch?' and not self.commands[0]['source'] == 'itself':
-                daemon.messageAll(string, self.commands[0]['source'])
+            
+            if self.commands[0]['cmd'] == ':SYST:ZCH:STAT?':
+                obj['Zero_Check'] = string
                 break
-            if self.commands[0]['cmd'] == 'CURR:RANGE?':
-                daemon.messageAll(string, self.commands[0]['source'])
+
+            if self.commands[0]['cmd'] == ':SYST:ERR:COUN?':
+                obj['ErrorQ'] = int(string)
                 break
-            if self.commands[0]['cmd'] == 'CURR:RANGE?':
-                daemon.messageAll(string, self.commands[0]['source'])
+            
+            if self.commands[0]['cmd'] == ':CURR:RANG?':
+                obj['I_range'] = float(string)
                 break
-            daemon.messageAll(string, self.commands[0]['source'])
+            
+            if self.commands[0]['cmd'] == ':CURR:RANG:AUTO?':
+                obj['Auto'] =  string
+                break
+            
+            if self.commands[0]['cmd'] == ':CURR:RANGE:AUTO:ULIM?':
+                obj['Auto_Ulim'] = float(string)
+                break
+            
+            if self.commands[0]['cmd'] == ':CURR:RANGE:AUTO:LLIM?':
+                obj['Auto_Llim'] = float(string)
+                break
+
             break
         else:
             return
@@ -223,6 +286,12 @@ class KeithleyProtocol(SimpleProtocol):
             # Request the hardware state from the device
             self.message('init', keep=False, source='itself')
             self.message('fetch?', keep=True, source='itself')
+            self.message(':SYST:ERR:COUN?', keep=True, source='itself')
+            self.message(':CURR:RANG?', keep=True, source='itself')
+            self.message(':CURR:RANG:AUTO?', keep=True, source='itself')
+            self.message(':CURR:RANGE:AUTO:ULIM?', keep=True, source='itself')
+            self.message(':CURR:RANGE:AUTO:LLIM?', keep=True, source='itself')
+
             self.lastAutoRead = datetime.datetime.utcnow()
 
 
@@ -241,7 +310,18 @@ if __name__ == '__main__':
 
     # Object holding actual state and work logic.
     # May be anything that will be passed by reference - list, dict, object etc
-    obj = {'hw_connected': 0, 'addr': options.addr, 'value': 0, 'units': '', 'timestamp': 0, range: 0}
+    obj = {
+        'hw_connected': 0,
+        'addr': options.addr,
+        'value': 0,
+        'units': '',
+        'timestamp': 0,
+        'I_range': -1,
+        'Zero_Check': '-',
+        'Auto': '-',
+        'Auto_Ulim': -1,
+        'Auto_Llim': -1,
+        'ErrorQ':0}
 
     # Factories for daemon and hardware connections
     # We need two different factories as the protocols are different
