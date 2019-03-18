@@ -16,6 +16,8 @@ import urlparse
 import json
 import numpy as np
 
+from collections import OrderedDict
+
 from StringIO import StringIO
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -91,6 +93,10 @@ class MonitorProtocol(SimpleProtocol):
                     if len(self.object['values'][self.name][name]) > 1000:
                         self.object['values'][self.name][name] = self.object['values'][self.name][name][100:]
 
+            # Broadcast new values to all CCDs, if the client itself is not CCD
+            if self.type != 'ccd':
+                self.factory.messageAll("set_keywords " + " ".join([self.name+'.'+_+'=\"'+self.status[_]+'\"' for _ in self.status.keys()]), type="ccd")
+
             # Store the values to database, if necessary
             if self.object.has_key('db') and self.object['db'] is not None:
                 if (datetime.datetime.utcnow() - self.object['db_status_timestamp']).total_seconds() > self.object['db_status_interval']:
@@ -105,7 +111,10 @@ class MonitorProtocol(SimpleProtocol):
                     pass
 
         elif cmd.name == 'get_status':
-            self.message(self.factory.getStatus())
+            if cmd.kwargs.get('format', 'plain') == 'json':
+                self.message('status_json ' + json.dumps(self.factory.getStatus(as_dict=True)))
+            else:
+                self.message(self.factory.getStatus())
 
         elif cmd.name == 'send' and cmd.chunks[1]:
             c = self.factory.findConnection(name=cmd.chunks[1])
@@ -126,9 +135,8 @@ class MonitorProtocol(SimpleProtocol):
         self.factory.log(msg, time=time, source=source, type=type)
 
     def update(self):
-        for c in self.factory.connections:
-            if c.name or c.type:
-                c.message('get_status')
+        if self.name or self.type:
+            self.message('get_status')
 
 class WSProtocol(SimpleProtocol):
     def message(self, string):
@@ -150,7 +158,7 @@ class MonitorFactory(SimpleFactory):
                 if as_dict:
                     status[c.name] = c.status
                 else:
-                    status += ' ' + c.name + '=1 ' + kwargsToString(c.status, prefix=c.name + '_')
+                    status += ' ' + c.name + '=1 ' + kwargsToString(c.status, prefix=c.name + '.')
             else:
                 if as_dict:
                     status[name] = {}
@@ -450,7 +458,7 @@ if __name__ == '__main__':
     from optparse import OptionParser
 
     # Object holding actual state and work logic.
-    obj = {'clients':{}, 'values':{}, 'port':7100, 'http_port':8888, 'db_host':None, 'db_status_interval':60.0, 'name':'monitor', 'db':None}
+    obj = {'clients':OrderedDict(), 'values':{}, 'port':7100, 'http_port':8888, 'db_host':None, 'db_status_interval':60.0, 'name':'monitor', 'db':None}
 
     # First read client config from INI file
     loadINI('%s.ini' % posixpath.splitext(__file__)[0], obj)

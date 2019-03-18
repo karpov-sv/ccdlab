@@ -7,6 +7,8 @@ class Command:
     """Parse a text command into command name and arguments, both positional and keyword"""
     def __init__(self, string):
         self.name = None
+        self.string = None
+        self.body = None
         self.args = []
         self.kwargs = {}
 
@@ -24,12 +26,15 @@ class Command:
         return self.kwargs.has_key(key)
 
     def parse(self, string):
+        self.string = string
+        self.body = string
         self.chunks = shlex.split(string)
 
         for i,chunk in enumerate(self.chunks):
             if '=' not in chunk:
                 if i == 0:
                     self.name = chunk
+                    self.body = self.string.strip()[len(chunk):].strip()
                 else:
                     self.args.append(chunk)
             else:
