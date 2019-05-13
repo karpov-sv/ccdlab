@@ -1,0 +1,183 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import datetime
+import re
+
+from daemon import SimpleFactory, SimpleProtocol
+from command import Command
+from daemon import catch
+
+class DaemonProtocol(SimpleProtocol) :
+    _debug = False  # Display all traffic for debug purposes
+    @catch
+    def processMessage(self, string) :
+        cmd = SimpleProtocol.processMessage(self, string)
+        if cmd is None:
+            return
+        obj = self.object
+        daemon = self.factory
+        hw = obj['hw']
+        string = string.strip()
+        STRING = string.upper()
+        while True:
+            print 'OK'
+            if string == 'get_status' :
+                self.message('status hw_connected=%s Current=%s Voltage=%s ' %
+                             (self.object['hw_connected'], self.object['Current'], self.object['Voltage']))
+                break
+            if string == 'reset':
+                self.sendCommand('*RST', keep = True)
+                break
+            if string == 'idn' :
+                self.sendCommand('*IDN?', keep = True)
+                break
+            if string == 'config' :
+                self.sendCommand('CONFIG?', kepp = True)
+                break
+            if string == 'get_voltage' :
+                self.sendCommand('V1?', kepp = True)
+                break
+            if string == 'get_current' :
+                self.sendCommand('I1?', kepp = True)
+                break
+	    if cmd.name[-1] == '?':
+                self.sendCommand(cmd.name.rstrip('?'), keep=True)
+            else:
+                self.sendCommand(cmd.name, keep=False)
+            if self._debug:
+                print 'sending unrecognized command', cmd.name.rstrip('?')
+                if cmd.name[-1] == '?':
+                    print 'command recognize as query command'
+            break
+   @catch
+   def sendCommand(self, string, keep=False):
+        obj = self.object  # Object holding the state
+        hw = obj['hw']  # HW factory
+        hw.messageAll(string, type='hw', keep=keep, source=self.name)
+
+ 
+
+class plh120_Protocol(SimpleProtocol):
+    _debug = False  # Display all traffic for debug purposes
+    _refresh = 0.1
+    def __init__(self):
+        SimpleProtocol.__init__(self)
+        self.commands = []  # Queue of command sent to the device which will provide replies, each entry is a dict with keys "cmd","source","timeStamp"
+        self.name = 'hw'
+        self.type = 'hw'
+        self.lastAutoRead = datetime.datetime.utcnow()
+    @catch
+    def connectionMade(self):
+        SimpleProtocol.connectionMade(self)
+        self.commands = []
+        self.object['hw_connected'] = 0  # We will set this flag when we receive any reply from the device
+        SimpleProtocol.message(self, '*RST')
+        SimpleProtocol.message(self, '*IDN')
+        SimpleProtocol.message(self, 'CONFIG')
+        SimpleProtocol.message(self, 'I1 0.25')
+        SimpleProtocol.message(self, 'V1 10')
+    @catch
+    def connectionLost(self, reason):
+        self.object['hw_connected'] = 0
+        SimpleProtocol.connectionLost(self, reason)
+    @catch
+    def processMessage(self, string):
+        obj = self.object  # Object holding the state
+        print obj
+        daemon = obj['daemon']
+        if self._debug:
+            print 'PLH120-P >> %s' % string
+            print 'commands Q:', self.commands
+        # Update the last reply timestamp
+        obj['hw_last_reply_time'] = datetime.datetime.utcnow()
+        obj['hw_connected'] = 1
+        # Process the device reply
+        while len(self.commands):
+            # We have some sent commands in the queue - let's check what was the oldest one
+            if self.commands[0]['cmd'] == '*RST' and self.commands[0]['source'] == 'itself':
+                # not used at the moment
+                break
+            if self.commands[0]['cmd'] == '*IDN?' and self.commands[0]['source'] == 'itself':
+                # Example of how to broadcast some message to be printed on screen and stored to database
+                daemon.log(string)
+                break
+            if not self.commands[0]['source'] == 'itself':
+                # in case the origin of the query was not itself, forward the answer to the origin
+                daemon.messageAll(string, self.commands[0]['source'])
+            if self.commands[0]['cmd'] == 'I1?'  and self.commands[0]['source'] == 'itself':
+                obj['Current'] = float(string[2:4])
+                break
+            if self.commands[0]['cmd'] == 'V1?' and self.commands[0]['source'] == 'itself':
+                obj['Voltage'] = float(string[2:4])
+                break       
+            break
+        else:
+            return
+        self.commands.pop(0)
+    @catch
+    def message(self, string, keep=False, source='itself'):
+        """
+        Send the message to the controller. If keep=True, append the command name to
+        internal queue so that we may properly recognize the reply
+        """
+        if keep:
+            self.commands.append({'cmd': string,
+                                  'source': source,
+                                  'timeStamp': datetime.datetime.utcnow(),
+                                  'keep': keep})
+            SimpleProtocol.message(self, '?$%s' % string)
+        else:
+            SimpleProtocol.message(self, string)
+    @catch
+    def update(self):
+        if (datetime.datetime.utcnow() - obj['hw_last_reply_time']).total_seconds() > 10:
+            # We did not get any reply from device during last 10 seconds, probably it is disconnected?
+            self.object['hw_connected'] = 0
+            # TODO: should we clear the command queue here?
+        # first check if device is hw_connected
+        if self.object['hw_connected'] == 0:
+            # if not connected do not send any commands
+            return
+        elif (datetime.datetime.utcnow() - self.lastAutoRead).total_seconds() > 2. and len(self.commands) == 0:
+            # Request the hardware state from the device
+            self.message('I1?', keep=True, source='itself')
+            self.message('V1?', keep=True, source='itself')
+            self.message('CONFIG?', keep=True, source='itself')
+            self.message('*IDN?', keep=True, source='itself')
+            self.message('*RST', keep=True, source='itself')
+            self.lastAutoRead = datetime.datetime.utcnow()
+
+        
+if __name__ == '__main__':
+    from optparse import OptionParser
+    parser = OptionParser(usage="usage: %prog [options] arg")
+    parser.add_option('-H', '--hw-host', help='Hardware host to connect', action='store', dest='hw_host', default='192.168.1.6')
+    parser.add_option('-P', '--hw-port', help='Hardware port to connect', action='store', dest='hw_port', type='int', default=9221)
+    parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7025)
+    parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='plh120-p')
+    parser.add_option("-D", '--debug', help='Debug mode', action="store_true", dest="debug")
+    (options, args) = parser.parse_args()
+    # Object holding actual state and work logic.
+    # May be anything that will be passed by reference - list, dict, object etc
+    obj = {
+        'hw_connected': 0,
+        'Current': 0,
+        'Voltage': 0}
+    # Factories for daemon and hardware connections
+    # We need two different factories as the protocols are different
+    daemon = SimpleFactory(DaemonProtocol, obj)
+    hw = SimpleFactory(plh120_Protocol, obj)
+    if options.debug:
+        daemon._protocol._debug = True
+        hw._protocol._debug = True
+    daemon.name = options.name
+    obj['daemon'] = daemon
+    obj['hw'] = hw
+    obj['hw_last_reply_time'] = datetime.datetime(1970, 1, 1)  # Arbitrarily old time moment
+    # Incoming connections
+    daemon.listen(options.port)
+    # Outgoing connection
+    hw.connect(options.hw_host, options.hw_port)
+    daemon._reactor.run()
