@@ -22,9 +22,8 @@ class DaemonProtocol(SimpleProtocol) :
         string = string.strip()
         STRING = string.upper()
         while True:
-            print 'OK'
             if string == 'get_status' :
-                self.message('status hw_connected=%s Current=%s Voltage=%s ' %
+                self.message('status hw_connected=%s Current=%d Voltage=%d ' %
                              (self.object['hw_connected'], self.object['Current'], self.object['Voltage']))
                 break
             if string == 'reset':
@@ -42,17 +41,15 @@ class DaemonProtocol(SimpleProtocol) :
             if string == 'get_current' :
                 self.sendCommand('I1?', kepp = True)
                 break
-	    if cmd.name[-1] == '?':
-                self.sendCommand(cmd.name.rstrip('?'), keep=True)
             else:
                 self.sendCommand(cmd.name, keep=False)
             if self._debug:
-                print 'sending unrecognized command', cmd.name.rstrip('?')
+                print 'sending unrecognized command', cmd.name
                 if cmd.name[-1] == '?':
                     print 'command recognize as query command'
             break
-   @catch
-   def sendCommand(self, string, keep=False):
+    @catch
+    def sendCommand(self, string, keep=False):
         obj = self.object  # Object holding the state
         hw = obj['hw']  # HW factory
         hw.messageAll(string, type='hw', keep=keep, source=self.name)
@@ -72,12 +69,9 @@ class plh120_Protocol(SimpleProtocol):
     def connectionMade(self):
         SimpleProtocol.connectionMade(self)
         self.commands = []
-        self.object['hw_connected'] = 0  # We will set this flag when we receive any reply from the device
+        self.object['hw_connected'] = 1  # We will set this flag when we receive any reply from the device
         SimpleProtocol.message(self, '*RST')
-        SimpleProtocol.message(self, '*IDN')
-        SimpleProtocol.message(self, 'CONFIG')
-        SimpleProtocol.message(self, 'I1 0.25')
-        SimpleProtocol.message(self, 'V1 10')
+        SimpleProtocol.message(self, '*IDN?')
     @catch
     def connectionLost(self, reason):
         self.object['hw_connected'] = 0
@@ -101,16 +95,17 @@ class plh120_Protocol(SimpleProtocol):
                 break
             if self.commands[0]['cmd'] == '*IDN?' and self.commands[0]['source'] == 'itself':
                 # Example of how to broadcast some message to be printed on screen and stored to database
-                daemon.log(string)
+                #daemon.log(string)
+		pass
                 break
             if not self.commands[0]['source'] == 'itself':
                 # in case the origin of the query was not itself, forward the answer to the origin
                 daemon.messageAll(string, self.commands[0]['source'])
             if self.commands[0]['cmd'] == 'I1?'  and self.commands[0]['source'] == 'itself':
-                obj['Current'] = float(string[2:4])
+                obj['Current'] = float(string[3:-1])
                 break
             if self.commands[0]['cmd'] == 'V1?' and self.commands[0]['source'] == 'itself':
-                obj['Voltage'] = float(string[2:4])
+                obj['Voltage'] = float(string[3:-1])
                 break       
             break
         else:
@@ -127,7 +122,7 @@ class plh120_Protocol(SimpleProtocol):
                                   'source': source,
                                   'timeStamp': datetime.datetime.utcnow(),
                                   'keep': keep})
-            SimpleProtocol.message(self, '?$%s' % string)
+            SimpleProtocol.message(self, '%s' % string)
         else:
             SimpleProtocol.message(self, string)
     @catch
@@ -146,7 +141,6 @@ class plh120_Protocol(SimpleProtocol):
             self.message('V1?', keep=True, source='itself')
             self.message('CONFIG?', keep=True, source='itself')
             self.message('*IDN?', keep=True, source='itself')
-            self.message('*RST', keep=True, source='itself')
             self.lastAutoRead = datetime.datetime.utcnow()
 
         
@@ -155,7 +149,7 @@ if __name__ == '__main__':
     parser = OptionParser(usage="usage: %prog [options] arg")
     parser.add_option('-H', '--hw-host', help='Hardware host to connect', action='store', dest='hw_host', default='192.168.1.6')
     parser.add_option('-P', '--hw-port', help='Hardware port to connect', action='store', dest='hw_port', type='int', default=9221)
-    parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7025)
+    parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7026)
     parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='plh120-p')
     parser.add_option("-D", '--debug', help='Debug mode', action="store_true", dest="debug")
     (options, args) = parser.parse_args()
