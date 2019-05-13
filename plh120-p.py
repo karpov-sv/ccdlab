@@ -98,15 +98,15 @@ class plh120_Protocol(SimpleProtocol):
                 #daemon.log(string)
 		pass
                 break
-            if not self.commands[0]['source'] == 'itself':
-                # in case the origin of the query was not itself, forward the answer to the origin
-                daemon.messageAll(string, self.commands[0]['source'])
-            if self.commands[0]['cmd'] == 'I1?'  and self.commands[0]['source'] == 'itself':
+          if self.commands[0]['cmd'] == 'I1?'  and self.commands[0]['source'] == 'itself':
                 obj['Current'] = float(string[3:-1])
                 break
-            if self.commands[0]['cmd'] == 'V1?' and self.commands[0]['source'] == 'itself':
+          if self.commands[0]['cmd'] == 'V1?' and self.commands[0]['source'] == 'itself':
                 obj['Voltage'] = float(string[3:-1])
-                break       
+                break      
+          if not self.commands[0]['source'] == 'itself':
+                # in case the origin of the query was not itself, forward the answer to the origin
+                daemon.messageAll(string, self.commands[0]['source']) 
             break
         else:
             return
