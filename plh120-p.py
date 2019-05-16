@@ -70,7 +70,7 @@ class plh120_Protocol(SimpleProtocol):
         SimpleProtocol.connectionMade(self)
         self.commands = []
         self.object['hw_connected'] = 1  # We will set this flag when we receive any reply from the device
-        #SimpleProtocol.message(self, '*RST')
+        SimpleProtocol.message(self, '*RST')
         SimpleProtocol.message(self, '*IDN?')
     @catch
     def connectionLost(self, reason):
