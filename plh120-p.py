@@ -23,7 +23,7 @@ class DaemonProtocol(SimpleProtocol) :
         STRING = string.upper()
         while True:
             if string == 'get_status' :
-                self.message('status hw_connected=%s Current=%d Voltage=%d ' %
+                self.message('status hw_connected=%s Current=%g Voltage=%g ' %
                              (self.object['hw_connected'], self.object['Current'], self.object['Voltage']))
                 break
             if string == 'reset':
@@ -43,10 +43,10 @@ class DaemonProtocol(SimpleProtocol) :
                 break
             else:
                 self.sendCommand(cmd.name, keep=False)
-            if self._debug:
-                print 'sending unrecognized command', cmd.name
-                if cmd.name[-1] == '?':
-                    print 'command recognize as query command'
+            #if self._debug:
+            #    print 'sending unrecognized command', cmd.name
+            #    if cmd.name[-1] == '?':
+            #        print 'command recognize as query command'
             break
     @catch
     def sendCommand(self, string, keep=False):
@@ -70,7 +70,7 @@ class plh120_Protocol(SimpleProtocol):
         SimpleProtocol.connectionMade(self)
         self.commands = []
         self.object['hw_connected'] = 1  # We will set this flag when we receive any reply from the device
-        SimpleProtocol.message(self, '*RST')
+        #SimpleProtocol.message(self, '*RST')
         SimpleProtocol.message(self, '*IDN?')
     @catch
     def connectionLost(self, reason):
@@ -79,11 +79,10 @@ class plh120_Protocol(SimpleProtocol):
     @catch
     def processMessage(self, string):
         obj = self.object  # Object holding the state
-        print obj
         daemon = obj['daemon']
         if self._debug:
             print 'PLH120-P >> %s' % string
-            print 'commands Q:', self.commands
+            #print 'commands Q:', self.commands
         # Update the last reply timestamp
         obj['hw_last_reply_time'] = datetime.datetime.utcnow()
         obj['hw_connected'] = 1
@@ -92,21 +91,23 @@ class plh120_Protocol(SimpleProtocol):
             # We have some sent commands in the queue - let's check what was the oldest one
             if self.commands[0]['cmd'] == '*RST' and self.commands[0]['source'] == 'itself':
                 # not used at the moment
+                pass
                 break
             if self.commands[0]['cmd'] == '*IDN?' and self.commands[0]['source'] == 'itself':
                 # Example of how to broadcast some message to be printed on screen and stored to database
                 #daemon.log(string)
 		pass
                 break
-          if self.commands[0]['cmd'] == 'I1?'  and self.commands[0]['source'] == 'itself':
+            if self.commands[0]['cmd'] == 'I1?' and self.commands[0]['source'] == 'itself':
                 obj['Current'] = float(string[3:-1])
                 break
-          if self.commands[0]['cmd'] == 'V1?' and self.commands[0]['source'] == 'itself':
+            if self.commands[0]['cmd'] == 'V1?' and self.commands[0]['source'] == 'itself':
                 obj['Voltage'] = float(string[3:-1])
                 break      
-          if not self.commands[0]['source'] == 'itself':
+            if not self.commands[0]['source'] == 'itself':
                 # in case the origin of the query was not itself, forward the answer to the origin
-                daemon.messageAll(string, self.commands[0]['source']) 
+                daemon.messageAll(string, self.commands[0]['source'])
+                break
             break
         else:
             return
@@ -139,7 +140,7 @@ class plh120_Protocol(SimpleProtocol):
             # Request the hardware state from the device
             self.message('I1?', keep=True, source='itself')
             self.message('V1?', keep=True, source='itself')
-            self.message('CONFIG?', keep=True, source='itself')
+            #self.message('CONFIG?', keep=True, source='itself')
             self.message('*IDN?', keep=True, source='itself')
             self.lastAutoRead = datetime.datetime.utcnow()
 
