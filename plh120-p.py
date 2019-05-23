@@ -33,30 +33,42 @@ class DaemonProtocol(SimpleProtocol) :
                 self.sendCommand('*IDN?', keep = True)
                 break
             if string == 'config' :
-                self.sendCommand('CONFIG?', kepp = True)
+                self.sendCommand('CONFIG?', keep = True)
                 break
             if string == 'get_voltage' :
-                self.sendCommand('V1?', kepp = True)
+                self.sendCommand('V1?', keep = True)
                 break
-            if string == 'get_current' :
-                self.sendCommand('I1?', kepp = True)
+            if string == 'get_voltage_limit' :
+                self.sendCommand('OVP1?', keep = True)
+                break
+            if string == 'get_current_limit' :
+                self.sendCommand('I1?', keep = True)
+                break
+            if string == 'get_current_trip' :
+                self.sendCommand('OCP1?', keep = True)
                 break
             else:
                 self.sendCommand(cmd.name, keep=False)
-            #if self._debug:
-             #   print 'sending unrecognized command', cmd.name
-              #  if cmd.name[-1] == '?':
-               #     print 'command recognize as query command'
-	    break
 
-            regex = re.compile(r'set_current (?P<val>(\.(\d+\.\d+\.\d+))')
+
+            regex = re.compile(r'(\:?(V1|SET_VOLTAGE) (?P<val>(\d+\.\d+?$|\d+?$)))')
             match = re.match(regex, STRING)
             if match:
-                print val
-                hw.messageAll('I1 ' + val + '\n', type='hw', keep=False, source=self.name)
+                hw.messageAll('V1 ' + match.group('val') + '\n', type='hw', keep=False, source=self.name)
                 break
-            else :
-                print 'non'
+
+            regex = re.compile(r'(\:?(I1|SET_CURRENT_LIMIT) (?P<val>(\d+\.\d+?$|\d+?$)))')
+            match = re.match(regex, STRING)
+            if match:
+                hw.messageAll('I1 ' + match.group('val') + '\n', type='hw', keep=False, source=self.name)
+                break
+
+            regex = re.compile(r'(\:?(OVP1|SET_VOLTAGE_LIMIT) (?P<val>(\d+\.\d+?$|\d+?$)))')
+            match = re.match(regex, STRING)
+            if match:
+                hw.messageAll('OVP1 ' + match.group('val') + '\n', type='hw', keep=False, source=self.name)
+                break
+
             
             break
     @catch
@@ -114,7 +126,10 @@ class plh120_Protocol(SimpleProtocol):
                 break
             if self.commands[0]['cmd'] == 'V1?' and self.commands[0]['source'] == 'itself':
                 obj['Voltage'] = float(string[3:-1])
-                break      
+                break
+            if self.commands[0]['cmd'] == 'OVP1?' and self.commands[0]['source'] == 'itself':
+                obj['OVP1'] = float(string[3:-1])
+                break 
             if not self.commands[0]['source'] == 'itself':
                 # in case the origin of the query was not itself, forward the answer to the origin
                 daemon.messageAll(string, self.commands[0]['source'])
