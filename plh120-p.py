@@ -44,9 +44,20 @@ class DaemonProtocol(SimpleProtocol) :
             else:
                 self.sendCommand(cmd.name, keep=False)
             #if self._debug:
-            #    print 'sending unrecognized command', cmd.name
-            #    if cmd.name[-1] == '?':
-            #        print 'command recognize as query command'
+             #   print 'sending unrecognized command', cmd.name
+              #  if cmd.name[-1] == '?':
+               #     print 'command recognize as query command'
+	    break
+
+            regex = re.compile(r'set_current (?P<val>(\.(\d+\.\d+\.\d+))')
+            match = re.match(regex, STRING)
+            if match:
+                print val
+                hw.messageAll('I1 ' + val + '\n', type='hw', keep=False, source=self.name)
+                break
+            else :
+                print 'non'
+            
             break
     @catch
     def sendCommand(self, string, keep=False):
@@ -138,10 +149,10 @@ class plh120_Protocol(SimpleProtocol):
             return
         elif (datetime.datetime.utcnow() - self.lastAutoRead).total_seconds() > 2. and len(self.commands) == 0:
             # Request the hardware state from the device
-            self.message('I1?', keep=True, source='itself')
-            self.message('V1?', keep=True, source='itself')
+            #self.message('I1?', keep=True, source='itself')
+            #self.message('V1?', keep=True, source='itself')
             #self.message('CONFIG?', keep=True, source='itself')
-            self.message('*IDN?', keep=True, source='itself')
+            #self.message('*IDN?', keep=True, source='itself')
             self.lastAutoRead = datetime.datetime.utcnow()
 
         
