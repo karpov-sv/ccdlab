@@ -40,11 +40,20 @@ class DaemonProtocol(SimpleProtocol):
             if string == 'get_voltage':
                 self.sendCommand('V1?', keep=True)
                 break
+            if string == 'get_readback_voltage':
+                self.sendCommand('V1O?', keep=True)
+                break
+            if string == 'get_readback_current':
+                self.sendCommand('I1O?', keep=True)
+                break
             if string == 'get_voltage_limit':
                 self.sendCommand('OVP1?', keep=True)
                 break
             if string == 'get_current_limit':
                 self.sendCommand('I1?', keep=True)
+                break
+            if string == 'step_size_voltage':
+                self.sendCommand('DELTAV1?', keep=True)
                 break
             if string == 'get_current_trip':
                 self.sendCommand('OCP1?', keep=True)
@@ -52,30 +61,41 @@ class DaemonProtocol(SimpleProtocol):
             else:
                 self.sendCommand(cmd.name, keep=False)
 
-            regex = re.compile(
-                r'(\:?(V1|SET_VOLTAGE) (?P<val>(\d+\.\d+?$|\d+?$)))')
+            regex = re.compile(r'(\:?(V1|SET_VOLTAGE) (?P<val>(\d+\.\d+?$|\d+?$)))')
             match = re.match(regex, STRING)
             if match:
-                hw.messageAll('V1 ' + match.group('val') + '\n',
-                              type='hw', keep=False, source=self.name)
+                hw.messageAll('V1 ' + match.group('val') + '\n',type='hw', keep=False, source=self.name)
                 break
 
-            regex = re.compile(
-                r'(\:?(I1|SET_CURRENT_LIMIT) (?P<val>(\d+\.\d+?$|\d+?$)))')
+            regex = re.compile(r'(\:?(I1|SET_CURRENT_LIMIT) (?P<val>(\d+\.\d+?$|\d+?$)))')
             match = re.match(regex, STRING)
             if match:
-                hw.messageAll('I1 ' + match.group('val') + '\n',
-                              type='hw', keep=False, source=self.name)
+                hw.messageAll('I1 ' + match.group('val') + '\n', type='hw', keep=False, source=self.name)
                 break
 
-            regex = re.compile(
-                r'(\:?(OVP1|SET_VOLTAGE_LIMIT) (?P<val>(\d+\.\d+?$|\d+?$)))')
+            regex = re.compile(r'(\:?(OVP1|SET_VOLTAGE_LIMIT) (?P<val>(\d+\.\d+?$|\d+?$)))')
             match = re.match(regex, STRING)
             if match:
-                hw.messageAll('OVP1 ' + match.group('val') + '\n',
-                              type='hw', keep=False, source=self.name)
+                hw.messageAll('OVP1 ' + match.group('val') + '\n',type='hw', keep=False, source=self.name)
                 break
 
+            regex = re.compile(r'(\:?(DELTAV1|SET_STEP_SIZE_VOLTAGE) (?P<val>(\d+\.\d+?$|\d+?$)))')
+            match = re.match(regex, STRING)
+            if match:
+                hw.messageAll('DELTAV1 ' + match.group('val') + '\n', type='hw', keep=False, source=self.name)
+                break
+
+            regex = re.compile(r'(\:?(INCV1|INCREMENT_VOLTAGE) (?P<val>(\d+\.\d+?$|\d+?$)))')
+            match = re.match(regex, STRING)
+            if match:
+                hw.messageAll('INCV1 ' + '\n', type='hw', keep=False, source=self.name)
+                break
+
+            regex = re.compile(r'(\:?(DECV1|DECREMENT_VOLTAGE) (?P<val>(\d+\.\d+?$|\d+?$)))')
+            match = re.match(regex, STRING)
+            if match:
+                hw.messageAll('DECV1 ' + '\n',type='hw', keep=False, source=self.name)
+                break
             break
 
     @catch
@@ -141,6 +161,15 @@ class plh120_Protocol(SimpleProtocol):
             if self.commands[0]['cmd'] == 'OVP1?' and self.commands[0]['source'] == 'itself':
                 obj['OVP1'] = float(string[3:-1])
                 break
+            if self.commands[0]['cmd'] == 'DELTAV1?' and self.commands[0]['source'] == 'itself':
+                obj['DELTAV1'] = float(string[7:-1])
+                break
+            if self.commands[0]['cmd'] == 'V1O?' and self.commands[0]['source'] == 'itself':
+                obj['V1O'] = float(string[3:-1])
+                break
+            if self.commands[0]['cmd'] == 'I1O?' and self.commands[0]['source'] == 'itself':
+                obj['I1O'] = float(string[3:-1])
+                break
             if not self.commands[0]['source'] == 'itself':
                 # in case the origin of the query was not itself, forward the answer to the origin
                 daemon.messageAll(string, self.commands[0]['source'])
@@ -187,23 +216,17 @@ class plh120_Protocol(SimpleProtocol):
 if __name__ == '__main__':
     from optparse import OptionParser
     parser = OptionParser(usage="usage: %prog [options] arg")
-    parser.add_option('-H', '--hw-host', help='Hardware host to connect',
-                      action='store', dest='hw_host', default='192.168.1.6')
-    parser.add_option('-P', '--hw-port', help='Hardware port to connect',
-                      action='store', dest='hw_port', type='int', default=9221)
-    parser.add_option('-p', '--port', help='Daemon port',
-                      action='store', dest='port', type='int', default=7026)
-    parser.add_option('-n', '--name', help='Daemon name',
-                      action='store', dest='name', default='plh120-p')
-    parser.add_option("-D", '--debug', help='Debug mode',
-                      action="store_true", dest="debug")
+    parser.add_option('-H', '--hw-host', help='Hardware host to connect',action='store', dest='hw_host', default='192.168.1.6')
+    parser.add_option('-P', '--hw-port', help='Hardware port to connect',action='store', dest='hw_port', type='int', default=9221)
+    parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7026)
+    parser.add_option('-n', '--name', help='Daemon name',action='store', dest='name', default='plh120-p')
+    parser.add_option("-D", '--debug', help='Debug mode',action="store_true", dest="debug")
     (options, args) = parser.parse_args()
     # Object holding actual state and work logic.
     # May be anything that will be passed by reference - list, dict, object etc
-    obj = {
-        'hw_connected': 0,
-        'Current': 0,
-        'Voltage': 0}
+    obj = {'hw_connected': 0,
+           'Current': 0,
+            'Voltage': 0}
     # Factories for daemon and hardware connections
     # We need two different factories as the protocols are different
     daemon = SimpleFactory(DaemonProtocol, obj)
@@ -214,8 +237,7 @@ if __name__ == '__main__':
     daemon.name = options.name
     obj['daemon'] = daemon
     obj['hw'] = hw
-    obj['hw_last_reply_time'] = datetime.datetime(
-        1970, 1, 1)  # Arbitrarily old time moment
+    obj['hw_last_reply_time'] = datetime.datetime(1970, 1, 1)  # Arbitrarily old time moment
     # Incoming connections
     daemon.listen(options.port)
     # Outgoing connection
