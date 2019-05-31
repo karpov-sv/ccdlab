@@ -343,7 +343,7 @@ class WebMonitor(Resource):
             s = StringIO()
             make_plot(s, self.object, qs[3], qs[4])
             request.responseHeaders.setRawHeaders("Content-Type", ['image/png'])
-            request.responseHeaders.setRawHeaders("Content-Length", [s.len])
+            request.responseHeaders.setRawHeaders("Content-Length", [str(s.len)])
             request.responseHeaders.setRawHeaders("Cache-Control", ['no-store, no-cache, must-revalidate, max-age=0'])
             return s.getvalue()
         elif q.path == '/monitor/command' and args.has_key('string'):
