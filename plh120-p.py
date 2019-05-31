@@ -28,38 +28,45 @@ class DaemonProtocol(SimpleProtocol):
                 self.message('status hw_connected=%s Current=%g Voltage=%g CurrentActual=%g VoltageActual=%g' %
                              (self.object['hw_connected'], self.object['Current'], self.object['Voltage'], self.object['CurrentActual'], self.object['VoltageActual']))
                 break
-            if string == 'reset':
+            if STRING in ['RESET','*RST'] :
                 self.sendCommand('*RST', keep=True)
                 break
-            if string == 'idn':
+            if STRING in ['IDN','*IDN?']:
                 self.sendCommand('*IDN?', keep=True)
                 break
-            if string == 'config':
+            if STRING in ['CONFIG','CONFIG?'] :
                 self.sendCommand('CONFIG?', keep=True)
                 break
-            if string == 'get_voltage':
+            if STRING in ['GET_VOLTAGE', 'V1?']:
                 self.sendCommand('V1?', keep=True)
                 break
-            if string == 'get_readback_voltage':
+            if STRING in ['GET_READBACK_VOLTAGE', 'V1O?']:
                 self.sendCommand('V1O?', keep=True)
                 break
-            if string == 'get_readback_current':
+            if STRING in ['GET_READBACK_CURRENT','I1O?']:
                 self.sendCommand('I1O?', keep=True)
                 break
-            if string == 'get_voltage_limit':
+            if STRING in ['GET_VOLTAGE_LIMIT','OVP1?']:
                 self.sendCommand('OVP1?', keep=True)
                 break
-            if string == 'get_current_limit':
+            if STRING in ['GET_CURRENT_LIMIT','I1?']:
                 self.sendCommand('I1?', keep=True)
                 break
-            if string == 'step_size_voltage':
+            if STRING in ['STEP_SIZE_VOLTAGE','DELTAV1?']:
                 self.sendCommand('DELTAV1?', keep=True)
                 break
-            if string == 'get_current_trip':
+            if STRING in ['GET_CURRENT_TRIP','OCP1?']:
                 self.sendCommand('OCP1?', keep=True)
                 break
-            else:
-                self.sendCommand(cmd.name, keep=False)
+            if STRING  in ['ENGAGE']:
+                self.sendCommand('OP1 1', keep=True)
+                break
+            if STRING in ['DISENGAGE']:
+                self.sendCommand('OP1 0', keep=True)
+                break
+            if STRING in ['GET_ON_OFF', 'OP1?']:
+                self.sendCommand('OP1?', keep=True)
+                break
 
             regex = re.compile(r'(\:?(V1|SET_VOLTAGE) (?P<val>(\d+\.\d+?$|\d+?$)))')
             match = re.match(regex, STRING)
@@ -96,6 +103,12 @@ class DaemonProtocol(SimpleProtocol):
             if match:
                 hw.messageAll('DECV1 ' + '\n', type='hw', keep=False, source=self.name)
                 break
+
+            if STRING[-1] == '?':
+                self.sendCommand(STRING, keep=True)
+            else:
+                self.sendCommand(STRING, keep=False)
+
             break
 
     @catch
@@ -165,10 +178,10 @@ class plh120_Protocol(SimpleProtocol):
                 obj['DELTAV1'] = float(string[7:-1])
                 break
             if self.commands[0]['cmd'] == 'V1O?' and self.commands[0]['source'] == 'itself':
-                obj['V1O'] = float(string[0:-2])
+                obj['VoltageActual'] = float(string[0:-2])
                 break
             if self.commands[0]['cmd'] == 'I1O?' and self.commands[0]['source'] == 'itself':
-                obj['I1O'] = float(string[0:-2])
+                obj['CurrentActual'] = float(string[0:-2])
                 break
             if not self.commands[0]['source'] == 'itself':
                 # in case the origin of the query was not itself, forward the answer to the origin
