@@ -1,0 +1,52 @@
+<!-- Default layout for a client widget -->
+<div class="panel panel-default">
+  <!-- Title bar with connection and hardware connection status flags -->
+  <div class="panel-heading">
+    <h3 class="panel-title">
+      <span class="monitor-client-title" style="margin-right: 0.5em">{{> params.description }}</span>
+      <span class="monitor-client-connstatus label label-default" style="margin-right: 0.5em"></span>
+      <span class="monitor-client-hwstatus label label-default" style="margin-right: 0.5em" ></span>
+    </h3>
+  </div>
+  <!-- Main body, hidden when disconnected -->
+  <ul class="monitor-client-body list-group hide">
+    <!-- Progress bar -->
+    <li class="monitor-client-progressdiv list-group-item progress hide" style="margin: 0; padding: 0">
+      <div class="monitor-client-progress progress-bar" style="width: 0%">
+      </div>
+    </li>
+    <!-- Main content -->
+    <!-- Show all key=value pairs from the status -->
+    <li class="list-group-item" style="padding: 5px">
+    </li>
+    
+    <li class="list-group-item clearfix" style="padding: 5px">
+      <!-- Subsystems -->
+      <img src="/monitor/plot/{{> ~root.params.name }}/current" class="monitor-plot-{{> ~root.params.name }}-current img pull-right"/>
+      <img src="/monitor/plot/{{> ~root.params.name }}/voltage" class="monitor-plot-{{> ~root.params.name }}-voltage img pull-right"/>
+      {{for ~list('Current_Limit',','Voltage','CurrentActual','VoltageActual','Vstatus') itemVar="~prefix" }}
+        <div>
+       	    {{else ~prefix == 'Voltage'}}
+                {{: ~prefix }}: <span data-link="class{: (~root.status.Vstatus == '0') ? 'label label-default' : 'label label-success' } {:(~root.status.Voltage)+'V'}"></span>
+            {{else ~prefix == 'Vstatus'}}
+                {{: ~prefix }}: {{status_switch ~prefix 'enabled' 'label label-success' 'disabled' 'label label-default'/}}
+            {{else ~prefix == 'VoltageActual'}}
+                {{: ~prefix }}: <span data-link="class{: (~root.status.Vstatus == '0') ? 'label label-default' : 'label label-success' } {:(~root.status.VoltageActual)+'V'}"></span>
+            {{else ~prefix == 'Current_Limit'}}
+                {{: ~prefix }}: <span data-link="class{: (~root.status.Vstatus == '0') ? 'label label-default' : 'label label-success'} {:(~root.status.Current_Limit)+'A'}"></span>
+            {{else ~prefix == 'CurrentActual'}}
+                {{: ~prefix }}: <span data-link="class{: (~root.status.Vstatus == '0') ? 'label label-default' : 'label label-success'} {:(~root.status.CurrentActual)+'A'}"></span>
+            {{else}}
+                {{: ~prefix }}: {{status ~prefix /}}
+            {{/if}}    
+        </div>
+      {{/for}}
+      <button class="btn btn-danger monitor-button" data-command="send plh120_p ENGAGE" data-link="disabled{: status.Vstatus == '0' }">Voltage Source Engage</button>
+      <button class="btn btn-default monitor-button" data-command="send plh120_p DISENGAGE" data-link="disabled{: status.Vstatus == '1'}">Voltage Source Standby</button>
+    </li>
+    
+
+  </ul>
+
+</div>
+
