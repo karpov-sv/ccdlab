@@ -40,16 +40,16 @@ class DaemonProtocol(SimpleProtocol):
             if STRING in ['GET_VOLTAGE', 'V1?']:
                 self.sendCommand('V1?', keep=True)
                 break
-            if STRING in ['GET_READBACK_VOLTAGE', 'V1O?']:
+            if STRING in ['GET_VOLTAGEACTUAL', 'V1O?']:
                 self.sendCommand('V1O?', keep=True)
                 break
-            if STRING in ['GET_READBACK_CURRENT','I1O?']:
+            if STRING in ['GET_CURRENTACTUAL','I1O?']:
                 self.sendCommand('I1O?', keep=True)
                 break
             if STRING in ['GET_VOLTAGE_LIMIT','OVP1?']:
                 self.sendCommand('OVP1?', keep=True)
                 break
-            if STRING in ['GET_Current_Limit','I1?']:
+            if STRING in ['GET_CURRENT_LIMIT','I1?']:
                 self.sendCommand('I1?', keep=True)
                 break
             if STRING in ['STEP_SIZE_VOLTAGE','DELTAV1?']:
@@ -184,7 +184,7 @@ class plh120_Protocol(SimpleProtocol):
                 obj['CurrentActual'] = float(string[0:-2])
                 break
             if self.commands[0]['cmd'] == 'ENGAGE' and self.commands[0]['source'] == 'itself':
-                obj['Vstatus'] = 'disabled' if string == 'O' else 'enabled'
+                obj['Vstatus'] = '0' if string == 'O' else '1'
             if not self.commands[0]['source'] == 'itself':
                 # in case the origin of the query was not itself, forward the answer to the origin
                 daemon.messageAll(string, self.commands[0]['source'])
