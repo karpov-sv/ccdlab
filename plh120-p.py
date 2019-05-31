@@ -25,8 +25,8 @@ class DaemonProtocol(SimpleProtocol):
         STRING = string.upper()
         while True:
             if string == 'get_status':
-                self.message('status hw_connected=%s Current=%g Voltage=%g CurrentActual=%g VoltageActual=%g' %
-                             (self.object['hw_connected'], self.object['Current'], self.object['Voltage'], self.object['CurrentActual'], self.object['VoltageActual']))
+                self.message('status hw_connected=%s Current_Limit=%g Voltage=%g CurrentActual=%g VoltageActual=%g Vstatus=%s' %
+                             (self.object['hw_connected'], self.object['Current_Limit'], self.object['Voltage'], self.object['CurrentActual'], self.object['VoltageActual'], self.object['Vstatus']))
                 break
             if STRING in ['RESET','*RST'] :
                 self.sendCommand('*RST', keep=True)
@@ -49,7 +49,7 @@ class DaemonProtocol(SimpleProtocol):
             if STRING in ['GET_VOLTAGE_LIMIT','OVP1?']:
                 self.sendCommand('OVP1?', keep=True)
                 break
-            if STRING in ['GET_CURRENT_LIMIT','I1?']:
+            if STRING in ['GET_Current_Limit','I1?']:
                 self.sendCommand('I1?', keep=True)
                 break
             if STRING in ['STEP_SIZE_VOLTAGE','DELTAV1?']:
@@ -74,7 +74,7 @@ class DaemonProtocol(SimpleProtocol):
                 hw.messageAll('V1 ' + match.group('val') + '\n', type='hw', keep=False, source=self.name)
                 break
 
-            regex = re.compile(r'(\:?(I1|SET_CURRENT_LIMIT) (?P<val>(\d+\.\d+?$|\d+?$)))')
+            regex = re.compile(r'(\:?(I1|SET_Current_Limit) (?P<val>(\d+\.\d+?$|\d+?$)))')
             match = re.match(regex, STRING)
             if match:
                 hw.messageAll('I1 ' + match.group('val') + '\n', type='hw', keep=False, source=self.name)
@@ -166,7 +166,7 @@ class plh120_Protocol(SimpleProtocol):
                 pass
                 break
             if self.commands[0]['cmd'] == 'I1?' and self.commands[0]['source'] == 'itself':
-                obj['Current'] = float(string[3:-1])
+                obj['Current_Limit'] = float(string[3:-1])
                 break
             if self.commands[0]['cmd'] == 'V1?' and self.commands[0]['source'] == 'itself':
                 obj['Voltage'] = float(string[3:-1])
@@ -183,6 +183,8 @@ class plh120_Protocol(SimpleProtocol):
             if self.commands[0]['cmd'] == 'I1O?' and self.commands[0]['source'] == 'itself':
                 obj['CurrentActual'] = float(string[0:-2])
                 break
+            if self.commands[0]['cmd'] == 'ENGAGE' and self.commands[0]['source'] == 'itself':
+                obj['Vstatus'] = 'disabled' if string == 'O' else 'enabled'
             if not self.commands[0]['source'] == 'itself':
                 # in case the origin of the query was not itself, forward the answer to the origin
                 daemon.messageAll(string, self.commands[0]['source'])
@@ -240,10 +242,11 @@ if __name__ == '__main__':
     # Object holding actual state and work logic.
     # May be anything that will be passed by reference - list, dict, object etc
     obj = {'hw_connected': 0,
-           'Current': 0,
+           'Current_Limit': 0,
            'Voltage': 0,
            'CurrentActual': 0,
-           'VoltageActual': 0}
+           'VoltageActual': 0,
+           'Vstatus': 0}
     # Factories for daemon and hardware connections
     # We need two different factories as the protocols are different
     daemon = SimpleFactory(DaemonProtocol, obj)
