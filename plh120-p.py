@@ -184,7 +184,7 @@ class plh120_Protocol(SimpleProtocol):
                 obj['CurrentActual'] = float(string[0:-2])
                 break
             if self.commands[0]['cmd'] == 'ENGAGE' and self.commands[0]['source'] == 'itself':
-                obj['Vstatus'] = '0' 
+                obj['Vstatus'] = '1' 
             if not self.commands[0]['source'] == 'itself':
                 # in case the origin of the query was not itself, forward the answer to the origin
                 daemon.messageAll(string, self.commands[0]['source'])
@@ -246,7 +246,7 @@ if __name__ == '__main__':
            'Voltage': 0,
            'CurrentActual': 0,
            'VoltageActual': 0,
-           'Vstatus': 0}
+           'Vstatus': '-'}
     # Factories for daemon and hardware connections
     # We need two different factories as the protocols are different
     daemon = SimpleFactory(DaemonProtocol, obj)

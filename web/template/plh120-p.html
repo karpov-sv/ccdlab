@@ -41,9 +41,10 @@
             {{/if}}    
         </div>
       {{/for}}
+     <button class="btn btn-danger monitor-button" data-command="send plh120-p engage" data-link="disabled{: status.Vstatus == '1'}">Voltage Engage</button>    
+     <button class="btn btn-danger monitor-button" data-command="send plh120-p disengage" data-link="disabled{: status.Vstatus == '0'}">Voltage Disengage</button>    
      </li>
-     <button class="btn btn-danger monitor-button" data-command="send plh120-p ENGAGE" data-link="disabled{: status.Vstatus == '1'}">Voltage Engage</button>    
-     <button class="btn btn-danger monitor-button" data-command="send plh120-p DISENGAGE" data-link="disabled{: status.Vstatus == '0'}">Voltage Disengage</button>    
+
   </ul>
 
 </div>
