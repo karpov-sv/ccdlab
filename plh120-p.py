@@ -59,10 +59,10 @@ class DaemonProtocol(SimpleProtocol):
                 self.sendCommand('OCP1?', keep=True)
                 break
             if STRING  in ['ENGAGE']:
-                self.sendCommand('OP1 1', keep=True)
+                self.sendCommand('OP1 1', keep=False)
                 break
             if STRING in ['DISENGAGE']:
-                self.sendCommand('OP1 0', keep=True)
+                self.sendCommand('OP1 0', keep=False)
                 break
             if STRING in ['GET_ON_OFF', 'OP1?']:
                 self.sendCommand('OP1?', keep=True)
@@ -184,7 +184,7 @@ class plh120_Protocol(SimpleProtocol):
                 obj['CurrentActual'] = float(string[0:-2])
                 break
             if self.commands[0]['cmd'] == 'ENGAGE' and self.commands[0]['source'] == 'itself':
-                obj['Vstatus'] = '0' if string == 'O' else '1'
+                obj['Vstatus'] = '0' 
             if not self.commands[0]['source'] == 'itself':
                 # in case the origin of the query was not itself, forward the answer to the origin
                 daemon.messageAll(string, self.commands[0]['source'])
