@@ -25,7 +25,7 @@ class DaemonProtocol(SimpleProtocol):
         STRING = string.upper()
         while True:
             if string == 'get_status':
-                self.message('status hw_connected=%s Current_Limit=%g Voltage=%g CurrentActual=%g VoltageActual=%g Vstatus=%s' %
+                self.message('status hw_connected=%s Current_Limit=%g Voltage=%g CurrentActual=%g VoltageActual=%g Vstatus=%g' %
                              (self.object['hw_connected'], self.object['Current_Limit'], self.object['Voltage'], self.object['CurrentActual'], self.object['VoltageActual'], self.object['Vstatus']))
                 break
             if STRING in ['RESET','*RST'] :
@@ -60,9 +60,11 @@ class DaemonProtocol(SimpleProtocol):
                 break
             if STRING  in ['ENGAGE']:
                 self.sendCommand('OP1 1', keep=False)
+                obj['Vstatus'] =  1
                 break
             if STRING in ['DISENGAGE']:
                 self.sendCommand('OP1 0', keep=False)
+                obj['Vstatus'] =  0
                 break
             if STRING in ['GET_ON_OFF', 'OP1?']:
                 self.sendCommand('OP1?', keep=True)
@@ -183,8 +185,9 @@ class plh120_Protocol(SimpleProtocol):
             if self.commands[0]['cmd'] == 'I1O?' and self.commands[0]['source'] == 'itself':
                 obj['CurrentActual'] = float(string[0:-2])
                 break
-            if self.commands[0]['cmd'] == 'ENGAGE' and self.commands[0]['source'] == 'itself':
-                obj['Vstatus'] = '1' 
+           # if self.commands[0]['cmd'] == 'ENGAGE' and self.commands[0]['source'] == 'itself':
+           #     obj['Vstatus'] =  1
+		#break
             if not self.commands[0]['source'] == 'itself':
                 # in case the origin of the query was not itself, forward the answer to the origin
                 daemon.messageAll(string, self.commands[0]['source'])
@@ -246,7 +249,7 @@ if __name__ == '__main__':
            'Voltage': 0,
            'CurrentActual': 0,
            'VoltageActual': 0,
-           'Vstatus': '-'}
+           'Vstatus': 0}
     # Factories for daemon and hardware connections
     # We need two different factories as the protocols are different
     daemon = SimpleFactory(DaemonProtocol, obj)
