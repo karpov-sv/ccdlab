@@ -119,4 +119,54 @@
 
   </div>
 
+
+  <!-- Power Supply -->
+  <div>
+
+    <ul class="nav nav-tabs">
+      <li class="nav-item disabled"><a class="nav-link disabled">Voltage:</a></li>
+      <li class="nav-item"><a data-toggle="tab" href="#Voltage-hour">Last Hour</a></li>
+      <li class="nav-item active"><a data-toggle="tab" href="#Voltage-day">Last Day</a></li>
+      <li class="nav-item"><a data-toggle="tab" href="#Voltage-week">Last Week</a></li>
+    </ul>
+
+    <div class="tab-content">
+      <div id="Voltage-hour" class="tab-pane fade">
+        <img src="{% url 'status_plot' 'plh120-p.Voltage' %}?ylog=1&width=1000&height=400&hours=1&title=Plh120-p&ylabel=Voltage [V]" class="img img-responsive center-block popup-status-image">
+      </div>
+      <div id="Voltage-day" class="tab-pane fade in active">
+        <img src="{% url 'status_plot' 'plh120-p.Voltage' %}?ylog=1&width=1000&height=400&hours=24&title=Plh120-p&ylabel=Voltage [V]" class="img img-responsive center-block popup-status-image">
+      </div>
+      <div id="Voltage-week" class="tab-pane fade">
+        <img src="{% url 'status_plot' 'plh120-p.Voltage' %}?ylog=1&width=1000&height=400&hours=168&title=Plh120-p&ylabel=Voltage [V]" class="img img-responsive center-block popup-status-image">
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Photodiode Voltage -->
+  <div>
+
+    <ul class="nav nav-tabs">
+      <li class="nav-item disabled"><a class="nav-link disabled">Photodiode Voltage:</a></li>
+      <li class="nav-item"><a data-toggle="tab" href="#photodiode-voltage-hour">Last Hour</a></li>
+      <li class="nav-item active"><a data-toggle="tab" href="#photodiode-voltage-day">Last Day</a></li>
+      <li class="nav-item"><a data-toggle="tab" href="#photodiode-voltage-week">Last Week</a></li>
+    </ul>
+
+    <div class="tab-content">
+      <div id="photodiode-voltage-hour" class="tab-pane fade">
+        <img src="{% url 'status_plot' 'keithley6485.value' %}?ylog=1&width=1000&height=400&hours=1&title=Keithley6485&ylabel=Current [A]" class="img img-responsive center-block popup-status-image">
+      </div>
+      <div id="photodiode-voltage-day" class="tab-pane fade in active">
+        <img src="{% url 'status_plot' 'keithley6485.value' %}?ylog=1&width=1000&height=400&hours=24&title=Keithley6485&ylabel=Current [A]" class="img img-responsive center-block popup-status-image">
+      </div>
+      <div id="photodiode-voltage-week" class="tab-pane fade">
+        <img src="{% url 'status_plot' 'keithley6485.value' %}?ylog=1&width=1000&height=400&hours=168&title=Keithley6485&ylabel=Current [A]" class="img img-responsive center-block popup-status-image">
+      </div>
+    </div>
+
+  </div>
+
+
 {% endblock %}
