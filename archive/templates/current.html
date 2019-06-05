@@ -94,7 +94,7 @@
     </div>
 
   </div>
-  
+
   <!-- Light Intensity -->
   <div>
 
@@ -107,13 +107,13 @@
 
     <div class="tab-content">
       <div id="light-intensity-hour" class="tab-pane fade">
-        <img src="{% url 'status_plot' 'keithley487.Current' %}?ylog=1&width=1000&height=400&hours=1&title=Keithley487&ylabel=Current [A]" class="img img-responsive center-block popup-status-image">
+        <img src="{% url 'status_plot' 'keithley6485.value' %}?ylog=0&width=1000&height=400&hours=1&title=Keithley6485&ylabel=Current [A]" class="img img-responsive center-block popup-status-image">
       </div>
       <div id="light-intensity-day" class="tab-pane fade in active">
-        <img src="{% url 'status_plot' 'keithley487.Current' %}?ylog=1&width=1000&height=400&hours=24&title=Keithley487&ylabel=Current [A]" class="img img-responsive center-block popup-status-image">
+        <img src="{% url 'status_plot' 'keithley6485.value' %}?ylog=0&width=1000&height=400&hours=24&title=Keithley6485&ylabel=Current [A]" class="img img-responsive center-block popup-status-image">
       </div>
       <div id="light-intensity-week" class="tab-pane fade">
-        <img src="{% url 'status_plot' 'keithley487.Current' %}?ylog=1&width=1000&height=400&hours=168&title=Keithley487&ylabel=Current [A]" class="img img-responsive center-block popup-status-image">
+        <img src="{% url 'status_plot' 'keithley6485.value' %}?ylog=0&width=1000&height=400&hours=168&title=Keithley6485&ylabel=Current [A]" class="img img-responsive center-block popup-status-image">
       </div>
     </div>
 
