@@ -27,13 +27,13 @@
        {{for ~list('Voltage', 'VoltageActual', 'Current_Limit', 'CurrentActual', 'Vstatus') itemVar="~prefix" }}
         <div>
            {{if ~prefix == 'VoltageActual'}}
-                {{: ~prefix }}: <span data-link="class{: (~root.status.Vstatus == '0') ? 'label label-default' : 'label label-success'} {:(~root.status.VoltageActual)+'V'}"></span>
+                {{: ~prefix }}: <span data-link="class{: (~root.status.Vstatus == 0) ? 'label label-default' : 'label label-success'} {:(~root.status.VoltageActual)+'V'}"></span>
             {{else ~prefix == 'Voltage'}}
-                {{: ~prefix }}: <span data-link="class{: (~root.status.Vstatus == '0') ? 'label label-default' : 'label label-success' } {:(~root.status.Voltage)+'V'}"></span>
+                {{: ~prefix }}: <span data-link="class{: (~root.status.Vstatus == 0) ? 'label label-default' : 'label label-success' } {:(~root.status.Voltage)+'V'}"></span>
             {{else ~prefix == 'Current_Limit'}}
-                {{: ~prefix }}: <span data-link="class{: (~root.status.Vstatus == '0') ? 'label label-default' : 'label label-success' } {:(~root.status.Current_Limit)+'A'}"></span>
+                {{: ~prefix }}: <span data-link="class{: (~root.status.Vstatus == 0) ? 'label label-default' : 'label label-success' } {:(~root.status.Current_Limit)+'A'}"></span>
             {{else ~prefix == 'CurrentActual'}}
-                {{: ~prefix }}: <span data-link="class{: (~root.status.Vstatus == '0') ? 'label label-default' : 'label label-success' } {:(~root.status.CurrentActual)+'A'}"></span>
+                {{: ~prefix }}: <span data-link="class{: (~root.status.Vstatus == 0) ? 'label label-default' : 'label label-success' } {:(~root.status.CurrentActual)+'A'}"></span>
             {{else ~prefix == 'Vstatus'}}
                 {{: ~prefix }}: {{status_switch ~prefix '1' 'label label-success' '0' 'label label-default'/}}
             {{else}}
@@ -41,8 +41,8 @@
             {{/if}}    
         </div>
       {{/for}}
-     <button class="btn btn-danger monitor-button" data-command="send plh120-p engage" data-link="disabled{: status.Vstatus == '1'}">Voltage Engage</button>    
-     <button class="btn btn-danger monitor-button" data-command="send plh120-p disengage" data-link="disabled{: status.Vstatus == '0'}">Voltage Disengage</button>    
+     <button class="btn btn-danger monitor-button" data-command="send plh120-p engage" data-link="disabled{: status.Vstatus == 1}">Voltage Engage</button>    
+     <button class="btn btn-danger monitor-button" data-command="send plh120-p disengage" data-link="disabled{: status.Vstatus == 0}">Voltage Disengage</button>    
      </li>
 
   </ul>
