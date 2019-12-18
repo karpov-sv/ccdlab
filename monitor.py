@@ -473,7 +473,7 @@ if __name__ == '__main__':
     parser.add_option('-d', '--debug', help='Debug output', action='store_true', dest='debug', default=False)
     parser.add_option('-s', '--server', help='Act as a TCP and HTTP server', action='store_true', dest='server', default=False)
     parser.add_option('-i', '--interval', help='DB logging status inteval', dest='interval', type='float', default=obj['db_status_interval'])
-    parser.add_option('-a', '--auth_file', help='passwords file', action='store', dest='passwdF', type='string')
+    parser.add_option('-a', '--auth_file', help='passwords file', action='store', dest='passwdF', type='string') #htpasswd -c -d passwdfile user
 
     (options,args) = parser.parse_args()
 

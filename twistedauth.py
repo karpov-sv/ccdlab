@@ -39,7 +39,6 @@ class PasswordDictCredentialChecker(object):
 
 # compare password, 
 def cmp_pass(uname, password, storedpass):
-    print crypt.crypt(password, storedpass.split('$')[2])
     return crypt.crypt(password, storedpass.split('$')[2])
 
 def wrap_with_auth(resource, passwdF, realm="Auth"):
