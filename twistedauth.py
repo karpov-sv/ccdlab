@@ -1,13 +1,12 @@
 from zope.interface import implements
-from twisted.internet.defer import succeed, fail
-from twisted.cred.error import UnauthorizedLogin
+from twisted.cred.portal import IRealm, Portal
+from twisted.web.guard import BasicCredentialFactory, HTTPAuthSessionWrapper
+from twisted.web.resource import IResource
 from twisted.cred.credentials import IUsernamePassword
 from twisted.cred.checkers import ICredentialsChecker
-from twisted.cred.portal import IRealm, Portal
-from twisted.web.resource import IResource
-from twisted.web.guard import BasicCredentialFactory, HTTPAuthSessionWrapper
-from twisted.web.static import File
-
+from twisted.internet.defer import succeed, fail
+import crypt
+from twisted.cred.error import UnauthorizedLogin
 
 class PublicHTMLRealm(object):
     implements(IRealm)
@@ -19,29 +18,34 @@ class PublicHTMLRealm(object):
         if IResource in interfaces:
             return (IResource, self._resource, lambda: None)
         raise NotImplementedError()
-
-
+    
 class PasswordDictCredentialChecker(object):
     implements(ICredentialsChecker)
     credentialInterfaces = (IUsernamePassword,)
 
-    def __init__(self, passwords):
-        self.passwords = passwords
+    def __init__(self, passwords_file):
+        pwdf=open(passwords_file)
+        self.passwords={}
+        for line in pwdf.readlines():
+            self.passwords[line.split(':')[0]] = line.split(':')[1][:-1]
+        pwdf.close()
 
     def requestAvatarId(self, credentials):
         matched = self.passwords.get(credentials.username, None)
-        if matched and matched == credentials.password:
+        if matched and matched == crypt.crypt(credentials.password, matched[:2]):
             return succeed(credentials.username)
         else:
             return fail(UnauthorizedLogin("Invalid username or password"))
 
+# compare password, 
+def cmp_pass(uname, password, storedpass):
+    print crypt.crypt(password, storedpass.split('$')[2])
+    return crypt.crypt(password, storedpass.split('$')[2])
 
-def wrap_with_auth(resource, passwords, realm="Auth"):
+def wrap_with_auth(resource, passwdF, realm="Auth"):
     """
     @param resource: resource to protect
-    @param passwords: a dict-like object mapping usernames to passwords
     """
-    portal = Portal(PublicHTMLRealm(resource),
-                    [PasswordDictCredentialChecker(passwords)])
-    credentialFactory = BasicCredentialFactory(realm)
-    return HTTPAuthSessionWrapper(portal, [credentialFactory])
+    checkers = [PasswordDictCredentialChecker(passwdF)]
+
+    return HTTPAuthSessionWrapper(Portal(PublicHTMLRealm(resource), checkers), [BasicCredentialFactory(realm)])

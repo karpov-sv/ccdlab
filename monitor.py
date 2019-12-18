@@ -473,6 +473,7 @@ if __name__ == '__main__':
     parser.add_option('-d', '--debug', help='Debug output', action='store_true', dest='debug', default=False)
     parser.add_option('-s', '--server', help='Act as a TCP and HTTP server', action='store_true', dest='server', default=False)
     parser.add_option('-i', '--interval', help='DB logging status inteval', dest='interval', type='float', default=obj['db_status_interval'])
+    parser.add_option('-a', '--auth_file', help='passwords file', action='store', dest='passwdF', type='string')
 
     (options,args) = parser.parse_args()
 
@@ -514,7 +515,7 @@ if __name__ == '__main__':
         root.putChild("", File('web/main.html'))
         root.putChild("monitor", WebMonitor(factory=daemon, object=obj))
         #site = Site(root)
-        site = Site(Auth(root, {'ccd':'ccd'}))
+        site = Site(Auth(root,options.passwdF))
 
         # WebSockets
         ws = SimpleFactory(WSProtocol, obj)
@@ -527,5 +528,5 @@ if __name__ == '__main__':
 
         print "Listening for incoming HTTP connections on port %d" % options.http_port
         TCP4ServerEndpoint(daemon._reactor, options.http_port).listen(site)
-
+        
     daemon._reactor.run()
