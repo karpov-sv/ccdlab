@@ -58,7 +58,17 @@
             {{/if}}
             {{for ~list('pwr_set', 'pwr_actual', 'pwr_man', 'range', 'load', 'source', 'set_point', 'ctrl_type', 'ramp', 'rate') itemVar="~field"}}
                 {{if ~id == 0}}
-                    <th>{{:~field}}</th>
+                    {{if ~field == 'pwr_set'}}
+                        <th>pwr_set [W]</th>
+                    {{else ~field == 'pwr_actual'}}
+                        <th>pwr_actual [W]</th>
+                    {{else ~field == 'pwr_man'}}
+                        <th>pwr_man [%]</th>
+                    {{else ~field == 'load'}}
+                        <th>load [Ohm]</th>
+                    {{else}}
+                        <th>{{:~field}}</th>
+                    {{/if}}
                 {{else}}
                     <td>
                     {{if ~field == 'ctrl_type'}}
