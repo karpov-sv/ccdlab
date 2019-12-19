@@ -247,7 +247,8 @@ class CryoConProtocol(SimpleProtocol):
 
         obj['hw_connected'] = 1
 
-        pwrfactor = {'HI': 1., 'MID': 0.1, 'LOW': 0.01}
+        pwrfactor1 = {'HI': 1., 'MID': 0.1, 'LOW': 0.01}
+        pwrfactor2 = {'HI': 0.5, 'LOW': 0.05}
 
         if len(self.commands) and string != "\r":
             if self._debug:
@@ -275,34 +276,24 @@ class CryoConProtocol(SimpleProtocol):
                         self.object['control'] = sstring[4]
                         self.object['status'] = status
                     else:
-                        nn = self.status_commands.index(
-                            self.commands[0]['cmd'])
-                        self.object['htr_status' +
-                                    str(nn)] = sstring[0].replace(' ', '-')
-                        self.object['range' +
-                                    str(nn)] = sstring[1].replace(' ', '')
-                        self.object['ctrl_type' +
-                                    str(nn)] = sstring[2].replace(' ', '')
+                        nn = self.status_commands.index(self.commands[0]['cmd'])
+                        self.object['htr_status' + str(nn)] = sstring[0].replace(' ', '-')
+                        self.object['range' + str(nn)] = sstring[1].replace(' ', '')
+                        self.object['ctrl_type' + str(nn)] = sstring[2].replace(' ', '')
                         if nn == 1:
                             self.object['load'+str(nn)] = float(sstring[3])
-                            self.object['pwr_set'+str(nn)] = float(
-                                sstring[4])*pwrfactor[self.object['range'+str(nn)]]*self.object['load'+str(nn)]/100.
-                            self.object['pwr_actual'+str(nn)] = float(sstring[5].replace(
-                                '%', ''))*pwrfactor[self.object['range'+str(nn)]]*self.object['load'+str(nn)]/100.
+                            self.object['pwr_set'+str(nn)] = float(sstring[4])*pwrfactor1[self.object['range'+str(nn)]]*self.object['load'+str(nn)]/100.
+                            self.object['pwr_actual'+str(nn)] = float(sstring[5].replace('%', ''))*pwrfactor1[self.object['range'+str(nn)]]*self.object['load'+str(nn)]/100.
                         elif nn == 2:
-                            self.object['load'+str(nn)] = 0.
-                            self.object['pwr_set'+str(nn)] = float(
-                                sstring[4])*pwrfactor[self.object['range'+str(nn)]]*self.object['load'+str(nn)]/100.
-                            self.object['pwr_actual'+str(nn)] = float(sstring[5].replace(
-                                '%', ''))*pwrfactor[self.object['range'+str(nn)]]*self.object['load'+str(nn)]/100.
+                            self.object['load'+str(nn)] = float(sstring[3])
+                            self.object['pwr_set'+str(nn)] = float(sstring[4])*pwrfactor2[self.object['range'+str(nn)]]*self.object['load'+str(nn)]/100.
+                            self.object['pwr_actual'+str(nn)] = float(sstring[5].replace('%', ''))*pwrfactor2[self.object['range'+str(nn)]]*self.object['load'+str(nn)]/100.
                         else:
                             self.object['load'+str(nn)] = sstring[3]
                             self.object['pwr_set'+str(nn)] = sstring[4]+'%'
-                            self.object['pwr_actual' +
-                                        str(nn)] = sstring[5].replace(' ', '')
+                            self.object['pwr_actual' + str(nn)] = sstring[5].replace(' ', '')
                         self.object['source'+str(nn)] = sstring[6]
-                        self.object['set_point' +
-                                    str(nn)] = float(sstring[7][:-2])
+                        self.object['set_point' + str(nn)] = float(sstring[7][:-2])
                         self.object['ramp'+str(nn)] = sstring[8]
                         self.object['rate'+str(nn)] = float(sstring[9])
                         self.object['pwr_man'+str(nn)] = float(sstring[10])
