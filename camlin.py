@@ -11,6 +11,7 @@ from camlinlib import MonoChromator, GetPortAndPaths
 
 class DaemonProtocol(SimpleProtocol):
     _debug = False # Display all traffic for debug purposes
+    lampDict={'Xe':0,'W':1,0:'Xe',1:'W'}
 
     @catch
     def processMessage(self, string):
@@ -23,7 +24,7 @@ class DaemonProtocol(SimpleProtocol):
         hw = obj['hw'] # HW factory
 
         if cmd.name == 'get_status':
-            keys = ['hw_connected', 'wavelength', 'grating', 'grooves', 'blaze', 'filter', 'shutter', 'autofilter']
+            keys = ['hw_connected', 'lamp', 'wavelength', 'grating', 'grooves', 'blaze', 'filter', 'shutter', 'autofilter']
 
             self.message('status ' + ' '.join([_+'='+str(obj.get(_)) for _ in keys]))
 
@@ -33,6 +34,7 @@ class DaemonProtocol(SimpleProtocol):
                 filter = int(cmd.get('filter', obj.get('filter')))
                 shutter = int(cmd.get('shutter', obj.get('shutter')))
                 grating = int(cmd.get('grating', obj.get('grating')))
+                lamp = cmd.get('lamp', obj.get('lamp'))
                 wavelength = float(cmd.get('wavelength', obj.get('wavelength')))
 
                 if cmd.has_key('autofilter'):
@@ -50,6 +52,11 @@ class DaemonProtocol(SimpleProtocol):
                         for _,__ in enumerate(filters):
                             if __ and __ < wavelength:
                                 filter = _ + 1
+                                
+                if lamp != obj.get('lamp'):
+                    self.factory.log('Swithing to '+lamp+' lamp')
+                    if hw.set_mirror_position(1,self.lampDict[lamp]) != 0:
+                        self.factory.log(hw.GetErrorName(hw.result))
 
                 if filter != obj.get('filter'):
                     self.factory.log('Setting filter to %d' % filter)
@@ -60,8 +67,6 @@ class DaemonProtocol(SimpleProtocol):
                     self.factory.log('Setting shutter to %d' % shutter)
                     if (shutter and hw.open_shutter(obj['hw_shutter']) != 0) or (not shutter and hw.close_shutter(obj['hw_shutter']) != 0):
                         self.factory.log(hw.GetErrorName(hw.result))
-
-            pass
 
     @catch
     def update(self):
@@ -86,6 +91,7 @@ class DaemonProtocol(SimpleProtocol):
                 hw.set_filterwheel_position(obj['hw_filterwheel'], 2)
 
         if obj['hw_connected']:
+            obj['lamp'] = self.lampDict[hw.get_mirror_position(1)]
             obj['wavelength'] = hw.get_wavelength()
             obj['grating'] = hw.get_current_grating()
             obj['grooves'] = hw.get_grooves(obj['grating'])
@@ -100,10 +106,10 @@ if __name__ == '__main__':
     from optparse import OptionParser
 
     parser = OptionParser(usage="usage: %prog [options] arg")
-    parser.add_option('-D', '--device', help='Serial device to connect', action='store', dest='device', default='/dev/monochromator')
+    parser.add_option('-d', '--device', help='Serial device to connect', action='store', dest='device', default='/dev/monochromator')
     parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7025)
     parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='camlin')
-
+    parser.add_option("-D", '--debug', help='Debug mode', action="store_true", dest="debug")
     (options,args) = parser.parse_args()
 
     # Object holding actual state and work logic.
@@ -129,6 +135,9 @@ if __name__ == '__main__':
 
     obj['daemon'] = daemon
     obj['hw'] = hw
+
+    if options.debug:
+        daemon._protocol._debug = True
 
     # Incoming connections
     daemon.listen(options.port)
