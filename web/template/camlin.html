@@ -31,11 +31,17 @@
       </span>
 
        : Blaze {{status 'blaze' 'label-info' /}} nm {{status 'grooves' 'label-info' /}} g/mm
-
+      <br />
       <span class="btn-group">
         <button class="btn btn-default disabled">Shutter:</button>
         <button class="btn btn-default monitor-button" data-command="send camlin set shutter=0" data-link="disabled{: status.shutter == 0 }  class{:~switch(status.shutter, 0, 'btn btn-success monitor-button', 1, 'btn btn-default monitor-button', 'btn btn-default monitor-button')}">Close</button>
         <button class="btn btn-default monitor-button" data-command="send camlin set shutter=1" data-link="disabled{: status.shutter == 1 } class{:~switch(status.shutter, 0, 'btn btn-default monitor-button', 1, 'btn btn-danger monitor-button', 'btn btn-default monitor-button')}">Open</button>
+      </span>
+      
+      <span class="btn-group">
+        <button class="btn btn-default disabled">Lamp:</button>
+        <button class="btn btn-default monitor-button" data-command="send camlin set lamp=Xe" data-link="disabled{: status.lamp == Xe }  class{:~switch(status.lamp, W, 'btn btn-success monitor-button', Xe, 'btn btn-default monitor-button', 'btn btn-default monitor-button')}">Xe</button>
+        <button class="btn btn-default monitor-button" data-command="send camlin set lamp=W" data-link="disabled{: status.lamp == W } class{:~switch(status.lamp, Xe, 'btn btn-default monitor-button', W, 'btn btn-danger monitor-button', 'btn btn-default monitor-button')}">W</button>
       </span>
 
       <span class="btn-group">
