@@ -1,24 +1,40 @@
 #!/usr/bin/env python
 
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 from twisted.internet import stdio
 from twisted.protocols.basic import LineReceiver
 from twisted.web.server import Site
 from twisted.web.resource import Resource
 from twisted.web.static import File
 from twisted.internet.endpoints import TCP4ServerEndpoint
-from txsockjs.factory import SockJSResource
+
+try:
+    from txsockjs.factory import SockJSResource
+    _HAVE_TXSOCKJS = True
+except:
+    _HAVE_TXSOCKJS = False
 
 from twistedauth import wrap_with_auth as Auth
 
 import os, sys, posixpath, datetime
 import re
-import urlparse
+
+try:
+    # Python2
+    from urlparse import urlparse, parse_qs
+    from StringIO import StringIO
+    from StringIO import StringIO as BytesIO
+except:
+    # Python3
+    from urllib.parse import urlparse, parse_qs
+    from io import BytesIO, StringIO
+
 import json
 import numpy as np
 
 from collections import OrderedDict
 
-from StringIO import StringIO
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.dates import DateFormatter
@@ -49,7 +65,7 @@ class MonitorProtocol(SimpleProtocol):
 
     @catch
     def connectionLost(self, reason):
-        if self.object['clients'].has_key(self.name):
+        if self.name in self.object['clients']:
             self.log("%s disconnected" % self.name, type='info')
             # print "Disconnected:", self.name
 
@@ -58,7 +74,7 @@ class MonitorProtocol(SimpleProtocol):
     @catch
     def processMessage(self, string):
         if self._debug:
-            print "%s:%d > %s" % (self._peer.host, self._peer.port, string)
+            print("%s:%d > %s" % (self._peer.host, self._peer.port, string))
 
         cmd = Command(string)
 
@@ -66,7 +82,7 @@ class MonitorProtocol(SimpleProtocol):
             self.name = cmd.get('name', None)
             self.type = cmd.get('type', None)
 
-            if self.object['clients'].has_key(self.name):
+            if self.name in self.object['clients']:
                 self.log("%s connected" % self.name, type='info')
                 # print "Connected:", self.name
 
@@ -75,7 +91,7 @@ class MonitorProtocol(SimpleProtocol):
             self.status = cmd.kwargs
 
             # We have to keep the history of values for some variables for plots
-            if self.object['values'].has_key(self.name):
+            if self.name in self.object['values']:
                 for name in self.object['values'][self.name]:
                     if name == 'time':
                         value = datetime.datetime.utcnow()
@@ -98,7 +114,7 @@ class MonitorProtocol(SimpleProtocol):
                 self.factory.messageAll("set_keywords " + " ".join([self.name+'.'+_+'=\"'+self.status[_]+'\"' for _ in self.status.keys()]), type="ccd")
 
             # Store the values to database, if necessary
-            if self.object.has_key('db') and self.object['db'] is not None:
+            if 'db' in self.object and self.object['db'] is not None:
                 if (datetime.datetime.utcnow() - self.object['db_status_timestamp']).total_seconds() > self.object['db_status_interval']:
                     # FIXME: should we also store the status if no peer is reporting at all?
                     # print "Storing the state to DB"
@@ -141,7 +157,7 @@ class MonitorProtocol(SimpleProtocol):
 class WSProtocol(SimpleProtocol):
     def message(self, string):
         """Sending outgoing message with no newline"""
-        self.transport.write(string)
+        self.transport.write(string.encode('ascii'))
 
 class MonitorFactory(SimpleFactory):
     @catch
@@ -181,14 +197,14 @@ class MonitorFactory(SimpleFactory):
         if source is None:
             source = 'monitor'
 
-        print "%s: %s > %s > %s" % (time, source, type, msg)
+        print("%s: %s > %s > %s" % (time, source, type, msg))
 
         # DB
-        if self.object.has_key('db') and self.object['db'] is not None:
+        if 'db' in self.object and self.object['db'] is not None:
             self.object['db'].log(msg, time=time, source=source, type=type)
 
         # WebSockets
-        if self.object.has_key('ws'):
+        if 'ws' in self.object:
             self.object['ws'].messageAll(json.dumps({'msg':msg, 'time':str(time), 'source':source, 'type':type}))
 
     @catch
@@ -213,12 +229,12 @@ class CmdlineProtocol(LineReceiver):
         self.transport.write(b'### ')
 
     def message(self, string=''):
-        self.transport.write(string)
-        self.transport.write('\n')
+        self.transport.write(string.encode('ascii'))
+        self.transport.write('\n'.encode('ascii'))
 
     @catch
     def lineReceived(self, line):
-        cmd = Command(line)
+        cmd = Command(line.decode('ascii'))
 
         if cmd.name == 'exit':
             self.factory._reactor.stop()
@@ -228,7 +244,7 @@ class CmdlineProtocol(LineReceiver):
             for c in self.factory.connections:
                 self.message("  %s:%s name:%s type:%s\n" % (c._peer.host, c._peer.port, c.name, c.type))
 
-            if self.object.has_key('ws'):
+            if 'ws' in self.object:
                 self.message("Number of WS connections: %d" % len(self.object['ws'].connections))
                 for c in self.object['ws'].connections:
                     self.message("  %s:%s name:%s type:%s\n" % (c._peer.host, c._peer.port, c.name, c.type))
@@ -330,24 +346,25 @@ class WebMonitor(Resource):
 
     @catch
     def render_GET(self, request):
-        q = urlparse.urlparse(request.uri)
-        args = urlparse.parse_qs(q.query)
-        qs = q.path.split('/')
+        q = urlparse(request.uri)
+        args = parse_qs(q.query)
+        path = q.path.decode('ascii')
+        qs = path.split('/')
 
-        if q.path == '/monitor/status':
+        if q.path == b'/monitor/status':
             return serve_json(request,
                               clients = self.object['clients'],
-                              status = self.factory.getStatus(as_dict=True))
+                              status = self.factory.getStatus(as_dict=True)).encode('ascii')
         # /monitor/plots/{client}/{name}
         elif qs[1] == 'monitor' and qs[2] == 'plot' and len(qs) > 4:
-            s = StringIO()
+            s = BytesIO()
             make_plot(s, self.object, qs[3], qs[4])
             request.responseHeaders.setRawHeaders("Content-Type", ['image/png'])
-            request.responseHeaders.setRawHeaders("Content-Length", [str(s.len)])
+            request.responseHeaders.setRawHeaders("Content-Length", [str(len(s.getvalue()))])
             request.responseHeaders.setRawHeaders("Cache-Control", ['no-store, no-cache, must-revalidate, max-age=0'])
             return s.getvalue()
-        elif q.path == '/monitor/command' and args.has_key('string'):
-            cmd = Command(args['string'][0])
+        elif path == '/monitor/command' and b'string' in args:
+            cmd = Command(args[b'string'][0].decode('ascii'))
 
             # TODO: re-use the command processing code from TCP server part
             if cmd.name == 'exit':
@@ -362,7 +379,7 @@ class WebMonitor(Resource):
                 self.factory.messageAll(" ".join(cmd.chunks[1:]))
 
             elif (cmd.name == 'set'):
-                if cmd.has_key('interval'):
+                if 'interval' in cmd:
                     self.object['db_status_interval'] = float(cmd.get('interval'))
                     self.factory.log('DB status interval set to %g' % self.object['db_status_interval'], type='info')
 
@@ -374,7 +391,7 @@ class WebMonitor(Resource):
             elif cmd.name == 'reset_plots':
                 self.factory.reset_plots()
 
-            return serve_json(request)
+            return serve_json(request).encode('ascii')
 
         else:
             return q.path;
@@ -416,8 +433,8 @@ def loadINI(filename, obj):
     if len(conf):
         result = conf.validate(Validator())
         if result != True:
-            print "Config file failed validation: %s" % confname
-            print result
+            print("Config file failed validation: %s" % confname)
+            print(result)
 
             raise RuntimeError
 
@@ -433,7 +450,7 @@ def loadINI(filename, obj):
 
             obj['values'][sname] = {}
 
-            if section.has_key('plots'):
+            if 'plots' in section:
                 values = []
 
                 # Parse parameters of plots
@@ -473,7 +490,7 @@ if __name__ == '__main__':
     parser.add_option('-d', '--debug', help='Debug output', action='store_true', dest='debug', default=False)
     parser.add_option('-s', '--server', help='Act as a TCP and HTTP server', action='store_true', dest='server', default=False)
     parser.add_option('-i', '--interval', help='DB logging status inteval', dest='interval', type='float', default=obj['db_status_interval'])
-    parser.add_option('-a', '--auth_file', help='passwords file', action='store', dest='passwdF', type='string') #htpasswd -c -d passwdfile user
+    parser.add_option('-a', '--auth-file', help='passwords file', action='store', dest='passwd_file', type='string') # htpasswd -c -d passwdfile user
 
     (options,args) = parser.parse_args()
 
@@ -485,7 +502,7 @@ if __name__ == '__main__':
         if m:
             name,host,port = m.group(2,3,4)
 
-            if obj['clients'].has_key(name):
+            if name in obj['clients']:
                 obj['clients'][name]['host'] = host
                 obj['clients'][name]['port'] = int(port)
             else:
@@ -507,26 +524,29 @@ if __name__ == '__main__':
 
     if options.server:
         # Listen for incoming TCP connections
-        print "Listening for incoming TCP connections on port %d" % options.port
+        print("Listening for incoming TCP connections on port %d" % options.port)
         daemon.listen(options.port)
 
         # Serve files from web
-        root = File("web")
-        root.putChild("", File('web/main.html'))
-        root.putChild("monitor", WebMonitor(factory=daemon, object=obj))
-        #site = Site(root)
-        site = Site(Auth(root,options.passwdF))
+        root = File(r"web")
+        root.putChild(b"", File('web/main.html'))
+        root.putChild(b"monitor", WebMonitor(factory=daemon, object=obj))
+        if options.passwd_file and os.path.exists(options.passwd_file):
+            site = Site(Auth(root, options.passwd_file))
+        else:
+            site = Site(root)
 
         # WebSockets
-        ws = SimpleFactory(WSProtocol, obj)
-        obj['ws'] = ws
-        root.putChild("ws", SockJSResource(ws))
+        if _HAVE_TXSOCKJS:
+            ws = SimpleFactory(WSProtocol, obj)
+            obj['ws'] = ws
+            root.putChild(b"ws", SockJSResource(ws))
 
         # Database connection
         obj['db'] = DB(dbhost=options.db_host)
         obj['db_status_timestamp'] = datetime.datetime.utcfromtimestamp(0)
 
-        print "Listening for incoming HTTP connections on port %d" % options.http_port
+        print("Listening for incoming HTTP connections on port %d" % options.http_port)
         TCP4ServerEndpoint(daemon._reactor, options.http_port).listen(site)
-        
+
     daemon._reactor.run()

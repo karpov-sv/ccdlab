@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 from twisted.internet.protocol import Protocol, Factory, ServerFactory
 from twisted.application.internet import ClientService
@@ -62,7 +62,7 @@ class SimpleProtocol(Protocol):
         self._peer = self.transport.getPeer()
         self.factory.connections.append(self)
 
-        print "Connected to %s:%d" % (self._peer.host, self._peer.port)
+        print("Connected to %s:%d" % (self._peer.host, self._peer.port))
 
         self._updateTimer = LoopingCall(self.update)
         self._updateTimer.start(self._refresh)
@@ -93,18 +93,18 @@ class SimpleProtocol(Protocol):
 
         self._updateTimer.stop()
 
-        print "Disconnected from %s:%d" % (self._peer.host, self._peer.port)
+        print("Disconnected from %s:%d" % (self._peer.host, self._peer.port))
 
     def message(self, string):
         """Sending outgoing message"""
         if self._debug:
-            print ">>", self._peer.host, self._peer.port, '>>', string
-        self.transport.write(string)
-        self.transport.write("\n")
+            print(">>", self._peer.host, self._peer.port, '>>', string)
+        self.transport.write(string.encode('ascii'))
+        self.transport.write("\n".encode('ascii'))
 
     def dataReceived(self, data):
         """Parse incoming data and split it into messages"""
-        self._buffer = self._buffer + data
+        self._buffer = self._buffer + data.decode('ascii')
 
         while len(self._buffer):
             if self._is_binary:
@@ -131,12 +131,12 @@ class SimpleProtocol(Protocol):
         self._is_binary = True
         self._binary_length = length
         if self._debug:
-            print "%s:%d = binary mode waiting for %d bytes" % (self._peer.host, self._peer.port, string, length)
+            print("%s:%d = binary mode waiting for %d bytes" % (self._peer.host, self._peer.port, string, length))
 
     def processMessage(self, string):
         """Process single message"""
         if self._debug:
-            print "%s:%d > %s" % (self._peer.host, self._peer.port, string)
+            print("%s:%d > %s" % (self._peer.host, self._peer.port, string))
 
         cmd = Command(string)
 
@@ -153,13 +153,13 @@ class SimpleProtocol(Protocol):
             self.factory._reactor.stop()
         else:
             return cmd
-        
+
         return None
 
     def processBinary(self, data):
         """Process binary data when completely read out"""
         if self._debug:
-            print "%s:%d binary > %d bytes" % (self._peer.host, self._peer.port, len(data))
+            print("%s:%d binary > %d bytes" % (self._peer.host, self._peer.port, len(data)))
 
     def update(self):
         pass
@@ -228,12 +228,12 @@ class SimpleFactory(Factory):
 
     def listen(self, port=0):
         """Listen for incoming connections on a given port"""
-        print "Listening for incoming connections on port %d" % port
+        print("Listening for incoming connections on port %d" % port)
         TCP4ServerEndpoint(self._reactor, port).listen(self)
 
     def connect(self, host, port, reconnect=True):
         """Initiate outgoing connection, either persistent or no"""
-        print "Initiating connection to %s:%d" % (host, port)
+        print("Initiating connection to %s:%d" % (host, port))
         ep = TCP4ClientEndpoint(self._reactor, host, port)
         if reconnect:
             service = ClientService(ep, self, retryPolicy=lambda x: 1)

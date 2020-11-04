@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import os, sys
 import shlex
@@ -23,7 +23,10 @@ class Command:
         return self.kwargs.get(key, value)
 
     def has_key(self, key):
-        return self.kwargs.has_key(key)
+        return key in self.kwargs
+
+    def __contains__(self, key):
+        return key in self.kwargs
 
     def parse(self, string):
         self.string = string
