@@ -485,9 +485,9 @@ if __name__ == '__main__':
     parser = OptionParser(usage="usage: %prog [options] name1=host1:port1 name2=host2:port2 ...")
     parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=obj['port'])
     parser.add_option('-H', '--http-port', help='HTTP server port', action='store', dest='http_port', type='int', default=obj['http_port'])
-    parser.add_option('-D', '--db-host', help='Database server host', action='store', dest='db_host', type='string', default=obj['db_host'])
+    parser.add_option('-d', '--db-host', help='Database server host', action='store', dest='db_host', type='string', default=obj['db_host'])
     parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', type='string', default=obj['name'])
-    parser.add_option('-d', '--debug', help='Debug output', action='store_true', dest='debug', default=False)
+    parser.add_option('-D', '--debug', help='Debug output', action='store_true', dest='debug', default=False)
     parser.add_option('-s', '--server', help='Act as a TCP and HTTP server', action='store_true', dest='server', default=False)
     parser.add_option('-i', '--interval', help='DB logging status inteval', dest='interval', type='float', default=obj['db_status_interval'])
     parser.add_option('-a', '--auth-file', help='passwords file', action='store', dest='passwd_file', type='string') # htpasswd -c -d passwdfile user

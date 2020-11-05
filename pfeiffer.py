@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 
-import os, sys
+import os
+import sys
 
 from daemon import SimpleFactory, SimpleProtocol
 from twisted.internet.serialport import SerialPort
 from twisted.internet.task import LoopingCall
 from command import Command
 
-### Example code with server daemon and outgoing connection to hardware
+# Example code with server daemon and outgoing connection to hardware
+
 
 class DaemonProtocol(SimpleProtocol):
     # _debug = True # Display all traffic for debug purposes
@@ -18,15 +20,17 @@ class DaemonProtocol(SimpleProtocol):
         if cmd is None:
             return
 
-        obj = self.object # Object holding the state
-        hw = obj['hw'] # HW factory
+        obj = self.object  # Object holding the state
+        hw = obj['hw']  # HW factory
 
         if cmd.name == 'get_status':
-            self.message('status hw_connected=%s status=%d pressure=%g' % (self.object['hw_connected'], self.object['status'], self.object['pressure']))
+            self.message('status hw_connected=%s status=%d pressure=%g' %
+                         (self.object['hw_connected'], self.object['status'], self.object['pressure']))
         else:
             if obj['hw_connected']:
                 # Pass all other commands directly to hardware
                 hw.protocol.message(string)
+
 
 class HWProtocol(SimpleProtocol):
     # _debug = True # Display all traffic for debug purposes
@@ -63,8 +67,8 @@ class HWProtocol(SimpleProtocol):
 
     def update(self):
         # Request the hardware state from the device
-        self.message('COM') # Start periodic reporting of status
-        pass
+        self.message('COM')  # Start periodic reporting of status
+
 
 if __name__ == '__main__':
     from optparse import OptionParser
@@ -74,11 +78,11 @@ if __name__ == '__main__':
     parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7023)
     parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='pfeiffer')
 
-    (options,args) = parser.parse_args()
+    (options, args) = parser.parse_args()
 
     # Object holding actual state and work logic.
     # May be anything that will be passed by reference - list, dict, object etc
-    obj = {'hw_connected':0, 'status':-1, 'pressure':0}
+    obj = {'hw_connected': 0, 'status': -1, 'pressure': 0}
 
     # Factories for daemon and hardware connections
     # We need two different factories as the protocols are different

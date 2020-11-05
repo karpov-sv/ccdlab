@@ -7,11 +7,13 @@ from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, c
 from twisted.protocols.basic import LineReceiver
 from twisted.internet.task import LoopingCall
 
-import os, sys
+import os
+import sys
 import re
 import socket
 
 from command import Command
+
 
 def catch(func):
     '''Decorator to catch errors inside functions and print tracebacks'''
@@ -24,19 +26,21 @@ def catch(func):
 
     return wrapper
 
+
 class SimpleProtocol(Protocol):
     """Class corresponding to a single connection, either incoming or outgoing"""
     _debug = False
 
     # Some sensible TCP keepalive settings. This way the connection will close after 13 seconds of network failure
-    _tcp_keepidle = 10 # Interval to wait before sending first keepalive packet
-    _tcp_keepintvl = 1 # Interval between packets
-    _tcp_keepcnt = 3 # Number of retries
-    _tcp_user_timeout = 10000 # Number of milliseconds to wait before closing the connection on retransmission
+    _tcp_keepidle = 10  # Interval to wait before sending first keepalive packet
+    _tcp_keepintvl = 1  # Interval between packets
+    _tcp_keepcnt = 3  # Number of retries
+    _tcp_user_timeout = 10000  # Number of milliseconds to wait before closing the connection on retransmission
     _refresh = 1.0
+    _comand_end_character = '\n'
 
     def __init__(self, refresh=0):
-        self._buffer = ''
+        self._buffer = b''
         self._is_binary = False
         self._binary_length = 0
         self._peer = None
@@ -98,28 +102,33 @@ class SimpleProtocol(Protocol):
     def message(self, string):
         """Sending outgoing message"""
         if self._debug:
-            print(">>", self._peer.host, self._peer.port, '>>', string)
+            if self._peer:
+                print(">>", self._peer.host, self._peer.port, '>>', string)
+            else:
+                print('>>', self._ttydev, '>>', string)
+
         self.transport.write(string.encode('ascii'))
-        self.transport.write("\n".encode('ascii'))
+        if self._comand_end_character != '':
+            self.transport.write(self._comand_end_character.encode('ascii'))
 
     def dataReceived(self, data):
         """Parse incoming data and split it into messages"""
-        self._buffer = self._buffer + data.decode('ascii')
+        # NOTE: user is responsible for not switching between binary ans string modes while in the process of receiving data
+        self._buffer = self._buffer + data
 
         while len(self._buffer):
             if self._is_binary:
                 if len(self._buffer) >= self._binary_length:
                     bdata = self._buffer[:self._binary_length]
                     self._buffer = self._buffer[self._binary_length:]
-
                     self.processBinary(bdata)
                     self._is_binary = False
                 else:
                     break
             else:
                 try:
-                    token, self._buffer = re.split('\0|\n', self._buffer, 1)
-                    self.processMessage(token)
+                    token, self._buffer = re.split(b'\0|\n', self._buffer, 1)
+                    self.processMessage(token.decode('ascii'))
                 except ValueError:
                     break
 
@@ -131,7 +140,10 @@ class SimpleProtocol(Protocol):
         self._is_binary = True
         self._binary_length = length
         if self._debug:
-            print("%s:%d = binary mode waiting for %d bytes" % (self._peer.host, self._peer.port, string, length))
+            if self._peer:
+                print("%s:%d = binary mode waiting for %d bytes" % (self._peer.host, self._peer.port, length))
+            else:
+                print("%s = binary mode waiting for %d bytes" % (self._ttydev, length))
 
     def processMessage(self, string):
         """Process single message"""
@@ -159,10 +171,14 @@ class SimpleProtocol(Protocol):
     def processBinary(self, data):
         """Process binary data when completely read out"""
         if self._debug:
-            print("%s:%d binary > %d bytes" % (self._peer.host, self._peer.port, len(data)))
+            if self._peer:
+                print("%s:%d binary > %d bytes" % (self._peer.host, self._peer.port, len(data)))
+            else:
+                print("%s binary > %d bytes" % (self._ttydev, len(data)))
 
     def update(self):
         pass
+
 
 class SimpleFactory(Factory):
     """
@@ -170,12 +186,13 @@ class SimpleFactory(Factory):
     Every connection receives the object passed to class constructor
     so it may be accessed from connection protocol
     """
+
     def __init__(self, protocol, object=None, reactor=None, name=None, type=None):
         self._protocol = protocol
         self._reactor = reactor
 
-        self.connections = [] # List of all currently active connections
-        self.object = object # User-supplied object what should be accessible by all connections and daemon itself
+        self.connections = []  # List of all currently active connections
+        self.object = object  # User-supplied object what should be accessible by all connections and daemon itself
 
         # Name and type of the daemon
         self.name = ''
@@ -244,4 +261,4 @@ class SimpleFactory(Factory):
     def log(self, message, type='info'):
         """Generic interface for sending system-level log messages, to be stored to DB and shown in GUI"""
         # TODO: should we send it to specific names/types only?
-        self.messageAll(type + ' ' + message, name = 'monitor')
+        self.messageAll(type + ' ' + message, name='monitor')
