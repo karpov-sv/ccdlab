@@ -37,7 +37,7 @@ class SimpleProtocol(Protocol):
     _tcp_keepcnt = 3  # Number of retries
     _tcp_user_timeout = 10000  # Number of milliseconds to wait before closing the connection on retransmission
     _refresh = 1.0
-    _comand_end_character = '\n'
+    _comand_end_character = b'\n'
 
     def __init__(self, refresh=0):
         self._buffer = b''
@@ -106,10 +106,12 @@ class SimpleProtocol(Protocol):
                 print(">>", self._peer.host, self._peer.port, '>>', string)
             else:
                 print('>>', self._ttydev, '>>', string)
-
-        self.transport.write(string.encode('ascii'))
+        if type(string) == str:
+            string=string.encode('ascii')
+        
+        self.transport.write(string)
         if self._comand_end_character != '':
-            self.transport.write(self._comand_end_character.encode('ascii'))
+            self.transport.write(self._comand_end_character)
 
     def dataReceived(self, data):
         """Parse incoming data and split it into messages"""
