@@ -107,8 +107,8 @@ class SimpleProtocol(Protocol):
             else:
                 print('>>', self._ttydev, '>>', string)
         if type(string) == str:
-            string=string.encode('ascii')
-        
+            string = string.encode('ascii')
+
         self.transport.write(string)
         if self._comand_end_character != '':
             if self._debug:

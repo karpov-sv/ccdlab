@@ -2,6 +2,7 @@
 from optparse import OptionParser
 from twisted.internet.serialport import SerialPort
 from twisted.internet.task import LoopingCall
+from libscrc import modbus
 
 from daemon import SimpleFactory, SimpleProtocol, catch
 
@@ -26,16 +27,16 @@ class DaemonProtocol(SimpleProtocol):
                 break
             if string == 'timeout':
                 self.factory.log('command timeout - removing command from list and flushing buffer')
-                hw._buffer=b'' # empty buffer after timeout
+                hw._buffer = b''  # empty buffer after timeout
                 hw.commands.pop(0)
                 break
             ss = string.split('_')
             if len(ss) == 2:
-                nb=int(ss[0])
-                string=ss[1]
+                nb = int(ss[0])
+                string = ss[1]
                 hw.message(string, nb=nb, source=self.name)
                 break
-            
+
             if string == 'sync':
                 hw.message(bytearray(64), nb=64, source=self.name)
                 break
@@ -71,18 +72,6 @@ class StandaRSProtocol(SimpleProtocol):
         if self._debug:
             print("hw cc > %s" % string)
         self.commands.pop(0)
-        
-    @catch
-    def _check_crc(self,bstring):
-        crc = 0xffff
-        for b in bstring[4:]:
-            crc = crc ^ b
-            for i in range(8):
-                carry_flag = crc & 0x0001
-                crc = crc >> 1
-                if carry_flag == 1:
-                    crc = crc ^ 0xa001
-        return crc
 
     @catch
     def processBinary(self, bstring):
@@ -94,27 +83,27 @@ class StandaRSProtocol(SimpleProtocol):
                 print("last command which expects reply was:", self.commands[0]['cmd'])
                 print("received reply:", bstring)
             if (b'errc' or b'errd' or b'errv') in bstring:
-                print('command',self.commands[0]['cmd'],'produced error', bstring)
-                self._buffer=b'' # empty buffer after error
+                print('command', self.commands[0]['cmd'], 'produced error', bstring)
+                self._buffer = b''  # empty buffer after error
             while True:
                 if self.commands[0]['cmd'] in self.status_commands:
                     break
-                
-                #check buffer empty and checksum
+
+                # check buffer empty and checksum
                 if self._buffer != b'':
-                    print ('warning buffer not empty after expected number of bytes')
-                if self._check_crc(bstring) !=0 :
-                    r_str='checksum failed'
-                    self._buffer=b''
+                    print('warning buffer not empty after expected number of bytes')
+                if modbus(bstring[4:]) != 0:
+                    r_str = 'checksum failed'
+                    self._buffer = b''
                     break
-                
+
                 r_str = b''
                 if self.commands[0]['cmd'] == 'gsti':
                     r_str += bstring[4:20].strip(b'\x00')+b' '
                     r_str += bstring[20:44].strip(b'\x00')
                     break
                 # not recognized command, just pass the output
-                r_str=bstring
+                r_str = bstring
                 break
             daemon.messageAll(r_str, self.commands[0]['source'])
         self.commands.pop(0)
@@ -128,17 +117,17 @@ class StandaRSProtocol(SimpleProtocol):
         """
         Send the message to the controller. If keep=True, expect reply (for this device it seems all comands expect reply
         """
-        self.commands.append({'cmd': string, 'nb': nb, 'source': source, 'status':'new'})
+        self.commands.append({'cmd': string, 'nb': nb, 'source': source, 'status': 'new'})
 
     @catch
     def update(self):
         print('update')
         # Request the hardware state from the device
         if len(self.commands):
-            if self.commands[0]['status']=='new':
-                SimpleProtocol.switchToBinary(self, length=max(4,self.commands[0]['nb']))
+            if self.commands[0]['status'] == 'new':
+                SimpleProtocol.switchToBinary(self, length=max(4, self.commands[0]['nb']))
                 SimpleProtocol.message(self, self.commands[0]['cmd'])
-                self.commands[0]['status']='sent'
+                self.commands[0]['status'] = 'sent'
         # else:
             # for k in self.status_commands:
             # self.commands.append(
@@ -153,7 +142,7 @@ if __name__ == '__main__':
     parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7027)
     parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='standa_r_stage')
     parser.add_option("-D", '--debug', help='Debug mode', action="store_true", dest="debug")
-    
+
     (options, args) = parser.parse_args()
 
     # Object holding actual state and work logic.
