@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 from optparse import OptionParser
+import re
+from libscrc import modbus
+
 from twisted.internet.serialport import SerialPort
 from twisted.internet.task import LoopingCall
-from libscrc import modbus
 
 from daemon import SimpleFactory, SimpleProtocol, catch
 
@@ -40,12 +42,25 @@ class DaemonProtocol(SimpleProtocol):
                     hw._buffer = b''  # empty buffer after timeout
                     hw.commands.pop(0)
                     break
-                
                 ss = sstring.split('_')
                 if len(ss) == 2:
                     nb = int(ss[0])
                     sstring = ss[1]
-                    hw.message(sstring, nb=nb, source=self.name)
+                    if ':' in sstring:
+                        # this emans command has input parameters, specified like this value1:nbytes1 value2:nbytes2
+                        # for the reserved bytes any_num:-10, whete the 110 means 10 reserved bytes
+                        # command example: 30_smov 2000:4 0:1 2000:2 5000:2 2000:4 0:1 -1:-10
+                        vals=sstring[:4]+' '+' '.join(re.split(':| ',sstring)[1::2])
+                        nbs=list(map(int, re.split(':| ',sstring)[2::2] ))
+                        mstr = self.mbytes(vals,[4,1,2,2,4,1,-10])
+                        if mstr:
+                            hw.message(mstr, nb=4, source=self.name)
+                    else:
+                        hw.message(sstring, nb=nb, source=self.name)
+                    break
+                if string == 'sync':
+                    # sync after failed comand
+                    hw.message(bytearray(64), nb=64, source=self.name)
                     break
                 if sstring == 'gsti':
                     # get some device info (model, etc.)
@@ -134,15 +149,21 @@ class StandaRSProtocol(SimpleProtocol):
             while True:
                 if self.commands[0]['cmd'] in self.status_commands:
                     break
-
                 # check buffer empty and checksum
                 if self._buffer != b'':
                     print('warning buffer not empty after expected number of bytes')
-                if len(self._bs) > 4 and modbus(self._bs[4:]) != 0:
+                    self._buffer = b''  # empty buffer
+                if len(self._bs) > 4 and self.commands[0]['status'] == 'sent' and modbus(self._bs[4:]) != 0:
                     r_str = 'checksum failed'
                     self._buffer = b''
                     break
-
+                if self.commands[0]['status']=='sync':
+                    # sync after failed comand
+                    r_str = 'sync'
+                    if len(self.commands)>1 and self.commands[1]['status']=='sent':
+                        #remove failed command
+                        self.commands.pop(0)
+                    break
                 r_str = b''
                 if self.iscom('gsti'):
                     r_str = self.strb(16)+' '
@@ -177,16 +198,24 @@ class StandaRSProtocol(SimpleProtocol):
         """
         Send the message to the controller. If keep=True, expect reply (for this device it seems all comands expect reply
         """
-        self.commands.append({'cmd': string, 'nb': nb, 'source': source, 'status': 'new'})
+        if string[0] == 0:
+            # sync after failed comand, the sync is put at the front of the queue
+            self.commands = [{'cmd': string, 'nb': nb, 'source': source, 'status': 'sync'}]+self.commands
+        else:
+            self.commands.append({'cmd': string, 'nb': nb, 'source': source, 'status': 'new'})
 
     @catch
     def update(self):
         # Request the hardware state from the device
         if len(self.commands):
-            if self.commands[0]['status'] == 'new':
+            if self.commands[0]['status'] ==  'new':
                 SimpleProtocol.switchToBinary(self, length=max(4, self.commands[0]['nb']))
                 SimpleProtocol.message(self, self.commands[0]['cmd'])
                 self.commands[0]['status'] = 'sent'
+            elif self.commands[0]['status'] ==  'sync':
+                SimpleProtocol.switchToBinary(self, length=max(4, self.commands[0]['nb']))
+                SimpleProtocol.message(self, self.commands[0]['cmd'])
+                
         # else:
             # for k in self.status_commands:
             # self.commands.append(
