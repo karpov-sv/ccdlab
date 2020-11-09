@@ -70,6 +70,10 @@ class DaemonProtocol(SimpleProtocol):
                     # get movement parameters
                     hw.message(sstring, nb=30, source=self.name)
                     break
+                if sstring == 'gpos':
+                    # get movement parameters
+                    hw.message(sstring, nb=26, source=self.name)
+                    break
                 if sstring.startswith('smov'):
                     # set movement parameters
                     mstr = self.mbytes(sstring,[4,1,2,2,4,1,-10])
@@ -188,6 +192,11 @@ class StandaRSProtocol(SimpleProtocol):
                     r_str += self.sintb(4)+' '
                     r_str += self.sintb(1)+' '
                     r_str += self.sintb(1)                                    
+                    break
+                if self.iscom('gpos'):
+                    r_str = self.sintb(4)+' '
+                    r_str += self.sintb(2)+' '
+                    r_str += self.sintb(8)+' '
                     break
                 if self.iscom('zero'):
                     break
