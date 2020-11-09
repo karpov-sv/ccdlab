@@ -107,17 +107,21 @@ class SimpleProtocol(Protocol):
             else:
                 print('>>', self._ttydev, '>>', string)
         if type(string) == str:
-            string=string.encode('ascii')
-        
+            string = string.encode('ascii')
+
         self.transport.write(string)
         if self._comand_end_character != '':
+            if self._debug:
+                if self._peer:
+                    print(">>", self._peer.host, self._peer.port, '>>', repr(self._comand_end_character))
+                else:
+                    print('>>', self._ttydev, '>>', repr(self._comand_end_character))
             self.transport.write(self._comand_end_character)
 
     def dataReceived(self, data):
         """Parse incoming data and split it into messages"""
         # NOTE: user is responsible for not switching between binary ans string modes while in the process of receiving data
         self._buffer = self._buffer + data
-
         while len(self._buffer):
             if self._is_binary:
                 if len(self._buffer) >= self._binary_length:
