@@ -6,10 +6,19 @@ from libscrc import modbus
 
 from daemon import SimpleFactory, SimpleProtocol, catch
 
-
 class DaemonProtocol(SimpleProtocol):
     _debug = False  # Display all traffic for debug purposes
 
+    @catch
+    def mbytes(self,ss,nbs):
+        ss=ss.split(' ')
+        if len(ss)-1 != len(nbs):
+            print ('wrong input')
+            return False
+        bss = ss[0].encode('ascii')+b''.join([int(i).to_bytes( n, 'little' ) if n>0 else -n*b'\xcc' for [i,n] in zip(ss[1:],nbs)])
+        bss +=modbus(bss[4:]).to_bytes( 2, 'little' )
+        return bss
+        
     @catch
     def processMessage(self, string):
         # It will handle some generic messages and return pre-parsed Command object
@@ -19,42 +28,59 @@ class DaemonProtocol(SimpleProtocol):
 
         obj = self.object  # Object holding the state
         hw = obj['hw'].protocol  # HW factory
-        Sstring = string.strip()
-        string = string.lower()
-        while True:
-            if string == 'get_status':
-                self.message('status hw_connected=%s' % (self.object['hw_connected'],))
+        Sstring = (string.strip()).split(';')
+        for sstring in Sstring:
+            sstring = sstring.lower()
+            while True:
+                if sstring == 'get_status':
+                    self.message('status hw_connected=%s' % (self.object['hw_connected'],))
+                    break
+                if sstring == 'timeout':
+                    self.factory.log('command timeout - removing command from list and flushing buffer')
+                    hw._buffer = b''  # empty buffer after timeout
+                    hw.commands.pop(0)
+                    break
+                
+                ss = sstring.split('_')
+                if len(ss) == 2:
+                    nb = int(ss[0])
+                    sstring = ss[1]
+                    hw.message(sstring, nb=nb, source=self.name)
+                    break
+                if sstring == 'gsti':
+                    # get some device info (model, etc.)
+                    hw.message(sstring, nb=70, source=self.name)
+                    break
+                if sstring == 'gmov':
+                    # get movement parameters
+                    hw.message(sstring, nb=30, source=self.name)
+                    break
+                if sstring.startswith('smov'):
+                    # set movement parameters
+                    mstr = self.mbytes(sstring,[4,1,2,2,4,1,-10])
+                    if mstr:
+                        hw.message(mstr, nb=4, source=self.name)
+                    break
+                
+                if sstring == 'zero':
+                    # set current position as zero
+                    hw.message(sstring, nb=4, source=self.name)
+                    break
+                print('command', sstring, 'not implemented!')
                 break
-            if string == 'timeout':
-                self.factory.log('command timeout - removing command from list and flushing buffer')
-                hw._buffer = b''  # empty buffer after timeout
-                hw.commands.pop(0)
-                break
-            ss = string.split('_')
-            if len(ss) == 2:
-                nb = int(ss[0])
-                string = ss[1]
-                hw.message(string, nb=nb, source=self.name)
-                break
-
-            if string == 'sync':
-                hw.message(bytearray(64), nb=64, source=self.name)
-                break
-            if string == 'gsti':
-                hw.message(string, nb=70, source=self.name)
-                break
-            print('command', string, 'not implemented!')
-            break
-
 
 class StandaRSProtocol(SimpleProtocol):
     _debug = False  # Display all traffic for debug purposes
+    _bs = b''
 
     @catch
     def __init__(self):
         SimpleProtocol.__init__(self)
         self.commands = []  # Queue of command sent to the device which will provide replies, each entry is a dict with keys "cmd","source"
         self.status_commands = []  # commands send when device not busy to keep tabs on the state
+        SimpleProtocol._comand_end_character = ''
+        print (SimpleProtocol._comand_end_character)
+
 
     @catch
     def connectionMade(self):
@@ -74,16 +100,36 @@ class StandaRSProtocol(SimpleProtocol):
         self.commands.pop(0)
 
     @catch
+    def iscom(self,com):
+        if self.commands[0]['cmd'] == com and self._bs[:4].decode('ascii') == com:
+            self._bs=self._bs[4:]
+            return True
+        return False
+        
+    @catch
+    def sintb(self,nb):
+        ss=self._bs[:nb]
+        self._bs=self._bs[nb:]
+        return str(int.from_bytes(ss, "little"))
+    
+    @catch
+    def strb(self,nb):
+        ss=self._bs[:nb]
+        self._bs=self._bs[nb:]
+        return (ss.strip(b'\x00')).decode('ascii')
+
+    @catch
     def processBinary(self, bstring):
         # Process the device reply
+        self._bs=bstring
         if self._debug:
-            print("hw bb > %s" % bstring)
+            print("hw bb > %s" % self._bs)
         if len(self.commands):
             if self._debug:
                 print("last command which expects reply was:", self.commands[0]['cmd'])
-                print("received reply:", bstring)
-            if (b'errc' or b'errd' or b'errv') in bstring:
-                print('command', self.commands[0]['cmd'], 'produced error', bstring)
+                print("received reply:", self._bs)
+            if (b'errc' or b'errd' or b'errv') in self._bs:
+                print('command', self.commands[0]['cmd'], 'produced error', self._bs)
                 self._buffer = b''  # empty buffer after error
             while True:
                 if self.commands[0]['cmd'] in self.status_commands:
@@ -92,20 +138,34 @@ class StandaRSProtocol(SimpleProtocol):
                 # check buffer empty and checksum
                 if self._buffer != b'':
                     print('warning buffer not empty after expected number of bytes')
-                if modbus(bstring[4:]) != 0:
+                if len(self._bs) > 4 and modbus(self._bs[4:]) != 0:
                     r_str = 'checksum failed'
                     self._buffer = b''
                     break
 
                 r_str = b''
-                if self.commands[0]['cmd'] == 'gsti':
-                    r_str += bstring[4:20].strip(b'\x00')+b' '
-                    r_str += bstring[20:44].strip(b'\x00')
+                if self.iscom('gsti'):
+                    r_str = self.strb(16)+' '
+                    r_str += self.strb(24)
+                    break
+                if self.iscom('gmov'):
+                    r_str = self.sintb(4)+' '
+                    r_str += self.sintb(1)+' '
+                    r_str += self.sintb(2)+' '
+                    r_str += self.sintb(2)+' '
+                    r_str += self.sintb(4)+' '
+                    r_str += self.sintb(1)+' '
+                    r_str += self.sintb(1)                                    
+                    break
+                if self.iscom('zero'):
                     break
                 # not recognized command, just pass the output
-                r_str = bstring
+                r_str = self._bs
                 break
-            daemon.messageAll(r_str, self.commands[0]['source'])
+            if type(r_str) == str:
+                daemon.messageAll(r_str+'\n', self.commands[0]['source'])
+            elif r_str != b'':
+                daemon.messageAll(r_str+b'\n', self.commands[0]['source'])
         self.commands.pop(0)
 
     @catch
@@ -121,7 +181,6 @@ class StandaRSProtocol(SimpleProtocol):
 
     @catch
     def update(self):
-        print('update')
         # Request the hardware state from the device
         if len(self.commands):
             if self.commands[0]['status'] == 'new':
@@ -153,6 +212,7 @@ if __name__ == '__main__':
 
     daemon = SimpleFactory(DaemonProtocol, obj)
     daemon.name = options.name
+    
 
     proto = StandaRSProtocol()
     proto.object = obj
@@ -160,7 +220,7 @@ if __name__ == '__main__':
                     parity='N', stopbits=2, timeout=400)  # parameters from manual
 
     hw.protocol._ttydev = options.hw_dev
-    hw.protocol._comand_end_character = ''  # the device just expects 4 bytes, the it acts
+    hw.protocol._comand_end_character = ''  # the device expects just 4 bytes, then it acts
 
     if options.debug:
         daemon._protocol._debug = True
