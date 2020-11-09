@@ -17,7 +17,7 @@ class DaemonProtocol(SimpleProtocol):
         if len(ss)-1 != len(nbs):
             print ('wrong input')
             return False
-        bss = ss[0].encode('ascii')+b''.join([int(i).to_bytes( n, 'little' ) if n>0 else -n*b'\xcc' for [i,n] in zip(ss[1:],nbs)])
+        bss = ss[0].encode('ascii')+b''.join([int(i).to_bytes( n, 'little', signed=True ) if n>0 else -n*b'\xcc' for [i,n] in zip(ss[1:],nbs)])
         bss +=modbus(bss[4:]).to_bytes( 2, 'little' )
         return bss
         
@@ -52,7 +52,7 @@ class DaemonProtocol(SimpleProtocol):
                         # command example: 30_smov 2000:4 0:1 2000:2 5000:2 2000:4 0:1 -1:-10
                         vals=sstring[:4]+' '+' '.join(re.split(':| ',sstring)[1::2])
                         nbs=list(map(int, re.split(':| ',sstring)[2::2] ))
-                        mstr = self.mbytes(vals,[4,1,2,2,4,1,-10])
+                        mstr = self.mbytes(vals,nbs)
                         if mstr:
                             hw.message(mstr, nb=4, source=self.name)
                     else:
@@ -76,7 +76,18 @@ class DaemonProtocol(SimpleProtocol):
                     if mstr:
                         hw.message(mstr, nb=4, source=self.name)
                     break
-                
+                if sstring.startswith('move'):
+                    # set movement parameters
+                    mstr = self.mbytes(sstring,[4,2,-6])
+                    if mstr:
+                        hw.message(mstr, nb=4, source=self.name)
+                    break
+                if sstring.startswith('movr'):
+                    # set movement parameters
+                    mstr = self.mbytes(sstring,[4,2,-6])
+                    if mstr:
+                        hw.message(mstr, nb=4, source=self.name)
+                    break
                 if sstring == 'zero':
                     # set current position as zero
                     hw.message(sstring, nb=4, source=self.name)
