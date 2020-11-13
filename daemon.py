@@ -101,22 +101,18 @@ class SimpleProtocol(Protocol):
 
     def message(self, string):
         """Sending outgoing message"""
+        if type(string) == str:
+            string = string.encode('ascii')+self._comand_end_character
+        else:
+            string = string+self._comand_end_character
+            
         if self._debug:
             if self._peer:
                 print(">>", self._peer.host, self._peer.port, '>>', string)
             else:
                 print('>>', self._ttydev, '>>', string)
-        if type(string) == str:
-            string = string.encode('ascii')
 
         self.transport.write(string)
-        if self._comand_end_character != '':
-            if self._debug:
-                if self._peer:
-                    print(">>", self._peer.host, self._peer.port, '>>', repr(self._comand_end_character))
-                else:
-                    print('>>', self._ttydev, '>>', repr(self._comand_end_character))
-            self.transport.write(self._comand_end_character)
 
     def dataReceived(self, data):
         """Parse incoming data and split it into messages"""

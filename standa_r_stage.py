@@ -12,89 +12,119 @@ class DaemonProtocol(SimpleProtocol):
     _debug = False  # Display all traffic for debug purposes
 
     @catch
-    def mbytes(self,ss,nbs):
-        ss=ss.split(' ')
-        if len(ss)-1 != len(nbs):
-            print ('wrong input')
-            return False
-        bss = ss[0].encode('ascii')+b''.join([int(i).to_bytes( n, 'little', signed=True ) if n>0 else -n*b'\xcc' for [i,n] in zip(ss[1:],nbs)])
+    def mbytes(self,cmd, pars, reserved_bytes=0):
+        bss = cmd.encode('ascii')+b''.join([int(p[1]).to_bytes( p[0], 'little', signed=True ) for p in pars])
+        if reserved_bytes:
+            bss += reserved_bytes*b'\xcc'
         bss +=modbus(bss[4:]).to_bytes( 2, 'little' )
         return bss
         
     @catch
+    def parsePars(self,cmd,pars_o,ss,rbs):
+        if len(pars_o) != len(ss):
+            return None
+        is_labeled=False
+        if all(':' in sss for sss in ss):
+            is_labeled=True
+        elif not all(':' not in sss for sss in ss):
+            return None
+        pars=[]
+        for n in range(len(pars_o)):
+            pars+=[[pars_o[n][0],ss[n]]]
+            if is_labeled:
+                pars[-1][1]=[i for i in ss if pars_o[n][1] in i][0].split(':')[1]
+        mstr = self.mbytes(cmd,pars,rbs)
+        if mstr:
+            obj['hw'].protocol.Imessage(mstr, nb=4, source=self.name)
+        return True
+    
+    @catch
     def processMessage(self, string):
-        # It will handle some generic messages and return pre-parsed Command object
         cmd = SimpleProtocol.processMessage(self, string)
         if cmd is None:
             return
 
-        obj = self.object  # Object holding the state
-        hw = obj['hw'].protocol  # HW factory
-        Sstring = (string.strip()).split(';')
+        Imessage=obj['hw'].protocol.Imessage
+        Sstring = (string.strip('\n')).split(';')
         for sstring in Sstring:
             sstring = sstring.lower()
             while True:
+                # managment commands
                 if sstring == 'get_status':
-                    self.message('status hw_connected=%s' % (self.object['hw_connected'],))
+                    self.message('status hw_connected=%s position=%s uposition=%s encposition=%s' % (self.object['hw_connected'], self.object['position'], self.object['uposition'], self.object['encposition']))
                     break
                 if sstring == 'timeout':
                     self.factory.log('command timeout - removing command from list and flushing buffer')
                     hw._buffer = b''  # empty buffer after timeout
                     hw.commands.pop(0)
                     break
-                ss = sstring.split('_')
-                if len(ss) == 2:
-                    nb = int(ss[0])
-                    sstring = ss[1]
-                    if ':' in sstring:
-                        # this emans command has input parameters, specified like this value1:nbytes1 value2:nbytes2
-                        # for the reserved bytes any_num:-10, whete the 110 means 10 reserved bytes
-                        # command example: 30_smov 2000:4 0:1 2000:2 5000:2 2000:4 0:1 -1:-10
-                        vals=sstring[:4]+' '+' '.join(re.split(':| ',sstring)[1::2])
-                        nbs=list(map(int, re.split(':| ',sstring)[2::2] ))
-                        mstr = self.mbytes(vals,nbs)
-                        if mstr:
-                            hw.message(mstr, nb=4, source=self.name)
-                    else:
-                        hw.message(sstring, nb=nb, source=self.name)
-                    break
                 if string == 'sync':
                     # sync after failed comand
-                    hw.message(bytearray(64), nb=64, source=self.name)
+                    Imessage(bytearray(64), nb=64, source=self.name)
                     break
-                if sstring == 'gsti':
+
+                # general query command (xxxx comands from manual)(for specifically implemented comands see below)
+                ss = sstring.split('<')
+                if len(ss) == 2 and len(ss[1])==4:
+                    Imessage(ss[1], nb=int(ss[0]), source=self.name)
+                    break
+                elif len(ss) > 2 or (len(ss)==2 and len(ss[1])!=4):
+                    daemon.log('unable to parse command, format sould be "nb<xxxx" insted of: '+sstring,'error')
+                    break
+                
+
+                # human readable version for the most useful comands
+                if sstring == 'get_device_info':
                     # get some device info (model, etc.)
-                    hw.message(sstring, nb=70, source=self.name)
+                    Imessage('gsti', nb=70, source=self.name)
                     break
-                if sstring == 'gmov':
+                if sstring == 'get_move_pars':
                     # get movement parameters
-                    hw.message(sstring, nb=30, source=self.name)
+                    Imessage('gmov', nb=30, source=self.name)
                     break
-                if sstring == 'gpos':
+                if sstring == 'get_position':
                     # get movement parameters
-                    hw.message(sstring, nb=26, source=self.name)
+                    Imessage('gpos', nb=26, source=self.name)
                     break
-                if sstring.startswith('smov'):
+                if sstring.startswith('set_move_pars'):
+                    # set movement parameters, examples:
+                    # set_move_pars speed:2000 uspeed:0 accel:2000 decel:5000 anti_play_speed:2000 uanti_play_speed:0                    
+                    # set_move_pars 2000 0 2000 5000 2000 0  
+                    pars_o=[[4 ,'speed'],[1 ,'uspeed'],[2 ,'accel'],[2 ,'decel'],[4 ,'anti_play_speed'],[1 ,'uanti_play_speed']]
+                    if self.parsePars('smov',pars_o,sstring.split(' ')[1:],10) is not None:
+                        break
+                if sstring.startswith('move_in_direction'):
                     # set movement parameters
-                    mstr = self.mbytes(sstring,[4,1,2,2,4,1,-10])
-                    if mstr:
-                        hw.message(mstr, nb=4, source=self.name)
-                    break
+                    pars_o=[[4 ,'dpos'],[2 ,'udpos']]
+                    if self.parsePars('movr',pars_o,sstring.split(' ')[1:],6) is not None:
+                        break
                 if sstring.startswith('move'):
                     # set movement parameters
-                    mstr = self.mbytes(sstring,[4,2,-6])
-                    if mstr:
-                        hw.message(mstr, nb=4, source=self.name)
-                    break
-                if sstring.startswith('movr'):
-                    # set movement parameters
-                    mstr = self.mbytes(sstring,[4,2,-6])
-                    if mstr:
-                        hw.message(mstr, nb=4, source=self.name)
-                    break
-                if sstring == 'zero':
+                    pars_o=[[4 ,'pos'],[2 ,'upos']]
+                    if self.parsePars('move',pars_o,sstring.split(' ')[1:],6) is not None:
+                        break
+                if sstring == 'set_zero':
                     # set current position as zero
-                    hw.message(sstring, nb=4, source=self.name)
+                    Imessage('zero', nb=4, source=self.name)
+                    break
+                # general set command (xxxx comands from manual) (for specifically implemented comands see below)
+                # command example: smov 4:2000 1:0 2:2000 2:5000 4:2000 1:0 10:r
+                # for these commands one needs to specity the number of bytes given value occupies:
+                # nbytes1:value1 nbytes2:value2 nreserved:r
+                # 
+                ss = sstring.split(' ')
+                if all(':' in sss for sss in ss[1:]) and all(nnn.split(':')[0].isdigit() for nnn in ss[1:]):
+                    cmd=ss[0]
+                    ss=ss[1:]
+                    rbs=0
+                    if len(ss)>1 and ss[-1].split(':')[1] =='r':
+                        rbs=int(ss[-1].split(':')[0])
+                        ss=ss[:-1]
+                    pars=[sss.split(':') for sss in ss]
+                    pars = list(map(lambda x:[int(x[0]),x[1]], pars))
+                    mstr = self.mbytes(cmd,pars,rbs)
+                    if mstr:
+                        Imessage(mstr, nb=4, source=self.name)
                     break
                 print('command', sstring, 'not implemented!')
                 break
@@ -107,9 +137,8 @@ class StandaRSProtocol(SimpleProtocol):
     def __init__(self):
         SimpleProtocol.__init__(self)
         self.commands = []  # Queue of command sent to the device which will provide replies, each entry is a dict with keys "cmd","source"
-        self.status_commands = []  # commands send when device not busy to keep tabs on the state
-        SimpleProtocol._comand_end_character = ''
-        print (SimpleProtocol._comand_end_character)
+        self.status_commands = [['gpos',26]]  # commands send when device not busy to keep tabs on the state
+        self._comand_end_character = b''
 
 
     @catch
@@ -121,7 +150,10 @@ class StandaRSProtocol(SimpleProtocol):
     @catch
     def connectionLost(self, reason):
         self.object['hw_connected'] = 0
-
+        self.object['position'] = float('nan')
+        self.object['uposition'] = float('nan')
+        self.object['encposition'] = float('nan')
+        
     @catch
     def processMessage(self, string):
         # Process the device reply
@@ -161,8 +193,14 @@ class StandaRSProtocol(SimpleProtocol):
             if (b'errc' or b'errd' or b'errv') in self._bs:
                 print('command', self.commands[0]['cmd'], 'produced error', self._bs)
                 self._buffer = b''  # empty buffer after error
+            
+            r_str=None
             while True:
-                if self.commands[0]['cmd'] in self.status_commands:
+                if self.commands[0]['status'] == 'sent_status':
+                    if self.iscom('gpos'):
+                        self.object['position'] = int(self.sintb(4))
+                        self.object['uposition'] = int(self.sintb(2))
+                        self.object['encposition'] = int(self.sintb(8))
                     break
                 # check buffer empty and checksum
                 if self._buffer != b'':
@@ -185,32 +223,31 @@ class StandaRSProtocol(SimpleProtocol):
                     r_str += self.strb(24)
                     break
                 if self.iscom('gmov'):
-                    r_str = self.sintb(4)+' '
-                    r_str += self.sintb(1)+' '
-                    r_str += self.sintb(2)+' '
-                    r_str += self.sintb(2)+' '
-                    r_str += self.sintb(4)+' '
-                    r_str += self.sintb(1)+' '
-                    r_str += self.sintb(1)                                    
+                    r_str  = 'speed:'+self.sintb(4)+' '
+                    r_str += 'uspeed:'+self.sintb(1)+' '
+                    r_str += 'accel:'+self.sintb(2)+' '
+                    r_str += 'decel:'+self.sintb(2)+' '
+                    r_str += 'anti_play_speed:'+self.sintb(4)+' '
+                    r_str += 'uanti_play_speed:'+self.sintb(1)
                     break
                 if self.iscom('gpos'):
-                    r_str = self.sintb(4)+' '
-                    r_str += self.sintb(2)+' '
-                    r_str += self.sintb(8)+' '
-                    break
-                if self.iscom('zero'):
+                    pos=self.sintb(4)
+                    self.object['position'] = int(pos)
+                    r_str = 'pos:'+pos+' '
+                    r_str += 'upos:'+self.sintb(2)+' '
+                    r_str += 'encpos:'+self.sintb(8)+' '
                     break
                 # not recognized command, just pass the output
                 r_str = self._bs
                 break
             if type(r_str) == str:
-                daemon.messageAll(r_str+'\n', self.commands[0]['source'])
+                daemon.messageAll(r_str, self.commands[0]['source'])
             elif r_str != b'':
-                daemon.messageAll(r_str+b'\n', self.commands[0]['source'])
+                daemon.messageAll(r_str, self.commands[0]['source'])
         self.commands.pop(0)
 
     @catch
-    def message(self, string, nb, source='itself'):
+    def Imessage(self, string, nb, source='itself'):
         """Sending outgoing message"""
         if self._debug:
             print(">> serial >>", string, 'expecting', nb, 'bytes')
@@ -227,20 +264,24 @@ class StandaRSProtocol(SimpleProtocol):
     @catch
     def update(self):
         # Request the hardware state from the device
+        if self._debug:
+            print ("----------------------- command queue ----------------------------")
+            for k in self.commands:
+                print (self.commands[0]['cmd'],self.commands[0]['nb'],self.commands[0]['source'],self.commands[0]['status'])
+            print ("===================== command queue end ==========================")
+            
         if len(self.commands):
+            if self.commands[0]['status'].startswith('sent'):
+                return
             if self.commands[0]['status'] ==  'new':
-                SimpleProtocol.switchToBinary(self, length=max(4, self.commands[0]['nb']))
-                SimpleProtocol.message(self, self.commands[0]['cmd'])
                 self.commands[0]['status'] = 'sent'
-            elif self.commands[0]['status'] ==  'sync':
-                SimpleProtocol.switchToBinary(self, length=max(4, self.commands[0]['nb']))
-                SimpleProtocol.message(self, self.commands[0]['cmd'])
-                
-        # else:
-            # for k in self.status_commands:
-            # self.commands.append(
-            # {'cmd': k, 'source': 'itself', 'keep': True})
-            #SimpleProtocol.message(self, self.commands[0]['cmd'])
+            elif self.commands[0]['status'] ==  'status':
+                self.commands[0]['status'] = 'sent_status'
+            self.switchToBinary(length=max(4, self.commands[0]['nb']))
+            self.message(self.commands[0]['cmd'])
+        else:
+            for k in self.status_commands:
+                self.commands.append({'cmd': k[0], 'nb': k[1], 'source': 'itself', 'status': 'status'})
 
 
 if __name__ == '__main__':
@@ -255,9 +296,7 @@ if __name__ == '__main__':
 
     # Object holding actual state and work logic.
     # May be anything that will be passed by reference - list, dict, object etc
-    obj = {
-        'hw_connected': 0,
-    }
+    obj = {'hw_connected': 0, 'position': float('nan'), 'uposition': float('nan'), 'encposition': float('nan')}
 
     daemon = SimpleFactory(DaemonProtocol, obj)
     daemon.name = options.name
@@ -269,7 +308,6 @@ if __name__ == '__main__':
                     parity='N', stopbits=2, timeout=400)  # parameters from manual
 
     hw.protocol._ttydev = options.hw_dev
-    hw.protocol._comand_end_character = ''  # the device expects just 4 bytes, then it acts
 
     if options.debug:
         daemon._protocol._debug = True
