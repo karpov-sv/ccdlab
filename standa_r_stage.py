@@ -9,8 +9,8 @@ from twisted.internet.task import LoopingCall
 from daemon import SimpleFactory, SimpleProtocol, catch
 
 class DaemonProtocol(SimpleProtocol):
-    _debug = False  # Display all traffic for debug purposes
-
+    _debug = False  # Display all traffic for debug purposes.
+    
     @catch
     def mbytes(self,cmd, pars, reserved_bytes=0):
         bss = cmd.encode('ascii')+b''.join([int(p[1]).to_bytes( p[0], 'little', signed=True ) for p in pars])
@@ -51,7 +51,7 @@ class DaemonProtocol(SimpleProtocol):
             while True:
                 # managment commands
                 if sstring == 'get_status':
-                    self.message('status hw_connected=%s position=%s uposition=%s encposition=%s' % (self.object['hw_connected'], self.object['position'], self.object['uposition'], self.object['encposition']))
+                    self.message('status hw_connected={hw_connected} position={position} uposition={uposition} encposition={encposition} speed={speed} uspeed={uspeed} accel={accel} decel={decel} anti_play_speed={anti_play_speed} uanti_play_speed={uanti_play_speed}'.format(**self.object))
                     break
                 if sstring == 'timeout':
                     self.factory.log('command timeout - removing command from list and flushing buffer')
@@ -137,7 +137,7 @@ class StandaRSProtocol(SimpleProtocol):
     def __init__(self):
         SimpleProtocol.__init__(self)
         self.commands = []  # Queue of command sent to the device which will provide replies, each entry is a dict with keys "cmd","source"
-        self.status_commands = [['gpos',26]]  # commands send when device not busy to keep tabs on the state
+        self.status_commands = [[26,'gpos'],[30,'gmov']]  # commands send when device not busy to keep tabs on the state
         self._comand_end_character = b''
 
 
@@ -150,9 +150,17 @@ class StandaRSProtocol(SimpleProtocol):
     @catch
     def connectionLost(self, reason):
         self.object['hw_connected'] = 0
-        self.object['position'] = float('nan')
-        self.object['uposition'] = float('nan')
-        self.object['encposition'] = float('nan')
+        self.commands = []
+        self.object['position'] = 'nan'
+        self.object['uposition'] = 'nan'
+        self.object['encposition'] = 'nan'
+        self.object['speed'] = 'nan'
+        self.object['uspeed'] = 'nan'
+        self.object['accel'] = 'nan'
+        self.object['decel'] = 'nan'
+        self.object['anti_play_speed'] = 'nan'
+        self.object['uanti_play_speed'] = 'nan'
+
         
     @catch
     def processMessage(self, string):
@@ -196,12 +204,6 @@ class StandaRSProtocol(SimpleProtocol):
             
             r_str=None
             while True:
-                if self.commands[0]['status'] == 'sent_status':
-                    if self.iscom('gpos'):
-                        self.object['position'] = int(self.sintb(4))
-                        self.object['uposition'] = int(self.sintb(2))
-                        self.object['encposition'] = int(self.sintb(8))
-                    break
                 # check buffer empty and checksum
                 if self._buffer != b'':
                     print('warning buffer not empty after expected number of bytes')
@@ -223,19 +225,28 @@ class StandaRSProtocol(SimpleProtocol):
                     r_str += self.strb(24)
                     break
                 if self.iscom('gmov'):
-                    r_str  = 'speed:'+self.sintb(4)+' '
-                    r_str += 'uspeed:'+self.sintb(1)+' '
-                    r_str += 'accel:'+self.sintb(2)+' '
-                    r_str += 'decel:'+self.sintb(2)+' '
-                    r_str += 'anti_play_speed:'+self.sintb(4)+' '
-                    r_str += 'uanti_play_speed:'+self.sintb(1)
+                    self.object['speed'] = self.sintb(4)
+                    self.object['uspeed'] = self.sintb(1)
+                    self.object['accel'] = self.sintb(2)
+                    self.object['decel'] = self.sintb(2)
+                    self.object['anti_play_speed'] = self.sintb(4)
+                    self.object['uanti_play_speed'] = self.sintb(1)
+                    if self.commands[0]['status'] != 'sent_status':
+                        r_str  = 'speed:'+self.object['speed']+' '
+                        r_str += 'uspeed:'+self.object['uspeed']+' '
+                        r_str += 'accel:'+self.object['accel']+' '
+                        r_str += 'decel:'+self.object['decel']+' '
+                        r_str += 'anti_play_speed:'+self.object['anti_play_speed']+' '
+                        r_str += 'uanti_play_speed:'+self.object['uanti_play_speed']
                     break
                 if self.iscom('gpos'):
-                    pos=self.sintb(4)
-                    self.object['position'] = int(pos)
-                    r_str = 'pos:'+pos+' '
-                    r_str += 'upos:'+self.sintb(2)+' '
-                    r_str += 'encpos:'+self.sintb(8)+' '
+                    self.object['position'] = self.sintb(4)
+                    self.object['uposition'] = int(self.sintb(2))
+                    self.object['encposition'] = int(self.sintb(8))
+                    if self.commands[0]['status'] != 'sent_status':
+                        r_str = 'pos:'+self.object['position']+' ' 
+                        r_str += 'upos:'+self.object['uposition']+' '
+                        r_str += 'encpos:'+self.object['encposition']
                     break
                 # not recognized command, just pass the output
                 r_str = self._bs
@@ -263,6 +274,15 @@ class StandaRSProtocol(SimpleProtocol):
 
     @catch
     def update(self):
+        if not obj['hw_connected']:
+            try:
+                obj['hw'] = SerialPort(self, self._ttydev, obj['daemon']._reactor, baudrate=115200, bytesize=8, parity='N', stopbits=2, timeout=400)
+                obj['hw_connected'] =1 
+                print ("RECONNECTED")
+            except Exception as e:
+                print ('failed to reconnect')
+
+        #help(obj['hw'])
         # Request the hardware state from the device
         if self._debug:
             print ("----------------------- command queue ----------------------------")
@@ -279,9 +299,9 @@ class StandaRSProtocol(SimpleProtocol):
                 self.commands[0]['status'] = 'sent_status'
             self.switchToBinary(length=max(4, self.commands[0]['nb']))
             self.message(self.commands[0]['cmd'])
-        else:
+        elif self.object['hw_connected']:
             for k in self.status_commands:
-                self.commands.append({'cmd': k[0], 'nb': k[1], 'source': 'itself', 'status': 'status'})
+                self.commands.append({'cmd': k[1], 'nb': k[0], 'source': 'itself', 'status': 'status'})
 
 
 if __name__ == '__main__':
@@ -296,7 +316,9 @@ if __name__ == '__main__':
 
     # Object holding actual state and work logic.
     # May be anything that will be passed by reference - list, dict, object etc
-    obj = {'hw_connected': 0, 'position': float('nan'), 'uposition': float('nan'), 'encposition': float('nan')}
+    obj = {'hw_connected': 0, 
+           'position': 'nan', 'uposition': 'nan', 'encposition': 'nan',
+           'speed': 'nan','uspeed': 'nan','accel': 'nan','decel': 'nan','anti_play_speed': 'nan','uanti_play_speed': 'nan', }
 
     daemon = SimpleFactory(DaemonProtocol, obj)
     daemon.name = options.name
@@ -304,9 +326,7 @@ if __name__ == '__main__':
 
     proto = StandaRSProtocol()
     proto.object = obj
-    hw = SerialPort(proto, options.hw_dev, daemon._reactor, baudrate=115200, bytesize=8,
-                    parity='N', stopbits=2, timeout=400)  # parameters from manual
-
+    hw = SerialPort(proto, options.hw_dev, daemon._reactor, baudrate=115200, bytesize=8, parity='N', stopbits=2, timeout=400)  # parameters from manual
     hw.protocol._ttydev = options.hw_dev
 
     if options.debug:
