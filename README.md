@@ -206,8 +206,12 @@ Check `example.py` for a bit more complex daemon which holds persistent re-conne
 
 The following Python packages are necessary in order to run the system:
 
-  * **Twisted** for a basic TCP networking framework
-    * ``pip install --user Twisted``
+  * **basic modules**
+    * ``pip install --user numpy matplotlib``
+  * **libscrc￼** for calculating CRC16
+    * ``pip install --user libscrc￼``
+  * **Twisted ans Python Serial Port Extension** for a basic TCP networking framework
+    * ``pip install --user Twisted pyserial``
   * **ConfigObj** for parsing configuration files
     * ``pip install --user configobj``
   * **Psycopg2** for accessing PostgreSQL databases
@@ -219,7 +223,6 @@ The following Python packages are necessary in order to run the system:
 To set up the database:
   * **PostgreSQL** installation
     * ``apt-get install postgresql-12``
-    
   * Configure the database
     * ``sudo -u postgres createuser --superuser $USER``
     * ``createdb ccdlab``
