@@ -7,10 +7,14 @@ from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, c
 from twisted.protocols.basic import LineReceiver
 from twisted.internet.task import LoopingCall
 
+import pylibftdi
+from pyudev import Context, Monitor, MonitorObserver
+
 import os
 import sys
 import re
 import socket
+import time
 
 from command import Command
 
@@ -25,6 +29,93 @@ def catch(func):
             traceback.print_exc()
 
     return wrapper
+
+
+class FTDIProtocol(Protocol):
+    """ Class for outgoing connection to a FTDI device """
+    _debug = False
+    _refresh = 1.0
+    pylibftdi.USB_PID_LIST.append(0xFAF0)
+
+    def __init__(self, serial_num, obj, refresh=0, baudrate=115200):
+        # Name and type of the connection peer
+        self.name = ''
+        self.type = ''
+
+        self.object = obj
+        self.baudrate = baudrate
+        self.serial_num = serial_num
+        self.devpath = ''
+
+        if refresh > 0:
+            self._refresh = refresh
+
+        self.device = pylibftdi.Device(mode='b', device_id=self.serial_num, lazy_open=True)
+        self.device._baudrate = self.baudrate
+
+        # the following will start a small daemon to monitor the connection and call ConnectionMade and ConnectionLost
+        # pyftdi doesn't seem to support this so this pyudev daemon is necessary
+
+        context = Context()
+        # find out whether device is already connected and if that is the case open ftdi connection
+        for device in context.list_devices(subsystem='usb'):
+            if device.get('ID_SERIAL_SHORT') == self.serial_num:
+                for ch in device.children:
+                    if 'tty' not in ch.get('DEVPATH'):
+                        self.devpath = ch.get('DEVPATH')
+                        self.ConnectionMade()
+
+        cm = Monitor.from_netlink(context)
+        cm.filter_by(subsystem='usb')
+        observer = MonitorObserver(cm, callback=self.ConnectionMCallBack, name='monitor-observer')
+        observer.start()
+
+        self._updateTimer = LoopingCall(self.update)
+        self._updateTimer.start(self._refresh)
+
+    def ConnectionMCallBack(self, dd):
+        if self.devpath == '':
+            if dd.get('ID_SERIAL_SHORT') == self.serial_num:
+                for ch in dd.children:
+                    if 'tty' not in ch.get('DEVPATH'):
+                        self.devpath = ch.get('DEVPATH')
+                        self.ConnectionMade()
+        elif dd.get('DEVPATH') == self.devpath:
+            if dd.action == 'remove':
+                self.ConnectionLost()
+            if dd.action == 'add':
+                self.ConnectionMade()
+
+    def ConnectionMade(self):
+        self.device.open()
+        self.device.baudrate = self.baudrate
+        self.device.ftdi_fn.ftdi_set_line_property(8, 1, 0)  # number of bits, number of stop bits, no parity
+
+        time.sleep(50.0/1000)
+        self.device.flush(pylibftdi.FLUSH_BOTH)
+        time.sleep(50.0/1000)
+
+        # this is pulled from ftdi.h
+        SIO_RTS_CTS_HS = (0x1 << 8)
+        self.device.ftdi_fn.ftdi_setflowctrl(SIO_RTS_CTS_HS)
+        self.device.ftdi_fn.ftdi_setrts(1)
+
+        print('Connected to', self.devpath)
+
+    def ConnectionLost(self):
+        self.device.close()
+        print('Disconnected from', self.devpath)
+
+    def send_message(self, packed_msg):
+        if self._debug:
+            print(">>", self.devpath, '>>', packed_msg)
+        self.device.write(packed_msg)
+
+    def ProcessMessage(self, msg):
+        pass
+
+    def update(self):
+        pass
 
 
 class SimpleProtocol(Protocol):
@@ -105,7 +196,7 @@ class SimpleProtocol(Protocol):
             string = string.encode('ascii')+self._comand_end_character
         else:
             string = string+self._comand_end_character
-            
+
         if self._debug:
             if self._peer:
                 print(">>", self._peer.host, self._peer.port, '>>', string)
