@@ -18,7 +18,6 @@ Based on APT Communication Protocol Rev. 7 (Thorlabs)
 """
 _Message = namedtuple('_Message',  ['messageID', 'param1', 'param2', 'dest', 'src', 'data'])
 
-
 class Message(_Message):
 
     @classmethod
@@ -142,19 +141,19 @@ class Message(_Message):
     #MGMSG_MOT_MOVE_ABSOLUTE = 0x0453
     #MGMSG_MOT_MOVE_COMPLETED = 0x0464
 
-    #MGMSG_MOT_SET_HOMEPARAMS = 0x0440
-    #MGMSG_MOT_REQ_HOMEPARAMS = 0x0441
-    #MGMSG_MOT_GET_HOMEPARAMS = 0x0442
+    MGMSG_MOT_SET_HOMEPARAMS = 0x0440
+    MGMSG_MOT_REQ_HOMEPARAMS = 0x0441
+    MGMSG_MOT_GET_HOMEPARAMS = 0x0442
 
-    #MGMSG_MOT_REQ_POSCOUNTER = 0x0411
-    #MGMSG_MOT_GET_POSCOUNTER = 0x0412
+    MGMSG_MOT_REQ_POSCOUNTER = 0x0411
+    MGMSG_MOT_GET_POSCOUNTER = 0x0412
 
     #MGMSG_MOT_REQ_DCSTATUSUPDATE = 0x0490
     #MGMSG_MOT_GET_DCSTATUSUPDATE = 0x0491
 
-    #MGMSG_MOT_SET_VELPARAMS = 0x413
-    #MGMSG_MOT_REQ_VELPARAMS = 0x414
-    #MGMSG_MOT_GET_VELPARAMS = 0x415
+    MGMSG_MOT_SET_VELPARAMS = 0x413
+    MGMSG_MOT_REQ_VELPARAMS = 0x414
+    MGMSG_MOT_GET_VELPARAMS = 0x415
 
     #MGMSG_MOT_SUSPEND_ENDOFMOVEMSGS = 0x046B
     #MGMSG_MOT_RESUME_ENDOFMOVEMSGS = 0x046C
@@ -165,7 +164,7 @@ class Message(_Message):
 
 class DaemonProtocol(SimpleProtocol):
     _debug = False  # Display all traffic for debug purposes.
-
+    
     @catch
     def processMessage(self, string):
         cmd = SimpleProtocol.processMessage(self, string)
@@ -174,20 +173,82 @@ class DaemonProtocol(SimpleProtocol):
 
         Sstring = (string.strip('\n')).split(';')
         for sstring in Sstring:
-            sstring = sstring.lower()
+            sstring = sstring.strip(' ').lower()
 
             while True:
                 if sstring == 'flash_led':
-                    obj['hw'].commands.append({'msg': Message(Message.MGMSG_MOD_IDENTIFY), 'Rsource': self.name, 'get_c': 0})
+                    obj['hw'].commands.append({'msg': Message(Message.MGMSG_MOD_IDENTIFY),
+                                               'source': self.name, 'get_c': 0})
                     break
                 if sstring == 'get_info':
-                    obj['hw'].commands.append({'msg': Message(Message.MGMSG_HW_REQ_INFO), 'Rsource': self.name, 'get_c': Message.MGMSG_HW_GET_INFO})
+                    obj['hw'].commands.append({'msg': Message(Message.MGMSG_HW_REQ_INFO),
+                                               'source': self.name, 'get_c': Message.MGMSG_HW_GET_INFO})
                     break
+                if sstring.startswith('get_home_pars'):
+                    obj['hw'].commands.append({'msg': Message(Message.MGMSG_MOT_REQ_HOMEPARAMS),
+                                               'source': self.name, 'get_c': Message.MGMSG_MOT_GET_HOMEPARAMS,
+                                               'unit': 'mm' if sstring == 'get_home_pars_mm' else 'counts'})
+                    break
+                if sstring.startswith('get_pos'):
+                    obj['hw'].commands.append({'msg': Message(Message.MGMSG_MOT_REQ_POSCOUNTER),
+                                               'source': self.name, 'get_c': Message.MGMSG_MOT_GET_POSCOUNTER,
+                                               'unit': 'mm' if sstring == 'get_pos_mm' else 'counts'})
+                    break
+                if sstring.startswith('get_vel_pars'):
+                    obj['hw'].commands.append({'msg': Message(Message.MGMSG_MOT_REQ_VELPARAMS),
+                                               'source': self.name, 'get_c': Message.MGMSG_MOT_GET_VELPARAMS,
+                                               'unit': 'mm' if sstring == 'get_vel_pars_mm' else 'counts'})
+                    break
+                if sstring.startswith('set_vel_pars'):
+                    # sould look like: set_vel_pars(_mm),vel:value,acc:value
+                    # the pars order does not matter
+                    ss=sstring.split(',')
+                    assert len(ss)==3, 'command '+ sstring + ' is not valid'
+                    vals={}
+                    for input_ex in ss[1:]:
+                        try:
+                            input_ex = input_ex.split(':')
+                            vals[input_ex[0]]=float(input_ex[1])
+                        except:
+                            print ('command '+ sstring + ' is not valid')
+                            return
+                    
+                    if sstring.startswith('set_vel_pars_mm'):
+                        vals['acc']*=obj['hw']._acceleration_scale
+                        vals['vel']*=obj['hw']._velocity_scale
+                    if vals['acc']>obj['hw']._max_acceleration:
+                        daemon.log('requested acc of {} [counts*s^-2] is above the limit of {} [counts*s^-2], using the limit value'.format(vals['acc'],obj['hw']._max_acceleration),'warning')
+                        vals['acc']=obj['hw']._max_acceleration
+                    if vals['vel']>obj['hw']._max_velocity:
+                        daemon.log('requested vel of {} [counts*s^-1] is above the limit of {} [counts*s^-1], using the limit value'.format(vals['vel'],obj['hw']._max_acceleration),'warning')
+                        vals['vel']=obj['hw']._max_acceleration
+                     
+                    params = st.pack('<HIII',1,0,int(vals['acc']),int(vals['vel']) )
+                    obj['hw'].commands.append({'msg': Message(Message.MGMSG_MOT_SET_VELPARAMS, data=params),
+                                               'source': self.name, 'get_c': 0})
+                    break
+                #if sstring == 'get_pos':
                 break
 
 
 class ThorlabsLSProtocol(FTDIProtocol):
     _debug = False  # Display all traffic for debug purposes
+    
+    #the following can in principle be 3 different values
+    _position_scale = 25600 # 1mm * position_scale = number of microsteps
+    _velocity_scale = 25600 # 1mm/s * velocity_scale = microsteps/s
+    _acceleration_scale = 25600 # 1mm * s^-2 = microsteps * s^-2
+    
+    # conservative limits
+    # velocity is in counts
+    # acceleration is in counts * s^-2
+    _max_velocity = 5.0*_velocity_scale
+    _max_acceleration = 5.0*_acceleration_scale
+    
+    # The linear range for this stage is 50mm
+    _linear_range = (0,50*_position_scale)
+
+
 
     @catch
     def __init__(self, serial_num, obj):
@@ -210,7 +271,59 @@ class ThorlabsLSProtocol(FTDIProtocol):
 
     @catch
     def ProcessMessage(self, msg):
-        print(msg)
+        if self._debug:
+            print('hw bb >', msg)
+            print('last command which expects reply was:', '0x{:04x}'.format(-self.commands[0]['get_c']), '('+str(-self.commands[0]['get_c'])+')')
+        r_str = None
+        while True:
+            if self.commands[0]['get_c'] == -Message.MGMSG_HW_GET_INFO:
+                umsg = st.unpack('<I8sH4s48s12sHHH', msg.datastring)
+                r_str = 'serial_number:'+str(umsg[0])
+                r_str += ',model:'+umsg[1].strip(b'\x00').decode('ascii')
+                r_str += ',hw_type:'+str(umsg[2])
+                r_str += ',firmware_version:'+str(int.from_bytes(umsg[3], 'little'))
+                r_str += ',notes:'+umsg[4].strip(b'\x00').decode('ascii')
+                r_str += ',hw_version:'+str(umsg[6])
+                r_str += ',modificiation_state:'+str(umsg[7])
+                r_str += ',n_channels:'+str(umsg[8])
+                break
+            if self.commands[0]['get_c'] == -Message.MGMSG_MOT_GET_HOMEPARAMS:
+                umsg = st.unpack('<HHHII', msg.datastring)
+                r_str = 'channel_id:'+str(umsg[0])
+                r_str += ',home_direction:'+str(umsg[1])
+                r_str += ',Limit_switch:'+str(umsg[2])
+                if self.commands[0]['unit'] == 'counts':
+                    r_str += ',home_velocity[counts/s]:'+str(umsg[3])
+                    r_str += ',offset_distance[counts]:'+str(umsg[4])
+                else:
+                    r_str += ',home_velocity[mm/s]:'+str(umsg[3]/self._velocity_scale)
+                    r_str += ',offset_distance[mm]:'+str(umsg[4]/self._position_scale)                    
+                break
+            if self.commands[0]['get_c'] == -Message.MGMSG_MOT_GET_POSCOUNTER:
+                umsg = st.unpack('<HI', msg.datastring)
+                r_str = 'channel_id:'+str(umsg[0])
+                if self.commands[0]['unit'] == 'counts':
+                    r_str += ',position[counts]:'+str(umsg[1])
+                else:
+                    r_str += ',position[mm]:'+str(umsg[1]/self._position_scale)
+                break
+            if self.commands[0]['get_c'] == -Message.MGMSG_MOT_GET_VELPARAMS:
+                umsg = st.unpack('<HIII', msg.datastring)
+                r_str = 'channel_id:'+str(umsg[0])
+                if self.commands[0]['unit'] == 'counts':
+                    r_str += ',accel[counts/s^2]:'+str(umsg[2])
+                    r_str += ',vel[counts/s]:'+str(umsg[3])
+                else:
+                    r_str += ',accel[mm/s^2]:'+str(umsg[2]/self._acceleration_scale)
+                    r_str += ',vel[mm/s]:'+str(umsg[3]/self._velocity_scale)
+                print('iii', umsg)
+                break
+            break
+        if type(r_str) == str:
+            daemon.messageAll(r_str, self.commands[0]['source'])
+        elif type(r_str) == bytes:
+            daemon.messageAll(r_str, self.commands[0]['source'])
+        self.commands.pop(0)
 
     @catch
     def read(self):
@@ -232,18 +345,22 @@ class ThorlabsLSProtocol(FTDIProtocol):
     def update(self):
         if self.object['hw_connected']:
             if len(self.commands) and self.commands[0]['get_c'] >= 0:
+                if self._debug:
+                    print('sending command',self.commands[0])
                 self.send_message(self.commands[0]['msg'].pack())
-                get_c = obj['hw'].commands[0]['get_c']
-                Rsource = obj['hw'].commands[0]['Rsource']
-                self.commands.pop(0)
+                get_c = self.commands[0]['get_c']
+                source = obj['hw'].commands[0]['source']
                 if get_c:
                     # this command does expect a response, replace the req command with a get one
-                    self.commands = [{'msg': get_c, 'Rsource': Rsource, 'get_c': -1}]+self.commands
+                    self.commands[0]['get_c']=-self.commands[0]['get_c']
                     self.read()
+                else:
+                    self.commands.pop(0)
+
 
 
 if __name__ == '__main__':
-    parser = OptionParser(usage="usage: %prog [options] arg")
+    parser = OptionParser(usage='usage: %prog [options] arg')
     parser.add_option('-s', '--serial-num',
                       help='Serial number of the device to connect to. To ensure the USB device is accesible udev rule, something like: ATTRS{idVendor}=="0403", ATTRS{idProduct}=="faf0" , MODE="0666", GROUP="plugdev"', action='store', dest='serial_num', type='str', default='40824267')
     parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7028)
