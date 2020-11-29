@@ -52,6 +52,8 @@ class FTDIProtocol(Protocol):
 
         self.device = pylibftdi.Device(mode='b', device_id=self.serial_num, lazy_open=True)
         self.device._baudrate = self.baudrate
+        self._updateTimer = LoopingCall(self.update)
+        self._readTimer = LoopingCall(self.read)
 
         # the following will start a small daemon to monitor the connection and call ConnectionMade and ConnectionLost
         # pyftdi doesn't seem to support this so this pyudev daemon is necessary
@@ -70,8 +72,8 @@ class FTDIProtocol(Protocol):
         observer = MonitorObserver(cm, callback=self.ConnectionMCallBack, name='monitor-observer')
         observer.start()
 
-        self._updateTimer = LoopingCall(self.update)
         self._updateTimer.start(self._refresh)
+        
 
     def ConnectionMCallBack(self, dd):
         if self.devpath == '':
@@ -99,10 +101,14 @@ class FTDIProtocol(Protocol):
         SIO_RTS_CTS_HS = (0x1 << 8)
         self.device.ftdi_fn.ftdi_setflowctrl(SIO_RTS_CTS_HS)
         self.device.ftdi_fn.ftdi_setrts(1)
+        
+        self._readTimer.start(self._refresh/10)
+
 
         print('Connected to', self.devpath)
 
     def ConnectionLost(self):
+        self._readTimer.stop()
         self.device.close()
         print('Disconnected from', self.devpath)
 
@@ -115,6 +121,9 @@ class FTDIProtocol(Protocol):
         pass
 
     def update(self):
+        pass
+    
+    def read(self):
         pass
 
 
