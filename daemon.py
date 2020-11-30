@@ -85,10 +85,11 @@ class FTDIProtocol(Protocol):
         elif dd.get('DEVPATH') == self.devpath:
             if dd.action == 'remove':
                 self.ConnectionLost()
-            if dd.action == 'add':
+            if dd.action == 'add' and self.device.closed:
                 self.ConnectionMade()
 
     def ConnectionMade(self):
+
         self.device.open()
         self.device.baudrate = self.baudrate
         self.device.ftdi_fn.ftdi_set_line_property(8, 1, 0)  # number of bits, number of stop bits, no parity
@@ -96,15 +97,14 @@ class FTDIProtocol(Protocol):
         time.sleep(50.0/1000)
         self.device.flush(pylibftdi.FLUSH_BOTH)
         time.sleep(50.0/1000)
-
+        
         # this is pulled from ftdi.h
         SIO_RTS_CTS_HS = (0x1 << 8)
         self.device.ftdi_fn.ftdi_setflowctrl(SIO_RTS_CTS_HS)
         self.device.ftdi_fn.ftdi_setrts(1)
-        
+
+        time.sleep(3)        
         self._readTimer.start(self._refresh/10)
-
-
         print('Connected to', self.devpath)
 
     def ConnectionLost(self):
