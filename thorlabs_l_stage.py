@@ -149,8 +149,8 @@ class Message(_Message):
     MGMSG_MOT_SET_HOMEPARAMS = 0x0440
     MGMSG_MOT_REQ_HOMEPARAMS = 0x0441
     MGMSG_MOT_GET_HOMEPARAMS = 0x0442
-    
-    #MGMSG_MOT_SET_LIMSWITCHPARAMS = 0x0423
+
+    MGMSG_MOT_SET_LIMSWITCHPARAMS = 0x0423
     MGMSG_MOT_REQ_LIMSWITCHPARAMS = 0x0424
     MGMSG_MOT_GET_LIMSWITCHPARAMS = 0x0425
 
@@ -221,7 +221,7 @@ class DaemonProtocol(SimpleProtocol):
                     break
                 if sstring.startswith('set_home_pars'):
                     ss = sstring.split(',')
-                    assert len(ss) == 5, 'command ' + sstring + ' is not valid'
+                    assert len(ss) == 5, 'command ' + sstring + ' is not valid '+str(len(ss))
                     vals = {}
                     for input_ex in ss[1:]:
                         try:
@@ -236,6 +236,8 @@ class DaemonProtocol(SimpleProtocol):
                                     vals[input_ex[0]] *= obj['hw']._velocity_scale
                             elif input_ex[0] == 'offset':
                                 vals[input_ex[0]] = float(input_ex[1])
+                                if sstring.startswith('set_home_pars_mm'):
+                                    vals[input_ex[0]] *= obj['hw']._position_scale
                         except:
                             print('command ' + sstring + ' is not valid')
                             return
@@ -248,9 +250,38 @@ class DaemonProtocol(SimpleProtocol):
                                                'source': self.name, 'get_c': 0})
                 if sstring.startswith('get_lim_pars'):
                     obj['hw'].commands.append({'msg': Message(Message.MGMSG_MOT_REQ_LIMSWITCHPARAMS, param1=1),
-                                                'source': self.name, 'get_c': Message.MGMSG_MOT_GET_LIMSWITCHPARAMS,
-                                                'unit': 'mm' if sstring == 'get_lim_pars_mm' else 'counts'})
-                break
+                                               'source': self.name, 'get_c': Message.MGMSG_MOT_GET_LIMSWITCHPARAMS,
+                                               'unit': 'mm' if sstring == 'get_lim_pars_mm' else 'counts'})
+                    break
+                if sstring.startswith('set_lim_pars'):
+                    ss = sstring.split(',')
+                    assert len(ss) == 5, 'command ' + sstring + ' is not valid '+str(len(ss))
+                    vals = {}
+                    for input_ex in ss[1:]:
+                        try:
+                            input_ex = input_ex.split(':')
+                            if input_ex[0] in ['CW_hw_lim', 'CCW_hw_lim'] and input_ex[1] in ['1', '2', '3']:
+                                vals[input_ex[0]] = int(input_ex[1])
+                            if input_ex[0] in ['CW_sw_lim', 'CCW_sw_lim']:
+                                vals[input_ex[0]] = int(input_ex[1])
+                                if (sstring == 'get_lim_pars_mm'):
+                                    vals[input_ex[0]] *= obj['hw']._position_scale
+                            if input_ex[0] == 'sw_lim_mode' and input_ex[1] in ['1', '2', '3']:
+                                vals[input_ex[0]] = int(input_ex[1])
+                        except:
+                            print('command ' + sstring + ' is not valid')
+                            return
+
+                    if {'CW_hw_lim', 'CCW_hw_lim', 'CW_sw_lim', 'CCW_sw_lim', 'sw_lim_mode'} != vals.keys():
+                        print('command ' + sstring + ' is not valid')
+                        return
+                    params = st.pack('<HHHIIH', 1, int(vals['CW_hw_lim']), int(vals['CCW_hw_lim']), int(
+                        vals['CW_sw_lim']), int(vals['CCW_sw_lim']), int(vals['sw_lim_mode']))
+                    obj['hw'].commands.append({'msg': Message(Message.MGMSG_MOT_SET_LIMSWITCHPARAMS, data=params),
+                                               'source': self.name, 'get_c': 0,
+                                               'unit': 'mm' if sstring == 'get_lim_pars_mm' else 'counts'})
+                    break
+
                 if sstring.startswith('get_pos'):
                     obj['hw'].commands.append({'msg': Message(Message.MGMSG_MOT_REQ_POSCOUNTER, param1=1),
                                                'source': self.name, 'get_c': Message.MGMSG_MOT_GET_POSCOUNTER,
@@ -305,7 +336,6 @@ class DaemonProtocol(SimpleProtocol):
                     assert len(ss) == 2, 'command ' + sstring + ' is not valid'
                     apos = 0
                     try:
-                        print(ss[1])
                         apos = float(ss[1])
                     except:
                         print('command ' + sstring + ' is not valid')
@@ -364,16 +394,15 @@ class ThorlabsLSProtocol(FTDIProtocol):
     _read_msg = None
 
     @catch
-    def __init__(self, serial_num, obj):
+    def __init__(self, serial_num, obj, debug=False):
         # commands send when device not busy to keep tabs on the state
         self.status_commands = [{'msg': Message(Message.MGMSG_MOT_REQ_STATUSUPDATE), 'source': 'itself',
                                  'get_c': -Message.MGMSG_MOT_GET_STATUSUPDATE, 'unit': 'mm'}]
-
+        self._debug = debug
         FTDIProtocol.__init__(self, serial_num, obj)
         self.name = 'hw'
         self.type = 'hw'
         self._refresh = 1
-        self.commands = []
 
     @catch
     def ConnectionLost(self):
@@ -394,8 +423,14 @@ class ThorlabsLSProtocol(FTDIProtocol):
     def ConnectionMade(self):
         self._buffer = bytes()
         self._read_msg = None
-        super().ConnectionMade()
+
         self.commands = []
+        # init some parameters
+        params = st.pack('<HHHIIH', 1, 3, 3, 50*self._position_scale, 0, 1)
+        self.commands.append({'msg': Message(Message.MGMSG_MOT_SET_LIMSWITCHPARAMS, data=params), 'source': 'itself', 'get_c': 0})
+        params = st.pack('<HHHII', 1, 2, 1, 2*self._velocity_scale, int(0.1*self._position_scale))
+        self.commands.append({'msg': Message(Message.MGMSG_MOT_SET_HOMEPARAMS, data=params), 'source': 'itself', 'get_c': 0})
+        super().ConnectionMade()
         self.object['hw_connected'] = 1
 
     @catch
@@ -440,6 +475,8 @@ class ThorlabsLSProtocol(FTDIProtocol):
             if len(self.commands) and -self.commands[0]['get_c'] == msg.messageID:
                 source = self.commands[0]['source']
                 unit = self.commands[0]['unit'] if 'unit' in self.commands[0].keys() else None
+                if self._debug:
+                    print('pop command', self.commands[0])
                 self.commands.pop(0)
 
             if msg.messageID == Message.MGMSG_HW_GET_INFO:
@@ -560,6 +597,12 @@ class ThorlabsLSProtocol(FTDIProtocol):
 
     @catch
     def update(self):
+        if self._debug:
+            print("----------------------- command queue ----------------------------")
+            for k in self.commands:
+                print('0x{:04x}'.format(k['msg'].messageID), k)
+            print("===================== command queue end ==========================")
+
         if self.object['hw_connected']:
             if len(self.commands) and self.commands[0]['get_c'] >= 0:
                 if self._debug:
@@ -590,7 +633,7 @@ if __name__ == '__main__':
     # Object holding actual state and work logic.
     # May be anything that will be passed by reference - list, dict, object etc
     obj = {'hw_connected': 0,
-           'position': '-', 
+           'position': '-',
            'hw_limit': '--.--',
            'moving': '-',
            'jogg': '-',
@@ -603,15 +646,13 @@ if __name__ == '__main__':
            }
 
     daemon = SimpleFactory(DaemonProtocol, obj)
+    if options.debug:
+        daemon._protocol._debug = True
     daemon.name = options.name
     obj['daemon'] = daemon
 
-    hw = ThorlabsLSProtocol(options.serial_num, obj)
+    hw = ThorlabsLSProtocol(options.serial_num, obj, debug=options.debug)
     obj['hw'] = hw
-
-    if options.debug:
-        daemon._protocol._debug = True
-        hw._debug = True
 
     # Incoming connections
     daemon.listen(options.port)

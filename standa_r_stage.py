@@ -298,7 +298,7 @@ class StandaRSProtocol(SimpleProtocol):
         if self._debug:
             print("----------------------- command queue ----------------------------")
             for k in self.commands:
-                print(self.commands[0]['cmd'], self.commands[0]['nb'], self.commands[0]['source'], self.commands[0]['status'])
+                print(k['cmd'], k['nb'], k['source'], k['status'])
             print("===================== command queue end ==========================")
 
         if len(self.commands):

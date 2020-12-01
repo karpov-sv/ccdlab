@@ -73,7 +73,6 @@ class FTDIProtocol(Protocol):
         observer.start()
 
         self._updateTimer.start(self._refresh)
-        
 
     def ConnectionMCallBack(self, dd):
         if self.devpath == '':
@@ -97,13 +96,13 @@ class FTDIProtocol(Protocol):
         time.sleep(50.0/1000)
         self.device.flush(pylibftdi.FLUSH_BOTH)
         time.sleep(50.0/1000)
-        
+
         # this is pulled from ftdi.h
         SIO_RTS_CTS_HS = (0x1 << 8)
         self.device.ftdi_fn.ftdi_setflowctrl(SIO_RTS_CTS_HS)
         self.device.ftdi_fn.ftdi_setrts(1)
 
-        time.sleep(3)        
+        time.sleep(3)
         self._readTimer.start(self._refresh/10)
         print('Connected to', self.devpath)
 
@@ -122,7 +121,7 @@ class FTDIProtocol(Protocol):
 
     def update(self):
         pass
-    
+
     def read(self):
         pass
 
