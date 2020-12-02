@@ -399,7 +399,7 @@ class ThorlabsLSProtocol(FTDIProtocol):
         self.status_commands = [{'msg': Message(Message.MGMSG_MOT_REQ_STATUSUPDATE), 'source': 'itself',
                                  'get_c': -Message.MGMSG_MOT_GET_STATUSUPDATE, 'unit': 'mm'}]
         self._debug = debug
-        FTDIProtocol.__init__(self, serial_num, obj)
+        super().__init__(serial_num, obj)
         self.name = 'hw'
         self.type = 'hw'
         self._refresh = 1
@@ -623,7 +623,7 @@ class ThorlabsLSProtocol(FTDIProtocol):
 if __name__ == '__main__':
     parser = OptionParser(usage='usage: %prog [options] arg')
     parser.add_option('-s', '--serial-num',
-                      help='Serial number of the device to connect to. To ensure the USB device is accesible udev rule, something like: ATTRS{idVendor}=="0403", ATTRS{idProduct}=="faf0" , MODE="0666", GROUP="plugdev"', action='store', dest='serial_num', type='str', default='40824267')
+                      help='Serial number of the device to connect to. To ensure the USB device is accesible add udev rule, something like: ATTRS{idVendor}=="0403", ATTRS{idProduct}=="faf0" , MODE="0666", GROUP="plugdev"', action='store', dest='serial_num', type='str', default='40824267')
     parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7028)
     parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='thorlabs_l_stage1')
     parser.add_option("-D", '--debug', help='Debug mode', action="store_true", dest="debug")

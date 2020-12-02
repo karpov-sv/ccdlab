@@ -2,10 +2,7 @@
 from optparse import OptionParser
 from libscrc import modbus
 
-from twisted.internet.serialport import SerialPort
-from twisted.internet.task import LoopingCall
-
-from daemon import SimpleFactory, SimpleProtocol, catch
+from daemon import SimpleFactory, SimpleProtocol, SerialUSBProtocol, catch
 
 
 class DaemonProtocol(SimpleProtocol):
@@ -138,30 +135,25 @@ class DaemonProtocol(SimpleProtocol):
                 break
 
 
-class StandaRSProtocol(SimpleProtocol):
-    _debug = False  # Display all traffic for debug purposes
+class StandaRSProtocol(SerialUSBProtocol):
     _bs = b''
 
     @catch
-    def __init__(self):
-        SimpleProtocol.__init__(self)
+    def __init__(self, serial_num, obj, debug=False):
         self.commands = []  # Queue of command sent to the device which will provide replies, each entry is a dict with keys "cmd","source"
         self.status_commands = [[26, 'gpos'], [30, 'gmov']]  # commands send when device not busy to keep tabs on the state
-        self._comand_end_character = b''
 
-    @catch
-    def loop(self):
-        self._updateTimer = LoopingCall(self.update)
-        self._updateTimer.start(self._refresh)
+        super().__init__(serial_num=serial_num, obj=obj, refresh=1, baudrate=115200, bytesize=8, parity='N', stopbits=2, timeout=400, debug=debug)
 
     @catch
     def connectionMade(self):
+        self.commands = []
+        super().connectionMade()
         self.object['hw_connected'] = 1
-        self._updateTimer = LoopingCall(self.update)
-        self._updateTimer.start(self._refresh)
 
     @catch
     def connectionLost(self, reason):
+        super().connectionLost(reason)
         self.object['hw_connected'] = 0
         self.commands = []
         self.object['position'] = 'nan'
@@ -283,32 +275,20 @@ class StandaRSProtocol(SimpleProtocol):
 
     @catch
     def update(self):
-        if not obj['hw_connected']:
-            try:
-                obj['hw'] = SerialPort(self, self._ttydev, obj['daemon']._reactor, baudrate=115200, bytesize=8, parity='N', stopbits=2, timeout=400)
-                obj['hw_connected'] = 1
-            except Exception as e:
-                if self._debug:
-                    print('failed to connect')
-                    print(e)
-                return
-
-        # help(obj['hw'])
-        # Request the hardware state from the device
         if self._debug:
             print("----------------------- command queue ----------------------------")
             for k in self.commands:
                 print(k['cmd'], k['nb'], k['source'], k['status'])
             print("===================== command queue end ==========================")
 
-        if len(self.commands):
+        if len(self.commands) and obj['hw_connected']:
             if self.commands[0]['status'].startswith('sent'):
                 return
             if self.commands[0]['status'] == 'new':
                 self.commands[0]['status'] = 'sent'
             elif self.commands[0]['status'] == 'status':
                 self.commands[0]['status'] = 'sent_status'
-            self.switchToBinary(length=max(4, self.commands[0]['nb']))
+            self._binary_length = max(4, self.commands[0]['nb'])
             self.message(self.commands[0]['cmd'])
         else:
             for k in self.status_commands:
@@ -317,8 +297,8 @@ class StandaRSProtocol(SimpleProtocol):
 
 if __name__ == '__main__':
     parser = OptionParser(usage="usage: %prog [options] arg")
-    parser.add_option('-d', '--hw-device',
-                      help='Device to connect to. To ensure the USB device is the same after unplug/plug set up an udev rule, something like: ACTION=="add", ATTRS{idVendor}=="1cbe", ATTRS{idProduct}=="0007", ATTRS{serial}=="00004186", SYMLINK+="standa_rs"', action='store', dest='hw_dev', default='/dev/standa_rs')
+    parser.add_option('-s', '--serial-num', help='Serial number of the device to connect to.',
+                      action='store', dest='serial_num', type='str', default='00004186')
     parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7027)
     parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='standa_r_stage')
     parser.add_option("-D", '--debug', help='Debug mode', action="store_true", dest="debug")
@@ -335,14 +315,8 @@ if __name__ == '__main__':
     daemon.name = options.name
     obj['daemon'] = daemon
 
-    proto = StandaRSProtocol()
-    proto.object = obj
-    proto._ttydev = options.hw_dev
-    if options.debug:
-        proto._debug = True
-    proto.loop()
+    proto = StandaRSProtocol(serial_num=options.serial_num, obj=obj, debug=options.debug)
 
-    #obj['hw'] = hw
     if options.debug:
         daemon._protocol._debug = True
 
