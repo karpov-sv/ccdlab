@@ -163,6 +163,14 @@ class Message(_Message):
     MGMSG_MOT_SET_VELPARAMS = 0x413
     MGMSG_MOT_REQ_VELPARAMS = 0x414
     MGMSG_MOT_GET_VELPARAMS = 0x415
+    
+    MGMSG_MOT_SET_POWERPARAMS =  0x0426
+    MGMSG_MOT_REQ_POWERPARAMS =  0x0427
+    MGMSG_MOT_GET_POWERPARAMS =  0x0428
+
+
+
+
 
     #MGMSG_MOT_SUSPEND_ENDOFMOVEMSGS = 0x046B
     #MGMSG_MOT_RESUME_ENDOFMOVEMSGS = 0x046C
@@ -182,6 +190,8 @@ class DaemonProtocol(SimpleProtocol):
 
         Sstring = (string.strip('\n')).split(';')
         for sstring in Sstring:
+            if self._debug:
+               print ('received string:', sstring,'***************************************************') 
             sstring = sstring.strip(' ').lower()
             while True:
                 if sstring == 'get_status':
@@ -248,35 +258,61 @@ class DaemonProtocol(SimpleProtocol):
                     params = st.pack('<HHHII', 1, int(vals['dir']), int(vals['lim']), int(vals['v']), int(vals['offset']))
                     obj['hw'].commands.append({'msg': Message(Message.MGMSG_MOT_SET_HOMEPARAMS, data=params),
                                                'source': self.name, 'get_c': 0})
+                    
+                if sstring == 'get_power_pars':
+                    obj['hw'].commands.append({'msg': Message(Message.MGMSG_MOT_REQ_POWERPARAMS, param1=1),
+                                               'source': self.name, 'get_c': Message.MGMSG_MOT_GET_POWERPARAMS})
+                    break
+                
+                if sstring.startswith('set_power_pars'):
+                    ss = sstring.split(',')
+                    assert len(ss) == 3, 'command ' + sstring + ' is not valid, wrong number of parameters: '+str(len(ss))
+                    vals = {}
+                    for input_ex in ss[1:]:
+                        try:
+                            input_ex = input_ex.split(':')
+                            vals[input_ex[0]] = int(input_ex[1])
+                        except:
+                            print('command ' + sstring + ' is not valid, parameter error: ',input_ex)
+                            return
+                    if {'rest_factor', 'move_factor'} != vals.keys():
+                        print('command ' + sstring + ' is not valid, parameter missing, pars:',vals.keys())
+                        return
+                    params = st.pack('<HHH', 1, int(vals['rest_factor']), int(vals['move_factor']))
+                    obj['hw'].commands.append({'msg': Message(Message.MGMSG_MOT_SET_POWERPARAMS, data=params),
+                                               'source': self.name, 'get_c': 0})
+                    break
+                    
                 if sstring.startswith('get_lim_pars'):
                     obj['hw'].commands.append({'msg': Message(Message.MGMSG_MOT_REQ_LIMSWITCHPARAMS, param1=1),
                                                'source': self.name, 'get_c': Message.MGMSG_MOT_GET_LIMSWITCHPARAMS,
                                                'unit': 'mm' if sstring == 'get_lim_pars_mm' else 'counts'})
                     break
+                
                 if sstring.startswith('set_lim_pars'):
                     ss = sstring.split(',')
-                    assert len(ss) == 5, 'command ' + sstring + ' is not valid '+str(len(ss))
+                    assert len(ss) == 6, 'command ' + sstring + ' is not valid, wrong number of parameters: '+str(len(ss))
                     vals = {}
                     for input_ex in ss[1:]:
                         try:
                             input_ex = input_ex.split(':')
-                            if input_ex[0] in ['CW_hw_lim', 'CCW_hw_lim'] and input_ex[1] in ['1', '2', '3']:
+                            if input_ex[0] in ['cw_hw_lim', 'ccw_hw_lim'] and input_ex[1] in ['1', '2', '3']:
                                 vals[input_ex[0]] = int(input_ex[1])
-                            if input_ex[0] in ['CW_sw_lim', 'CCW_sw_lim']:
+                            if input_ex[0] in ['cw_sw_lim', 'ccw_sw_lim']:
                                 vals[input_ex[0]] = int(input_ex[1])
-                                if (sstring == 'get_lim_pars_mm'):
+                                if (sstring == 'set_lim_pars_mm'):
                                     vals[input_ex[0]] *= obj['hw']._position_scale
                             if input_ex[0] == 'sw_lim_mode' and input_ex[1] in ['1', '2', '3']:
                                 vals[input_ex[0]] = int(input_ex[1])
                         except:
-                            print('command ' + sstring + ' is not valid')
+                            print('command ' + sstring + ' is not valid, parameter error: ',input_ex)
                             return
 
-                    if {'CW_hw_lim', 'CCW_hw_lim', 'CW_sw_lim', 'CCW_sw_lim', 'sw_lim_mode'} != vals.keys():
-                        print('command ' + sstring + ' is not valid')
+                    if {'cw_hw_lim', 'ccw_hw_lim', 'cw_sw_lim', 'ccw_sw_lim', 'sw_lim_mode'} != vals.keys():
+                        print('command ' + sstring + ' is not valid, parameter missing, pars:',vals.keys())
                         return
-                    params = st.pack('<HHHIIH', 1, int(vals['CW_hw_lim']), int(vals['CCW_hw_lim']), int(
-                        vals['CW_sw_lim']), int(vals['CCW_sw_lim']), int(vals['sw_lim_mode']))
+                    params = st.pack('<HHHIIH', 1, int(vals['cw_hw_lim']), int(vals['ccw_hw_lim']), int(
+                        vals['cw_sw_lim']), int(vals['ccw_sw_lim']), int(vals['sw_lim_mode']))
                     obj['hw'].commands.append({'msg': Message(Message.MGMSG_MOT_SET_LIMSWITCHPARAMS, data=params),
                                                'source': self.name, 'get_c': 0,
                                                'unit': 'mm' if sstring == 'get_lim_pars_mm' else 'counts'})
@@ -287,11 +323,13 @@ class DaemonProtocol(SimpleProtocol):
                                                'source': self.name, 'get_c': Message.MGMSG_MOT_GET_POSCOUNTER,
                                                'unit': 'mm' if sstring == 'get_pos_mm' else 'counts'})
                     break
+                
                 if sstring.startswith('get_v_pars'):
                     obj['hw'].commands.append({'msg': Message(Message.MGMSG_MOT_REQ_VELPARAMS, param1=1),
                                                'source': self.name, 'get_c': Message.MGMSG_MOT_GET_VELPARAMS,
                                                'unit': 'mm' if sstring == 'get_v_pars_mm' else 'counts'})
                     break
+                
                 if sstring.startswith('set_v_pars'):
                     # sould look like: set_v_pars(_mm),v:value,a:value
                     # the pars order does not matter
@@ -319,7 +357,6 @@ class DaemonProtocol(SimpleProtocol):
                         daemon.log(
                             'requested v of {} [counts*s^-1] is above the limit of {} [counts*s^-1], using the limit value'.format(vals['v'], obj['hw']._max_acceleration), 'warning')
                         vals['v'] = obj['hw']._max_velocity
-
                     params = st.pack('<HIII', 1, 0, int(vals['a']), int(vals['v']))
                     obj['hw'].commands.append({'msg': Message(Message.MGMSG_MOT_SET_VELPARAMS, data=params),
                                                'source': self.name, 'get_c': 0})
@@ -519,17 +556,23 @@ class ThorlabsLSProtocol(FTDIProtocol):
                     r_str += ',home_velocity[mm/s]:'+str(umsg[3]/self._velocity_scale)
                     r_str += ',offset_distance[mm]:'+str(umsg[4]/self._position_scale)
                 break
+            if msg.messageID == Message.MGMSG_MOT_GET_POWERPARAMS:
+                umsg = st.unpack('<HHH', msg.datastring)
+                r_str = 'channel_id:'+str(umsg[0])
+                r_str += ',rest_factor:'+str(umsg[1])
+                r_str += ',move_factor:'+str(umsg[2])
+                break
             if msg.messageID == Message.MGMSG_MOT_GET_LIMSWITCHPARAMS:
                 umsg = st.unpack('<HHHIIH', msg.datastring)
                 r_str = 'channel_id:'+str(umsg[0])
-                r_str += ',CW_hw_lim:0x{:02x}'.format(umsg[1])
-                r_str += ',CCW_hw_lim:0x{:02x}'.format(umsg[2])
+                r_str += ',cw_hw_lim:0x{:02x}'.format(umsg[1])
+                r_str += ',ccw_hw_lim:0x{:02x}'.format(umsg[2])
                 if unit == 'counts':
-                    r_str += ',CW_sw_lim[counts]:'+str(umsg[3])
-                    r_str += ',CCW_sw_lim[counts]:'+str(umsg[4])
+                    r_str += ',cw_sw_lim[counts]:'+str(umsg[3])
+                    r_str += ',ccw_sw_lim[counts]:'+str(umsg[4])
                 else:
-                    r_str += ',CW_sw_lim[mm]:'+str(umsg[3]/self._position_scale)
-                    r_str += ',CCW_sw_lim[mm]:'+str(umsg[4]/self._position_scale)
+                    r_str += ',cw_sw_lim[mm]:'+str(umsg[3]/self._position_scale)
+                    r_str += ',ccw_sw_lim[mm]:'+str(umsg[4]/self._position_scale)
                 r_str += ',sw_lim_mode:0x{:02x}'.format(umsg[5])
                 break
             if msg.messageID == Message.MGMSG_MOT_GET_POSCOUNTER:

@@ -114,7 +114,7 @@ class FTDIProtocol(Protocol):
 
     def send_message(self, packed_msg):
         if self._debug:
-            print(">>", self.devpath, '>>', packed_msg)
+            print(">>", self.devpath, '>>', packed_msg, '(',packed_msg.hex(':'),')')
         self.device.write(packed_msg)
 
     def ProcessMessage(self, msg):
@@ -325,10 +325,7 @@ class SimpleProtocol(Protocol):
         self._is_binary = True
         self._binary_length = length
         if self._debug:
-            if self._peer:
-                print("%s:%d = binary mode waiting for %d bytes" % (self._peer.host, self._peer.port, length))
-            else:
-                print("%s = binary mode waiting for %d bytes" % (self._ttydev, length))
+            print("%s:%d = binary mode waiting for %d bytes" % (self._peer.host, self._peer.port, length))
 
     def processMessage(self, string):
         """Process single message"""
@@ -356,10 +353,7 @@ class SimpleProtocol(Protocol):
     def processBinary(self, data):
         """Process binary data when completely read out"""
         if self._debug:
-            if self._peer:
-                print("%s:%d binary > %d bytes" % (self._peer.host, self._peer.port, len(data)))
-            else:
-                print("%s binary > %d bytes" % (self._ttydev, len(data)))
+            print("%s:%d binary > %d bytes" % (self._peer.host, self._peer.port, len(data)))
 
     def update(self):
         pass
