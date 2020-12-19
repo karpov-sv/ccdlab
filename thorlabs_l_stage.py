@@ -163,14 +163,10 @@ class Message(_Message):
     MGMSG_MOT_SET_VELPARAMS = 0x413
     MGMSG_MOT_REQ_VELPARAMS = 0x414
     MGMSG_MOT_GET_VELPARAMS = 0x415
-    
-    MGMSG_MOT_SET_POWERPARAMS =  0x0426
-    MGMSG_MOT_REQ_POWERPARAMS =  0x0427
-    MGMSG_MOT_GET_POWERPARAMS =  0x0428
 
-
-
-
+    MGMSG_MOT_SET_POWERPARAMS = 0x0426
+    MGMSG_MOT_REQ_POWERPARAMS = 0x0427
+    MGMSG_MOT_GET_POWERPARAMS = 0x0428
 
     #MGMSG_MOT_SUSPEND_ENDOFMOVEMSGS = 0x046B
     #MGMSG_MOT_RESUME_ENDOFMOVEMSGS = 0x046C
@@ -191,7 +187,7 @@ class DaemonProtocol(SimpleProtocol):
         Sstring = (string.strip('\n')).split(';')
         for sstring in Sstring:
             if self._debug:
-               print ('received string:', sstring) 
+                print('received string:', sstring)
             sstring = sstring.strip(' ').lower()
             while True:
                 if sstring == 'get_status':
@@ -258,12 +254,12 @@ class DaemonProtocol(SimpleProtocol):
                     params = st.pack('<HHHII', 1, int(vals['dir']), int(vals['lim']), int(vals['v']), int(vals['offset']))
                     obj['hw'].commands.append({'msg': Message(Message.MGMSG_MOT_SET_HOMEPARAMS, data=params),
                                                'source': self.name, 'get_c': 0})
-                    
+
                 if sstring == 'get_power_pars':
                     obj['hw'].commands.append({'msg': Message(Message.MGMSG_MOT_REQ_POWERPARAMS, param1=1),
                                                'source': self.name, 'get_c': Message.MGMSG_MOT_GET_POWERPARAMS})
                     break
-                
+
                 if sstring.startswith('set_power_pars'):
                     ss = sstring.split(',')
                     assert len(ss) == 3, 'command ' + sstring + ' is not valid, wrong number of parameters: '+str(len(ss))
@@ -273,22 +269,22 @@ class DaemonProtocol(SimpleProtocol):
                             input_ex = input_ex.split(':')
                             vals[input_ex[0]] = int(input_ex[1])
                         except:
-                            print('command ' + sstring + ' is not valid, parameter error: ',input_ex)
+                            print('command ' + sstring + ' is not valid, parameter error: ', input_ex)
                             return
                     if {'rest_factor', 'move_factor'} != vals.keys():
-                        print('command ' + sstring + ' is not valid, parameter missing, pars:',vals.keys())
+                        print('command ' + sstring + ' is not valid, parameter missing, pars:', vals.keys())
                         return
                     params = st.pack('<HHH', 1, int(vals['rest_factor']), int(vals['move_factor']))
                     obj['hw'].commands.append({'msg': Message(Message.MGMSG_MOT_SET_POWERPARAMS, data=params),
                                                'source': self.name, 'get_c': 0})
                     break
-                    
+
                 if sstring.startswith('get_lim_pars'):
                     obj['hw'].commands.append({'msg': Message(Message.MGMSG_MOT_REQ_LIMSWITCHPARAMS, param1=1),
                                                'source': self.name, 'get_c': Message.MGMSG_MOT_GET_LIMSWITCHPARAMS,
                                                'unit': 'mm' if sstring == 'get_lim_pars_mm' else 'counts'})
                     break
-                
+
                 if sstring.startswith('set_lim_pars'):
                     ss = sstring.split(',')
                     assert len(ss) == 6, 'command ' + sstring + ' is not valid, wrong number of parameters: '+str(len(ss))
@@ -305,11 +301,11 @@ class DaemonProtocol(SimpleProtocol):
                             if input_ex[0] == 'sw_lim_mode' and input_ex[1] in ['1', '2', '3']:
                                 vals[input_ex[0]] = int(input_ex[1])
                         except:
-                            print('command ' + sstring + ' is not valid, parameter error: ',input_ex)
+                            print('command ' + sstring + ' is not valid, parameter error: ', input_ex)
                             return
 
                     if {'cw_hw_lim', 'ccw_hw_lim', 'cw_sw_lim', 'ccw_sw_lim', 'sw_lim_mode'} != vals.keys():
-                        print('command ' + sstring + ' is not valid, parameter missing, pars:',vals.keys())
+                        print('command ' + sstring + ' is not valid, parameter missing, pars:', vals.keys())
                         return
                     params = st.pack('<HHHIIH', 1, int(vals['cw_hw_lim']), int(vals['ccw_hw_lim']), int(
                         vals['cw_sw_lim']), int(vals['ccw_sw_lim']), int(vals['sw_lim_mode']))
@@ -323,13 +319,13 @@ class DaemonProtocol(SimpleProtocol):
                                                'source': self.name, 'get_c': Message.MGMSG_MOT_GET_POSCOUNTER,
                                                'unit': 'mm' if sstring == 'get_pos_mm' else 'counts'})
                     break
-                
+
                 if sstring.startswith('get_v_pars'):
                     obj['hw'].commands.append({'msg': Message(Message.MGMSG_MOT_REQ_VELPARAMS, param1=1),
                                                'source': self.name, 'get_c': Message.MGMSG_MOT_GET_VELPARAMS,
                                                'unit': 'mm' if sstring == 'get_v_pars_mm' else 'counts'})
                     break
-                
+
                 if sstring.startswith('set_v_pars'):
                     # sould look like: set_v_pars(_mm),v:value,a:value
                     # the pars order does not matter
@@ -457,7 +453,7 @@ class ThorlabsLSProtocol(FTDIProtocol):
         self.object['curr_limit_err'] = '-'
         self.object['channel_enabled'] = '-'
         self.commands = []
-    
+
     @catch
     def ConnectionMade(self):
         self._buffer = bytes()
@@ -618,7 +614,7 @@ class ThorlabsLSProtocol(FTDIProtocol):
     def read(self):
         if not self.object['hw_connected']:
             return
-        
+
         if not self._read_msg and len(self._buffer) < Message.MGMSG_HEADER_SIZE:
             self._buffer += self.device.read(Message.MGMSG_HEADER_SIZE-len(self._buffer))
             # expecting header, if not complete header read some more
@@ -654,7 +650,7 @@ class ThorlabsLSProtocol(FTDIProtocol):
 
         if not self.object['hw_connected']:
             return
-        
+
         if len(self.commands):
             if self.commands[0]['get_c'] >= 0:
                 if self._debug:

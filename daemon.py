@@ -19,6 +19,7 @@ import time
 
 from command import Command
 
+
 def catch(func):
     '''Decorator to catch errors inside functions and print tracebacks'''
     def wrapper(*args, **kwargs):
@@ -52,12 +53,12 @@ class FTDIProtocol(Protocol):
 
         self.device = pylibftdi.Device(mode='b', device_id=self.serial_num, lazy_open=True)
         self.device._baudrate = self.baudrate
-        
+
         self._updateTimer = LoopingCall(self.update)
         self._updateTimer.start(self._refresh)
         self._readTimer = LoopingCall(self.read)
         self._readTimer.start(self._refresh/10)
-        
+
         # the following will start a small daemon to monitor the connection and call ConnectionMade and ConnectionLost
         # pyftdi doesn't seem to support this so this pyudev daemon is necessary
 
@@ -110,18 +111,18 @@ class FTDIProtocol(Protocol):
 
     def send_message(self, packed_msg):
         if self._debug:
-            print(">>", self.devpath, '>>', packed_msg, '(',packed_msg.hex(':'),')')
+            print(">>", self.devpath, '>>', packed_msg, '(', packed_msg.hex(':'), ')')
         self.device.write(packed_msg)
 
     def ProcessMessage(self, msg):
         pass
 
     def update(self):
-        print ('dummy updater')
+        print('dummy updater')
         pass
 
     def read(self):
-        print ('dummy read')
+        print('dummy read')
         pass
 
 
