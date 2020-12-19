@@ -203,6 +203,9 @@ Check `example.py` for a bit more complex daemon which holds persistent re-conne
 
 
 # Installation
+The following libraries are necessary:
+  * **libftdi1** (For thorlabs linear stage, etc)
+    * on a debian based system: ``sudo apt-get install libftdi1-2``
 
 The following Python packages are necessary in order to run the system:
 
@@ -219,6 +222,8 @@ The following Python packages are necessary in order to run the system:
   * **Django** for data archive web interface
     * ``apt-get install python-django``
     * ``pip install django-el-pagination``
+  * **pylibftdi** for thorlabs linear stage, etc
+    * ``pip install --user pylibftdi``
 
 To set up the database:
   * **PostgreSQL** installation

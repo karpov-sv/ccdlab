@@ -6,11 +6,16 @@ from twisted.application.service import Service
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, connectProtocol
 from twisted.protocols.basic import LineReceiver
 from twisted.internet.task import LoopingCall
+from twisted.internet.serialport import SerialPort
+
+import pylibftdi
+from pyudev import Context, Monitor, MonitorObserver
 
 import os
 import sys
 import re
 import socket
+import time
 
 from command import Command
 
@@ -25,6 +30,186 @@ def catch(func):
             traceback.print_exc()
 
     return wrapper
+
+
+class FTDIProtocol(Protocol):
+    """ Class for outgoing connection to a FTDI device """
+    _debug = False
+    _refresh = 1.0
+    pylibftdi.USB_PID_LIST.append(0xFAF0)
+
+    def __init__(self, serial_num, obj, refresh=0, baudrate=115200):
+        # Name and type of the connection peer
+        self.name = ''
+        self.type = ''
+
+        self.object = obj
+        self.baudrate = baudrate
+        self.serial_num = serial_num
+        self.devpath = ''
+
+        if refresh > 0:
+            self._refresh = refresh
+
+        self.device = pylibftdi.Device(mode='b', device_id=self.serial_num, lazy_open=True)
+        self.device._baudrate = self.baudrate
+
+        self._updateTimer = LoopingCall(self.update)
+        self._updateTimer.start(self._refresh)
+        self._readTimer = LoopingCall(self.read)
+        self._readTimer.start(self._refresh/10)
+
+        # the following will start a small daemon to monitor the connection and call ConnectionMade and ConnectionLost
+        # pyftdi doesn't seem to support this so this pyudev daemon is necessary
+
+        context = Context()
+        # find out whether device is already connected and if that is the case open ftdi connection
+        for device in context.list_devices(subsystem='usb'):
+            if device.get('ID_SERIAL_SHORT') == self.serial_num:
+                for ch in device.children:
+                    if 'tty' not in ch.get('DEVPATH'):
+                        self.devpath = ch.get('DEVPATH')
+                        self.ConnectionMade()
+
+        cm = Monitor.from_netlink(context)
+        cm.filter_by(subsystem='usb')
+        observer = MonitorObserver(cm, callback=self.ConnectionMCallBack, name='monitor-observer')
+        observer.start()
+
+    def ConnectionMCallBack(self, dd):
+        if self.devpath == '':
+            if dd.get('ID_SERIAL_SHORT') == self.serial_num:
+                for ch in dd.children:
+                    if 'tty' not in ch.get('DEVPATH'):
+                        self.devpath = ch.get('DEVPATH')
+                        self.ConnectionMade()
+        elif dd.get('DEVPATH') == self.devpath:
+            if dd.action == 'remove':
+                self.ConnectionLost()
+            if dd.action == 'add' and self.device.closed:
+                self.ConnectionMade()
+
+    def ConnectionMade(self):
+        self.device.open()
+        self.device.baudrate = self.baudrate
+        self.device.ftdi_fn.ftdi_set_line_property(8, 1, 0)  # number of bits, number of stop bits, no parity
+
+        time.sleep(50.0/1000)
+        self.device.flush(pylibftdi.FLUSH_BOTH)
+        time.sleep(50.0/1000)
+
+        # this is pulled from ftdi.h
+        SIO_RTS_CTS_HS = (0x1 << 8)
+        self.device.ftdi_fn.ftdi_setflowctrl(SIO_RTS_CTS_HS)
+        self.device.ftdi_fn.ftdi_setrts(1)
+
+        print('Connected to', self.devpath)
+
+    def ConnectionLost(self):
+        self.device.close()
+        print('Disconnected from', self.devpath)
+
+    def send_message(self, packed_msg):
+        if self._debug:
+            print(">>", self.devpath, '>>', packed_msg, '(', packed_msg.hex(':'), ')')
+        self.device.write(packed_msg)
+
+    def ProcessMessage(self, msg):
+        pass
+
+    def update(self):
+        print('dummy updater')
+        pass
+
+    def read(self):
+        print('dummy read')
+        pass
+
+
+class SerialUSBProtocol(Protocol):
+    """ Class for outgoing connection to a USB serial device """
+    _comand_end_character = b''
+    _buffer = b''
+    _devname = None
+    _refresh = 1.0
+    _binary_length = None
+
+    def __init__(self, serial_num, obj, refresh=0, baudrate=115200, bytesize=8, parity='N', stopbits=2, timeout=400, debug=False):
+        # Name and type of the connection peer
+        self.name = ''
+        self.type = ''
+
+        self.serial_num = serial_num
+        self.object = obj
+        self.baudrate = baudrate
+        self.bytesize = bytesize
+        self.parity = parity
+        self.stopbits = stopbits
+        self.timeout = timeout
+
+        self._debug = debug
+
+        if refresh > 0:
+            self._refresh = refresh
+
+        self._updateTimer = LoopingCall(self.update)
+
+        context = Context()
+        for device in context.list_devices(subsystem='tty'):
+            if device.get('ID_SERIAL_SHORT') == self.serial_num:
+                self._devname = device['DEVNAME']
+                self.Connect()
+
+        cm = Monitor.from_netlink(context)
+        cm.filter_by(subsystem='tty')
+        observer = MonitorObserver(cm, callback=self.ConnectionMCallBack, name='monitor-observer')
+        observer.start()
+
+    def Connect(self):
+        self.object['hw'] = SerialPort(self, self._devname, self.object['daemon']._reactor,
+                                       baudrate=self.baudrate, bytesize=self.bytesize, parity=self.parity, stopbits=self.stopbits, timeout=self.timeout)
+
+    def ConnectionMCallBack(self, dd):
+        if self._devname == '':
+            if dd.get('ID_SERIAL_SHORT') == self.serial_num:
+                self._devname = device['DEVNAME']
+                self.Connect()
+        elif dd.get('DEVNAME') == self._devname:
+            if dd.action == 'add':
+                self.Connect()
+
+    def connectionMade(self):
+        print('Connected to', self._devname, 'serial number', self.serial_num)
+        self._updateTimer.start(self._refresh)
+
+    def connectionLost(self, reason):
+        print('Disconnected from', self._devname, 'serial number', self.serial_num, reason)
+        self._updateTimer.stop(self._refresh)
+
+    def update(self):
+        pass
+
+    def dataReceived(self, data):
+        """Parse incoming data and split it into messages"""
+        # NOTE: user is responsible for not switching between binary ans string modes while in the process of receiving data
+        self._buffer = self._buffer + data
+        while len(self._buffer):
+            if len(self._buffer) >= self._binary_length:
+                bdata = self._buffer[:self._binary_length]
+                self._buffer = self._buffer[self._binary_length:]
+                self.processBinary(bdata)
+
+    def message(self, string):
+        """Sending outgoing message"""
+        if type(string) == str:
+            string = string.encode('ascii')+self._comand_end_character
+        else:
+            string = string+self._comand_end_character
+
+        if self._debug:
+            print(">>", self._devname, '>>', string)
+
+        self.transport.write(string)
 
 
 class SimpleProtocol(Protocol):
@@ -105,12 +290,9 @@ class SimpleProtocol(Protocol):
             string = string.encode('ascii')+self._comand_end_character
         else:
             string = string+self._comand_end_character
-            
+
         if self._debug:
-            if self._peer:
-                print(">>", self._peer.host, self._peer.port, '>>', string)
-            else:
-                print('>>', self._ttydev, '>>', string)
+            print(">>", self._peer.host, self._peer.port, '>>', string)
 
         self.transport.write(string)
 
@@ -142,10 +324,7 @@ class SimpleProtocol(Protocol):
         self._is_binary = True
         self._binary_length = length
         if self._debug:
-            if self._peer:
-                print("%s:%d = binary mode waiting for %d bytes" % (self._peer.host, self._peer.port, length))
-            else:
-                print("%s = binary mode waiting for %d bytes" % (self._ttydev, length))
+            print("%s:%d = binary mode waiting for %d bytes" % (self._peer.host, self._peer.port, length))
 
     def processMessage(self, string):
         """Process single message"""
@@ -173,10 +352,7 @@ class SimpleProtocol(Protocol):
     def processBinary(self, data):
         """Process binary data when completely read out"""
         if self._debug:
-            if self._peer:
-                print("%s:%d binary > %d bytes" % (self._peer.host, self._peer.port, len(data)))
-            else:
-                print("%s binary > %d bytes" % (self._ttydev, len(data)))
+            print("%s:%d binary > %d bytes" % (self._peer.host, self._peer.port, len(data)))
 
     def update(self):
         pass

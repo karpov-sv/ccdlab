@@ -1,12 +1,8 @@
 #!/usr/bin/env python3
 from optparse import OptionParser
-import re
 from libscrc import modbus
 
-from twisted.internet.serialport import SerialPort
-from twisted.internet.task import LoopingCall
-
-from daemon import SimpleFactory, SimpleProtocol, catch
+from daemon import SimpleFactory, SimpleProtocol, SerialUSBProtocol, catch
 
 
 class DaemonProtocol(SimpleProtocol):
@@ -23,12 +19,12 @@ class DaemonProtocol(SimpleProtocol):
     @catch
     def parsePars(self, cmd, pars_o, ss, rbs):
         if len(pars_o) != len(ss):
-            return None
+            return False
         is_labeled = False
         if all(':' in sss for sss in ss):
             is_labeled = True
         elif not all(':' not in sss for sss in ss):
-            return None
+            return False
         pars = []
         for n in range(len(pars_o)):
             pars += [[pars_o[n][0], ss[n]]]
@@ -44,7 +40,7 @@ class DaemonProtocol(SimpleProtocol):
         cmd = SimpleProtocol.processMessage(self, string)
         if cmd is None:
             return
-        
+
         Sstring = (string.strip('\n')).split(';')
         for sstring in Sstring:
             sstring = sstring.lower()
@@ -59,8 +55,7 @@ class DaemonProtocol(SimpleProtocol):
                     hw._buffer = b''  # empty buffer after timeout
                     hw.commands.pop(0)
                     break
-                
-                if not obj.haskey('hw'):
+                if not obj['hw_connected']:
                     break
                 Imessage = obj['hw'].protocol.Imessage
                 if string == 'sync':
@@ -72,8 +67,9 @@ class DaemonProtocol(SimpleProtocol):
                 ss = sstring.split('<')
                 if len(ss) == 2 and len(ss[1]) == 4:
                     Imessage(ss[1], nb=int(ss[0]), source=self.name)
+                    daemon.log('command ', sstring)
                     break
-                elif len(ss) > 2 or (len(ss) == 2 and len(ss[1]) != 4):
+                elif len(ss) > 1:
                     daemon.log('unable to parse command, format sould be "nb<xxxx" insted of: '+sstring, 'error')
                     break
 
@@ -95,21 +91,25 @@ class DaemonProtocol(SimpleProtocol):
                     # set_move_pars speed:2000 uspeed:0 accel:2000 decel:5000 anti_play_speed:2000 uanti_play_speed:0
                     # set_move_pars 2000 0 2000 5000 2000 0
                     pars_o = [[4, 'speed'], [1, 'uspeed'], [2, 'accel'], [2, 'decel'], [4, 'anti_play_speed'], [1, 'uanti_play_speed']]
-                    if self.parsePars('smov', pars_o, sstring.split(' ')[1:], 10) is not None:
+                    if self.parsePars('smov', pars_o, sstring.split(' ')[1:], 10):
+                        daemon.log('Setting movement parameters to ', sstring)
                         break
                 if sstring.startswith('move_in_direction'):
                     # set movement parameters
                     pars_o = [[4, 'dpos'], [2, 'udpos']]
-                    if self.parsePars('movr', pars_o, sstring.split(' ')[1:], 6) is not None:
+                    if self.parsePars('movr', pars_o, sstring.split(' ')[1:], 6):
+                        daemon.log('move ', sstring)
                         break
                 if sstring.startswith('move'):
                     # set movement parameters
                     pars_o = [[4, 'pos'], [2, 'upos']]
-                    if self.parsePars('move', pars_o, sstring.split(' ')[1:], 6) is not None:
+                    if self.parsePars('move', pars_o, sstring.split(' ')[1:], 6):
+                        daemon.log('move ', sstring)
                         break
                 if sstring == 'set_zero':
                     # set current position as zero
                     Imessage('zero', nb=4, source=self.name)
+                    daemon.log('reset zero')
                     break
                 # general set command (xxxx comands from manual) (for specifically implemented comands see below)
                 # command example: smov 4:2000 1:0 2:2000 2:5000 4:2000 1:0 10:r
@@ -129,36 +129,31 @@ class DaemonProtocol(SimpleProtocol):
                     mstr = self.mbytes(cmd, pars, rbs)
                     if mstr:
                         Imessage(mstr, nb=4, source=self.name)
+                        daemon.log('command ', sstring)
                     break
                 print('command', sstring, 'not implemented!')
                 break
 
 
-class StandaRSProtocol(SimpleProtocol):
-    _debug = False  # Display all traffic for debug purposes
+class StandaRSProtocol(SerialUSBProtocol):
     _bs = b''
-    
+
     @catch
-    def __init__(self):
-        SimpleProtocol.__init__(self)
+    def __init__(self, serial_num, obj, debug=False):
         self.commands = []  # Queue of command sent to the device which will provide replies, each entry is a dict with keys "cmd","source"
         self.status_commands = [[26, 'gpos'], [30, 'gmov']]  # commands send when device not busy to keep tabs on the state
-        self._comand_end_character = b''
-        
-    @catch
-    def loop(self):
-        self._updateTimer = LoopingCall(self.update)
-        self._updateTimer.start(self._refresh)
 
+        super().__init__(serial_num=serial_num, obj=obj, refresh=1, baudrate=115200, bytesize=8, parity='N', stopbits=2, timeout=400, debug=debug)
 
     @catch
     def connectionMade(self):
+        self.commands = []
+        super().connectionMade()
         self.object['hw_connected'] = 1
-        self._updateTimer = LoopingCall(self.update)
-        self._updateTimer.start(self._refresh)
 
     @catch
     def connectionLost(self, reason):
+        super().connectionLost(reason)
         self.object['hw_connected'] = 0
         self.commands = []
         self.object['position'] = 'nan'
@@ -272,9 +267,6 @@ class StandaRSProtocol(SimpleProtocol):
         if self._debug:
             print(">> serial >>", string, 'expecting', nb, 'bytes')
 
-        """
-        Send the message to the controller. If keep=True, expect reply (for this device it seems all comands expect reply
-        """
         if string[0] == 0:
             # sync after failed comand, the sync is put at the front of the queue
             self.commands = [{'cmd': string, 'nb': nb, 'source': source, 'status': 'sync'}]+self.commands
@@ -283,32 +275,20 @@ class StandaRSProtocol(SimpleProtocol):
 
     @catch
     def update(self):
-        if not obj['hw_connected']:
-            try:
-                obj['hw'] = SerialPort(self, self._ttydev, obj['daemon']._reactor, baudrate=115200, bytesize=8, parity='N', stopbits=2, timeout=400)
-                obj['hw_connected'] = 1
-            except Exception as e:
-                if self._debug:
-                    print('failed to connect')
-                    print (e)
-                return
-
-        # help(obj['hw'])
-        # Request the hardware state from the device
         if self._debug:
             print("----------------------- command queue ----------------------------")
             for k in self.commands:
-                print(self.commands[0]['cmd'], self.commands[0]['nb'], self.commands[0]['source'], self.commands[0]['status'])
+                print(k['cmd'], k['nb'], k['source'], k['status'])
             print("===================== command queue end ==========================")
 
-        if len(self.commands):
+        if len(self.commands) and obj['hw_connected']:
             if self.commands[0]['status'].startswith('sent'):
                 return
             if self.commands[0]['status'] == 'new':
                 self.commands[0]['status'] = 'sent'
             elif self.commands[0]['status'] == 'status':
                 self.commands[0]['status'] = 'sent_status'
-            self.switchToBinary(length=max(4, self.commands[0]['nb']))
+            self._binary_length = max(4, self.commands[0]['nb'])
             self.message(self.commands[0]['cmd'])
         else:
             for k in self.status_commands:
@@ -317,8 +297,8 @@ class StandaRSProtocol(SimpleProtocol):
 
 if __name__ == '__main__':
     parser = OptionParser(usage="usage: %prog [options] arg")
-    parser.add_option('-d', '--hw-device',
-                      help='Device to connect to. To ensure the USB device is the same after unplug/plug set up an udev rule, something like: ACTION=="add", ATTRS{idVendor}=="1cbe", ATTRS{idProduct}=="0007", ATTRS{serial}=="00004186", SYMLINK+="standa_rs"', action='store', dest='hw_dev', default='/dev/standa_rs')
+    parser.add_option('-s', '--serial-num', help='Serial number of the device to connect to.',
+                      action='store', dest='serial_num', type='str', default='00004186')
     parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7027)
     parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='standa_r_stage')
     parser.add_option("-D", '--debug', help='Debug mode', action="store_true", dest="debug")
@@ -335,19 +315,12 @@ if __name__ == '__main__':
     daemon.name = options.name
     obj['daemon'] = daemon
 
+    proto = StandaRSProtocol(serial_num=options.serial_num, obj=obj, debug=options.debug)
 
-    proto = StandaRSProtocol()
-    proto.object=obj
-    proto._ttydev = options.hw_dev
-    if options.debug:
-        proto._debug = True
-    proto.loop()
-    
-    #obj['hw'] = hw
     if options.debug:
         daemon._protocol._debug = True
 
     # Incoming connections
     daemon.listen(options.port)
-    
+
     daemon._reactor.run()

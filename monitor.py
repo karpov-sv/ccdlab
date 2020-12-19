@@ -17,7 +17,10 @@ except:
 
 from twistedauth import wrap_with_auth as Auth
 
-import os, sys, posixpath, datetime
+import os
+import sys
+import posixpath
+import datetime
 import re
 
 try:
@@ -45,8 +48,10 @@ from command import Command
 from daemon import catch
 from db import DB
 
+
 def kwargsToString(kwargs, prefix=''):
     return " ".join([prefix + _ + '=' + kwargs[_] for _ in kwargs])
+
 
 class MonitorProtocol(SimpleProtocol):
     _debug = False
@@ -60,8 +65,8 @@ class MonitorProtocol(SimpleProtocol):
     def connectionMade(self):
         SimpleProtocol.connectionMade(self)
 
-        self.message('id name=monitor') # Send our identity to the peer
-        self.message('get_id') # Request peer identity
+        self.message('id name=monitor')  # Send our identity to the peer
+        self.message('get_id')  # Request peer identity
 
     @catch
     def connectionLost(self, reason):
@@ -111,7 +116,8 @@ class MonitorProtocol(SimpleProtocol):
 
             # Broadcast new values to all CCDs, if the client itself is not CCD
             if self.type != 'ccd':
-                self.factory.messageAll("set_keywords " + " ".join([self.name+'.'+_+'=\"'+self.status[_]+'\"' for _ in self.status.keys()]), type="ccd")
+                self.factory.messageAll("set_keywords " + " ".join([self.name+'.'+_+'=\"' +
+                                                                    self.status[_]+'\"' for _ in self.status.keys()]), type="ccd")
 
             # Store the values to database, if necessary
             if 'db' in self.object and self.object['db'] is not None:
@@ -154,16 +160,18 @@ class MonitorProtocol(SimpleProtocol):
         if self.name or self.type:
             self.message('get_status')
 
+
 class WSProtocol(SimpleProtocol):
     def message(self, string):
         """Sending outgoing message with no newline"""
         self.transport.write(string.encode('ascii'))
 
+
 class MonitorFactory(SimpleFactory):
     @catch
     def getStatus(self, as_dict=False):
         if as_dict:
-            status = {'nconnected':len(self.connections), 'db_status_interval':self.object['db_status_interval']}
+            status = {'nconnected': len(self.connections), 'db_status_interval': self.object['db_status_interval']}
         else:
             status = 'status nconnected=%d db_status_interval=%g' % (len(self.connections), self.object['db_status_interval'])
 
@@ -205,7 +213,7 @@ class MonitorFactory(SimpleFactory):
 
         # WebSockets
         if 'ws' in self.object:
-            self.object['ws'].messageAll(json.dumps({'msg':msg, 'time':str(time), 'source':source, 'type':type}))
+            self.object['ws'].messageAll(json.dumps({'msg': msg, 'time': str(time), 'source': source, 'type': type}))
 
     @catch
     def reset_plots(self):
@@ -217,6 +225,7 @@ class MonitorFactory(SimpleFactory):
 
         self.log('Resetting plots', source='monitor', type='info')
         pass
+
 
 class CmdlineProtocol(LineReceiver):
     delimiter = os.linesep.encode('ascii')
@@ -251,9 +260,9 @@ class CmdlineProtocol(LineReceiver):
 
         elif cmd.name == 'clients' or not cmd.name:
             self.message("Number of registered clients: %d" % len(self.object['clients']))
-            for name,c in self.object['clients'].items():
+            for name, c in self.object['clients'].items():
                 conn = self.factory.findConnection(name=c['name'])
-                self.message("  %s:%s name:%s connected:%s" % (c['host'], c['port'], c['name'], conn!=None))
+                self.message("  %s:%s name:%s connected:%s" % (c['host'], c['port'], c['name'], conn != None))
             self.message()
 
         elif cmd.name == 'send' and cmd.chunks[1]:
@@ -274,9 +283,11 @@ class CmdlineProtocol(LineReceiver):
 
         self.transport.write(b'### ')
 
+
 def serve_json(request, **kwargs):
     request.responseHeaders.setRawHeaders("Content-Type", ['application/json'])
     return json.dumps(kwargs)
+
 
 def make_plot(file, obj, client_name, plot_name, size=800):
     plot = obj['clients'][client_name]['plots'][plot_name]
@@ -337,6 +348,7 @@ def make_plot(file, obj, client_name, plot_name, size=800):
     canvas = FigureCanvas(fig)
     canvas.print_png(file, bbox_inches='tight')
 
+
 class WebMonitor(Resource):
     isLeaf = True
 
@@ -353,8 +365,8 @@ class WebMonitor(Resource):
 
         if q.path == b'/monitor/status':
             return serve_json(request,
-                              clients = self.object['clients'],
-                              status = self.factory.getStatus(as_dict=True)).encode('ascii')
+                              clients=self.object['clients'],
+                              status=self.factory.getStatus(as_dict=True)).encode('ascii')
         # /monitor/plots/{client}/{name}
         elif qs[1] == 'monitor' and qs[2] == 'plot' and len(qs) > 4:
             s = BytesIO()
@@ -394,11 +406,12 @@ class WebMonitor(Resource):
             return serve_json(request).encode('ascii')
 
         else:
-            return q.path;
+            return q.path
+
 
 def loadINI(filename, obj):
     # We use ConfigObj library, docs: http://configobj.readthedocs.io/en/latest/index.html
-    from configobj import ConfigObj,Section # apt-get install python-configobj
+    from configobj import ConfigObj, Section  # apt-get install python-configobj
     from validate import Validator
 
     # Schema to validate and transform the values from config file
@@ -459,7 +472,7 @@ def loadINI(filename, obj):
 
                     values += section['plots'][plot]['values']
 
-                obj['values'][sname] = {_:[] for _ in set(values)} # Unique values
+                obj['values'][sname] = {_: [] for _ in set(values)}  # Unique values
 
             obj['clients'][sname] = client
 
@@ -471,11 +484,13 @@ def loadINI(filename, obj):
 
     return True
 
+
 if __name__ == '__main__':
     from optparse import OptionParser
 
     # Object holding actual state and work logic.
-    obj = {'clients':OrderedDict(), 'values':{}, 'port':7100, 'http_port':8888, 'db_host':None, 'db_status_interval':60.0, 'name':'monitor', 'db':None}
+    obj = {'clients': OrderedDict(), 'values': {}, 'port': 7100, 'http_port': 8888, 'db_host': None,
+           'db_status_interval': 60.0, 'name': 'monitor', 'db': None}
 
     # First read client config from INI file
     loadINI('%s.ini' % posixpath.splitext(__file__)[0], obj)
@@ -490,9 +505,9 @@ if __name__ == '__main__':
     parser.add_option('-D', '--debug', help='Debug output', action='store_true', dest='debug', default=False)
     parser.add_option('-s', '--server', help='Act as a TCP and HTTP server', action='store_true', dest='server', default=False)
     parser.add_option('-i', '--interval', help='DB logging status inteval', dest='interval', type='float', default=obj['db_status_interval'])
-    parser.add_option('-a', '--auth-file', help='passwords file', action='store', dest='passwd_file', type='string') # htpasswd -c -d passwdfile user
+    parser.add_option('-a', '--auth-file', help='passwords file', action='store', dest='passwd_file', type='string')  # htpasswd -c -d passwdfile user
 
-    (options,args) = parser.parse_args()
+    (options, args) = parser.parse_args()
 
     obj['db_status_interval'] = options.interval
 
@@ -500,18 +515,18 @@ if __name__ == '__main__':
     for arg in args:
         m = re.match('(([a-zA-Z0-9-_]+)=)?(.*):(\d+)', arg)
         if m:
-            name,host,port = m.group(2,3,4)
+            name, host, port = m.group(2, 3, 4)
 
             if name in obj['clients']:
                 obj['clients'][name]['host'] = host
                 obj['clients'][name]['port'] = int(port)
             else:
-                obj['clients'][name] = {'host':host, 'port':int(port), 'name':name, 'description':name, 'template':'default.html', 'plots':None}
+                obj['clients'][name] = {'host': host, 'port': int(port), 'name': name, 'description': name, 'template': 'default.html', 'plots': None}
 
     # Now we have everything to construct and run the daemon
     daemon = MonitorFactory(MonitorProtocol, obj, name=options.name)
 
-    for name,c in obj['clients'].items():
+    for name, c in obj['clients'].items():
         daemon.connect(c['host'], c['port'])
 
     # Simple stdio interface
