@@ -191,7 +191,7 @@ class DaemonProtocol(SimpleProtocol):
         Sstring = (string.strip('\n')).split(';')
         for sstring in Sstring:
             if self._debug:
-               print ('received string:', sstring,'***************************************************') 
+               print ('received string:', sstring) 
             sstring = sstring.strip(' ').lower()
             while True:
                 if sstring == 'get_status':
@@ -435,6 +435,7 @@ class ThorlabsLSProtocol(FTDIProtocol):
         # commands send when device not busy to keep tabs on the state
         self.status_commands = [{'msg': Message(Message.MGMSG_MOT_REQ_STATUSUPDATE), 'source': 'itself',
                                  'get_c': -Message.MGMSG_MOT_GET_STATUSUPDATE, 'unit': 'mm'}]
+        self.commands = []
         self._debug = debug
         super().__init__(serial_num, obj)
         self.name = 'hw'
@@ -455,7 +456,8 @@ class ThorlabsLSProtocol(FTDIProtocol):
         self.object['motion_limit_err'] = '-'
         self.object['curr_limit_err'] = '-'
         self.object['channel_enabled'] = '-'
-
+        self.commands = []
+    
     @catch
     def ConnectionMade(self):
         self._buffer = bytes()
@@ -467,6 +469,8 @@ class ThorlabsLSProtocol(FTDIProtocol):
         self.commands.append({'msg': Message(Message.MGMSG_MOT_SET_LIMSWITCHPARAMS, data=params), 'source': 'itself', 'get_c': 0})
         params = st.pack('<HHHII', 1, 2, 1, 2*self._velocity_scale, int(0.1*self._position_scale))
         self.commands.append({'msg': Message(Message.MGMSG_MOT_SET_HOMEPARAMS, data=params), 'source': 'itself', 'get_c': 0})
+        params = st.pack('<HHH', 1, 20, 100)
+        self.commands.append({'msg': Message(Message.MGMSG_MOT_SET_POWERPARAMS, data=params), 'source': 'itself', 'get_c': 0})
         super().ConnectionMade()
         self.object['hw_connected'] = 1
 
@@ -612,6 +616,9 @@ class ThorlabsLSProtocol(FTDIProtocol):
 
     @catch
     def read(self):
+        if not self.object['hw_connected']:
+            return
+        
         if not self._read_msg and len(self._buffer) < Message.MGMSG_HEADER_SIZE:
             self._buffer += self.device.read(Message.MGMSG_HEADER_SIZE-len(self._buffer))
             # expecting header, if not complete header read some more
@@ -627,9 +634,8 @@ class ThorlabsLSProtocol(FTDIProtocol):
                 return
 
         if self._read_msg and len(self._buffer) < self._read_msg.datalength:
-            self._buffer += self.device.read(self._read_msg.datalength-len(self._buffer))
             # header has been received and processed and now if not (at least) the required amount of data arrived read some more
-
+            self._buffer += self.device.read(self._read_msg.datalength-len(self._buffer))
         if self._read_msg and len(self._buffer) >= self._read_msg.datalength:
             # header has been received and processed and now (at least) the required amount of data arrived, send it further and reset self._read_msg
             msglist = list(self._read_msg)
@@ -646,8 +652,11 @@ class ThorlabsLSProtocol(FTDIProtocol):
                 print('0x{:04x}'.format(k['msg'].messageID), k)
             print("===================== command queue end ==========================")
 
-        if self.object['hw_connected']:
-            if len(self.commands) and self.commands[0]['get_c'] >= 0:
+        if not self.object['hw_connected']:
+            return
+        
+        if len(self.commands):
+            if self.commands[0]['get_c'] >= 0:
                 if self._debug:
                     print('sending command', self.commands[0])
                 self.send_message(self.commands[0]['msg'].pack())
@@ -656,11 +665,11 @@ class ThorlabsLSProtocol(FTDIProtocol):
                     self.commands[0]['get_c'] = -self.commands[0]['get_c']
                 else:
                     self.commands.pop(0)
-            else:
-                for cc in self.status_commands:
-                    if cc['get_c']:
-                        self.commands.append(cc)
-                    self.send_message(cc['msg'].pack())
+        else:
+            for cc in self.status_commands:
+                if cc['get_c']:
+                    self.commands.append(cc)
+                self.send_message(cc['msg'].pack())
 
 
 if __name__ == '__main__':
