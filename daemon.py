@@ -28,7 +28,6 @@ def catch(func):
         except:
             import traceback
             traceback.print_exc()
-
     return wrapper
 
 
@@ -134,12 +133,15 @@ class SerialUSBProtocol(Protocol):
     _refresh = 1.0
     _binary_length = None
 
-    def __init__(self, serial_num, obj, refresh=0, baudrate=115200, bytesize=8, parity='N', stopbits=2, timeout=400, debug=False):
+    def __init__(self, obj, devname='', serial_num=-1, refresh=0, baudrate=115200, bytesize=8, parity='N', stopbits=2, timeout=400, debug=False):
+        if devname=='' and serial_num==-1:
+            raise Exception('at least one must be specified: devname or serial_num')
         # Name and type of the connection peer
         self.name = ''
         self.type = ''
 
         self.serial_num = serial_num
+        self._devname = devname
         self.object = obj
         self.baudrate = baudrate
         self.bytesize = bytesize
@@ -155,10 +157,15 @@ class SerialUSBProtocol(Protocol):
         self._updateTimer = LoopingCall(self.update)
 
         context = Context()
-        for device in context.list_devices(subsystem='tty'):
-            if device.get('ID_SERIAL_SHORT') == self.serial_num:
-                self._devname = device['DEVNAME']
-                self.Connect()
+        if serial_num!=-1:
+            for device in context.list_devices(subsystem='tty'):
+                if device.get('ID_SERIAL_SHORT') == self.serial_num:
+                    if self._devname=='':
+                        self._devname = device['DEVNAME']
+                    elif device['DEVNAME']!=self._devname:
+                        raise Exception('devname and serial_num mismatch')     
+        if self._devname!='':
+            self.Connect()
 
         cm = Monitor.from_netlink(context)
         cm.filter_by(subsystem='tty')
@@ -205,10 +212,8 @@ class SerialUSBProtocol(Protocol):
             string = string.encode('ascii')+self._comand_end_character
         else:
             string = string+self._comand_end_character
-
         if self._debug:
             print(">>", self._devname, '>>', string)
-
         self.transport.write(string)
 
 

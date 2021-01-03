@@ -143,7 +143,7 @@ class StandaRSProtocol(SerialUSBProtocol):
         self.commands = []  # Queue of command sent to the device which will provide replies, each entry is a dict with keys "cmd","source"
         self.status_commands = [[26, 'gpos'], [30, 'gmov']]  # commands send when device not busy to keep tabs on the state
 
-        super().__init__(serial_num=serial_num, obj=obj, refresh=1, baudrate=115200, bytesize=8, parity='N', stopbits=2, timeout=400, debug=debug)
+        super().__init__(obj=obj, serial_num=serial_num, refresh=1, baudrate=115200, bytesize=8, parity='N', stopbits=2, timeout=400, debug=debug)
 
     @catch
     def connectionMade(self):
