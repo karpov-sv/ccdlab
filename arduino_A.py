@@ -25,31 +25,26 @@ class DaemonProtocol(SimpleProtocol):
                     break
                 if not obj['hw_connected']:
                     break
-                queue_frame = obj['hw'].protocol.queue_frame
+                queue_frame = obj['hwprotocol'].queue_frame
                 if sstring == 'testcomm':
+                    from time import time
                     payload = bytes("hello world {}".format(time()), encoding='ascii')
                     queue_frame(1, payload)
                     break
                 break
    
-class ArduinoMINProtocol(MINProtocol):
+class Arduino_A_Protocol(MINProtocol):
     @catch
     def __init__(self, devname, obj, debug=False):
-        self.commands = []  # Queue of command sent to the device which will provide replies, each entry is a dict with keys "cmd","source"
-        self.status_commands = []  # commands send when device not busy to keep tabs on the state
         super().__init__(devname=devname, obj=obj, refresh=1, baudrate=115200, bytesize=8, parity='N', stopbits=1, timeout=400, debug=debug)
         
     @catch
     def connectionMade(self):
-        self.commands = []
-        super().connectionMade()
         self.object['hw_connected'] = 1
 
     @catch
-    def connectionLost(self, reason):
-        super().connectionLost(reason)
+    def connectionLost(self):
         self.object['hw_connected'] = 0
-        self.commands = []
 
     @catch
     def processBinary(self, bstring):
@@ -60,13 +55,15 @@ class ArduinoMINProtocol(MINProtocol):
         
     @catch
     def update(self):
+        if self.object['hw_connected']==0:
+            return
         if self._debug:
             print ('updater')
 
 
 if __name__ == '__main__':
     parser = OptionParser(usage="usage: %prog [options] arg")
-    parser.add_option('-d', '--device', help='the device to connect to.',  action='store', dest='devname', type='str', default='/dev/ttyUSB0')
+    parser.add_option('-d', '--device', help='the device to connect to.',  action='store', dest='devname', type='str', default='/dev/arduino')
     parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7030)
     parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='arduino1')
     parser.add_option("-D", '--debug', help='Debug mode', action="store_true", dest="debug")
@@ -81,8 +78,8 @@ if __name__ == '__main__':
     daemon.name = options.name
     obj['daemon'] = daemon
 
-    proto = ArduinoMINProtocol(devname=options.devname, obj=obj, debug=options.debug)
-
+    obj['hwprotocol'] = Arduino_A_Protocol(devname=options.devname, obj=obj, debug=options.debug)
+    
     if options.debug:
         daemon._protocol._debug = True
 
