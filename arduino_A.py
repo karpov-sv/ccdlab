@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 from optparse import OptionParser
+from logging import DEBUG, StreamHandler
 
 from daemon import SimpleFactory, SimpleProtocol, catch
-from min_daemon import MINProtocol
+from daemon_min import MINProtocol, min_logger
 
 
 class DaemonProtocol(SimpleProtocol):
-    _debug = False  # Display all traffic for debug purposes.
-    
+
     @catch
     def processMessage(self, string):
         cmd = SimpleProtocol.processMessage(self, string)
@@ -32,12 +32,17 @@ class DaemonProtocol(SimpleProtocol):
                     queue_frame(1, payload)
                     break
                 break
-   
+
+
 class Arduino_A_Protocol(MINProtocol):
     @catch
     def __init__(self, devname, obj, debug=False):
         super().__init__(devname=devname, obj=obj, refresh=1, baudrate=115200, bytesize=8, parity='N', stopbits=1, timeout=400, debug=debug)
-        
+        min_log_handler = StreamHandler()
+        min_logger.addHandler(min_log_handler)
+        if debug:
+            min_logger.setLevel(level=DEBUG)
+
     @catch
     def connectionMade(self):
         self.object['hw_connected'] = 1
@@ -52,13 +57,13 @@ class Arduino_A_Protocol(MINProtocol):
         self._bs = bstring
         if self._debug:
             print("hw bb > %s" % self._bs)
-        
+
     @catch
     def update(self):
-        if self.object['hw_connected']==0:
+        if self.object['hw_connected'] == 0:
             return
-        if self._debug:
-            print ('updater')
+        min_logger.debug('updater')
+        self.poll()
 
 
 if __name__ == '__main__':
@@ -72,14 +77,14 @@ if __name__ == '__main__':
 
     # Object holding actual state and work logic.
     # May be anything that will be passed by reference - list, dict, object etc
-    obj = {'hw_connected': 0,}
-    
+    obj = {'hw_connected': 0, }
+
     daemon = SimpleFactory(DaemonProtocol, obj)
     daemon.name = options.name
     obj['daemon'] = daemon
 
     obj['hwprotocol'] = Arduino_A_Protocol(devname=options.devname, obj=obj, debug=options.debug)
-    
+
     if options.debug:
         daemon._protocol._debug = True
 
