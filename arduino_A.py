@@ -3,7 +3,7 @@ from optparse import OptionParser
 from logging import DEBUG, StreamHandler
 
 from daemon import SimpleFactory, SimpleProtocol, catch
-from daemon_min import MINProtocol, min_logger
+from daemon_min import MINProtocol, MINFrame, min_logger
 
 
 class DaemonProtocol(SimpleProtocol):
@@ -26,9 +26,16 @@ class DaemonProtocol(SimpleProtocol):
                 if not obj['hw_connected']:
                     break
                 queue_frame = obj['hwprotocol'].queue_frame
+                if sstring == 'reset':
+                    obj['hwprotocol'].transport_reset()
+                    break
                 if sstring == 'testcomm':
                     from time import time
                     payload = bytes("hello world {}".format(time()), encoding='ascii')
+                    queue_frame(1, payload)
+                    break
+                if sstring == 'get_ard_id':
+                    payload = bytes("get_ard_id", encoding='ascii')
                     queue_frame(1, payload)
                     break
                 break
@@ -45,18 +52,18 @@ class Arduino_A_Protocol(MINProtocol):
 
     @catch
     def connectionMade(self):
+        super().connectionMade()
         self.object['hw_connected'] = 1
 
     @catch
     def connectionLost(self):
+        super().connectionLost()
         self.object['hw_connected'] = 0
 
     @catch
-    def processBinary(self, bstring):
+    def processFrame(self, frame: MINFrame):
         # Process the device reply
-        self._bs = bstring
-        if self._debug:
-            print("hw bb > %s" % self._bs)
+        min_logger.debug("Received MIN frame, min_id={}, payload={}, seq={}, tr={}".format(frame.min_id, frame.payload,frame.seq,frame.is_transport))
 
     @catch
     def update(self):
