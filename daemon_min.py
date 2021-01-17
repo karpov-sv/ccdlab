@@ -16,18 +16,22 @@ from twisted.internet.task import LoopingCall
 
 min_logger = getLogger('min')
 
+
 def now_ms():
     now = int(time() * 1000.0)
     return now
 
+
 def int32_to_bytes(value: int) -> bytes:
     return pack('>I', value)
+
 
 def bytes_to_hexstr(b: bytes) -> str:
     return "".join("{:02x}".format(byte) for byte in b)
 
+
 class MINFrame:
-    def __init__(self, min_id: int, payload: bytes, seq: int, transport: bool, ack_or_reset=False):
+    def __init__(self, min_id: int, payload: bytes, seq: int, transport: bool, source="", ack_or_reset=False):
         if ack_or_reset:
             self.min_id = min_id
         else:
@@ -36,8 +40,7 @@ class MINFrame:
         self.seq = seq
         self.is_transport = transport
         self.last_sent_time = None  # type: int
-        
-    
+        self.source = source
 
 
 class MINProtocol():
@@ -100,6 +103,7 @@ class MINProtocol():
         self._rn = 0  # Sequence number expected to be received next
         self._sn_min = 0  # Sequence number of first frame currently in the sending window
         self._sn_max = 0  # Next sequence number to use for sending a frame
+        self.source = {}  # sequence <--> sommand source linking
 
         self._nack_outstanding = None
 
@@ -123,7 +127,8 @@ class MINProtocol():
         observer.start()
 
     def Connect(self):
-        self.object['hw'] = Serial(port=self._devname, baudrate=self.baudrate, bytesize=self.bytesize, parity=self.parity, stopbits=self.stopbits, timeout=self.timeout)
+        self.object['hw'] = Serial(port=self._devname, baudrate=self.baudrate, bytesize=self.bytesize,
+                                   parity=self.parity, stopbits=self.stopbits, timeout=self.timeout)
 
     def ConnectionMCallBack(self, dd):
         if self._devname in dd.get('DEVLINKS'):
@@ -135,16 +140,17 @@ class MINProtocol():
 
     def connectionMade(self):
         self.transport_reset()
-        min_logger.debug('Connected to '+ self._devname)
+        min_logger.debug('Connected to ' + self._devname)
 
     def connectionLost(self):
-        min_logger.debug('Disconnected from '+ self._devname)
+        min_logger.debug('Disconnected from ' + self._devname)
 
     def update(self):
         pass
 
     def _transport_fifo_pop(self):
         assert len(self._transport_fifo) > 0
+        self.source[self._transport_fifo[0].seq] = self._transport_fifo[0].source
         del self._transport_fifo[0]
 
     def _transport_fifo_send(self, frame: MINFrame):
@@ -158,7 +164,7 @@ class MINProtocol():
         ack_frame = MINFrame(min_id=self.ACK, seq=self._rn, payload=bytes([self._rn]), transport=True, ack_or_reset=True)
         on_wire_bytes = self._on_wire_bytes(frame=ack_frame)
         self._last_sent_ack_time_ms = now_ms()
-        min_logger.debug("Sending ACK, seq={}, bytes={}".format(ack_frame.seq,on_wire_bytes))
+        min_logger.debug("Sending ACK, seq={}, bytes={}".format(ack_frame.seq, on_wire_bytes))
         self.object['hw'].write(on_wire_bytes)
 
     def _send_nack(self, to: int):
@@ -175,6 +181,7 @@ class MINProtocol():
         self.object['hw'].write(on_wire_bytes)
 
     def _transport_fifo_reset(self):
+        self.source = {}
         self._transport_fifo = []
         self._last_sent_ack_time_ms = now_ms()
         self._sn_min = 0
@@ -193,7 +200,7 @@ class MINProtocol():
         self._transport_fifo_reset()
         self._rx_reset()
 
-    def queue_frame(self, min_id: int, payload: bytes):
+    def queue_frame(self, min_id: int, payload: bytes, source: str):
         """
         Queues a MIN frame for transmission through the transport protocol. Will be retransmitted until it is
         delivered or the connection has timed out.
@@ -210,7 +217,7 @@ class MINProtocol():
         # Frame put into the transport FIFO
         if len(self._transport_fifo) < self.transport_fifo_size:
             min_logger.debug("Queueing min_id={}".format(min_id))
-            frame = MINFrame(min_id=min_id, payload=payload, seq=self._sn_max, transport=True)
+            frame = MINFrame(min_id=min_id, payload=payload, seq=self._sn_max, source=source, transport=True)
             self._transport_fifo.append(frame)
         else:
             raise MINConnectionError("No space in transport FIFO queue")
@@ -258,7 +265,8 @@ class MINProtocol():
                 self._rx_reset()
             else:
                 # MIN frame received
-                min_frame = MINFrame(min_id=min_id_control, payload=min_payload, seq=min_seq, transport=True)
+                min_frame = MINFrame(min_id=min_id_control, payload=min_payload, seq=min_seq, source=self.source[min_seq], transport=True)
+                del self.source[min_seq]
                 if min_seq == self._rn:
                     min_logger.debug("MIN application frame received @{} (min_id={} seq={})".format(time(), min_id_control & 0x3f, min_seq))
                     self.processFrame(min_frame)
@@ -266,7 +274,8 @@ class MINProtocol():
                     self._rn = (self._rn + 1) & 0xff
                     while self._rn in self._stashed_rx_dict:
                         stashed_frame = self._stashed_rx_dict[self._rn]  # type: MINFrame
-                        min_logger.debug("MIN application stashed frame recovered @{} (self._rn={} min_id={} seq={})".format(time(),self._rn, stashed_frame.min_id, stashed_frame.seq))
+                        min_logger.debug("MIN application stashed frame recovered @{} (self._rn={} min_id={} seq={})".format(time(),
+                                                                                                                             self._rn, stashed_frame.min_id, stashed_frame.seq))
                         del self._stashed_rx_dict[self._rn]
                         self.processFrame(stashed_frame)
                         self._rn = (self._rn + 1) & 0xff
