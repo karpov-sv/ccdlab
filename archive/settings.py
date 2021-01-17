@@ -157,7 +157,7 @@ STATIC_URL = '/static/'
 # Add all local variables to template context
 _context = {}
 local_context = locals()
-for (k,v) in local_context.items():
+for (k,v) in local_context.copy().items():
     _context[k] = str(v)
 
 def settings_context(context):

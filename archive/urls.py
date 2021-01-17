@@ -2,10 +2,12 @@ from django.http import HttpResponse
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.conf.urls import include, url
 
-import settings
-
-import views
-import views_status
+try:
+    import settings
+    import views
+    import views_status
+except:
+    from . import settings,views,views_status
 
 urlpatterns = [
     # Index

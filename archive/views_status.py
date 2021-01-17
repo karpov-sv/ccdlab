@@ -9,11 +9,16 @@ from matplotlib.ticker import ScalarFormatter, LogLocator, LinearLocator, MaxNLo
 
 import numpy as np
 
-from StringIO import StringIO
+try:
+    from StringIO import StringIO ## for Python 2
+    from models import MonitorStatus
+except ImportError:
+    from io import StringIO ## for Python 3
+    from . models import MonitorStatus
 
 import datetime, re
 
-from models import MonitorStatus
+
 
 def parse_time(string):
     # FIXME: parse more time formats!
@@ -25,7 +30,7 @@ def parse_time(string):
         except ValueError:
             pass
 
-    print "Can't parse time string:", string
+    print ("Can't parse time string:", string)
     return None
 
 def status(request):
@@ -153,7 +158,7 @@ def status_plot(request, params, width=1000.0, height=500.0, hours=24.0, title=N
 
         # Try to fix the ticks if the data span is too small
         axis = ax.get_yaxis()
-        print np.ptp(np.log10(axis.get_data_interval()))
+        print (np.ptp(np.log10(axis.get_data_interval())))
         if np.ptp(np.log10(axis.get_data_interval())) < 1:
             axis.set_major_locator(MaxNLocator())
             axis.set_minor_locator(NullLocator())

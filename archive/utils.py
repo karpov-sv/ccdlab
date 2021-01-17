@@ -11,7 +11,7 @@ def db_query(string, params, db='archive', debug=False, simplify=True):
     result = None
 
     if debug:
-        print cursor.mogrify(string, params)
+        print (cursor.mogrify(string, params))
 
     try:
         cursor.execute(string, params)
