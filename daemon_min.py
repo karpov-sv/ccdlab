@@ -134,7 +134,7 @@ class MINProtocol():
                 self.connectionLost()
 
     def connectionMade(self):
-        self._transport_fifo_reset()
+        self.transport_reset()
         min_logger.debug('Connected to '+ self._devname)
 
     def connectionLost(self):

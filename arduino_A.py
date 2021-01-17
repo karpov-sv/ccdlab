@@ -34,8 +34,12 @@ class DaemonProtocol(SimpleProtocol):
                     payload = bytes("hello world {}".format(time()), encoding='ascii')
                     queue_frame(1, payload)
                     break
-                if sstring == 'get_ard_id':
-                    payload = bytes("get_ard_id", encoding='ascii')
+                if sstring == 'get_temp01':
+                    payload = bytes("get_temp01", encoding='ascii')
+                    queue_frame(1, payload)
+                    break
+                if sstring == 'get_humd01':
+                    payload = bytes("get_humd01", encoding='ascii')
                     queue_frame(1, payload)
                     break
                 break
@@ -75,7 +79,7 @@ class Arduino_A_Protocol(MINProtocol):
 
 if __name__ == '__main__':
     parser = OptionParser(usage="usage: %prog [options] arg")
-    parser.add_option('-d', '--device', help='the device to connect to.',  action='store', dest='devname', type='str', default='/dev/arduino')
+    parser.add_option('-d', '--device', help='the device to connect to.',  action='store', dest='devname', type='str', default='/dev/arduino_A')
     parser.add_option('-p', '--port', help='Daemon port', action='store', dest='port', type='int', default=7030)
     parser.add_option('-n', '--name', help='Daemon name', action='store', dest='name', default='arduino1')
     parser.add_option("-D", '--debug', help='Debug mode', action="store_true", dest="debug")
