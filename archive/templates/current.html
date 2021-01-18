@@ -167,6 +167,29 @@
     </div>
 
   </div>
+  <!-- Temperatu_and_humd -->
+  <div>
+
+    <ul class="nav nav-tabs">
+      <li class="nav-item disabled"><a class="nav-link disabled">Room Temperature:</a></li>
+      <li class="nav-item"><a data-toggle="tab" href="#roomtemp-hour">Last Hour</a></li>
+      <li class="nav-item active"><a data-toggle="tab" href="#roomtemp-day">Last Day</a></li>
+      <li class="nav-item"><a data-toggle="tab" href="#roomtemp-week">Last Week</a></li>
+    </ul>
+
+    <div class="tab-content">
+      <div id="roomtemp-hour" class="tab-pane fade">
+        <img src="{% url 'status_plot' 'arduino_A.temp01' %}?ylog=1&width=1000&height=400&hours=1&title=Room Temp&ylabel=temp [C]" class="img img-responsive center-block popup-status-image">
+      </div>
+      <div id="roomtemp-day" class="tab-pane fade in active">
+        <img src="{% url 'status_plot' 'arduino_A.temp01' %}?ylog=1&width=1000&height=400&hours=24&title=Room Temp&ylabel=temp [C]" class="img img-responsive center-block popup-status-image">
+      </div>
+      <div id="roomtemp-week" class="tab-pane fade">
+        <img src="{% url 'status_plot' 'arduino_A.temp01' %}?ylog=1&width=1000&height=400&hours=168&title=Room Temp&ylabel=temp [C]" class="img img-responsive center-block popup-status-image">
+      </div>
+    </div>
+
+  </div>
 
 
 {% endblock %}

@@ -23,8 +23,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = '(#((9dc(bdy@ibrb5t7ud=0zm45bjm%52n1eyr6)7%#u$@5!44'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
-#DEBUG = True
+#DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = '*'
 
@@ -157,7 +157,7 @@ STATIC_URL = '/static/'
 # Add all local variables to template context
 _context = {}
 local_context = locals()
-for (k,v) in local_context.items():
+for (k,v) in local_context.copy().items():
     _context[k] = str(v)
 
 def settings_context(context):

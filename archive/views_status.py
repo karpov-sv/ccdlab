@@ -9,11 +9,16 @@ from matplotlib.ticker import ScalarFormatter, LogLocator, LinearLocator, MaxNLo
 
 import numpy as np
 
-from StringIO import StringIO
+try:
+    from StringIO import StringIO ## for Python 2
+    from models import MonitorStatus
+except ImportError:
+    from io import BytesIO
+    from . models import MonitorStatus
 
 import datetime, re
 
-from models import MonitorStatus
+
 
 def parse_time(string):
     # FIXME: parse more time formats!
@@ -25,7 +30,7 @@ def parse_time(string):
         except ValueError:
             pass
 
-    print "Can't parse time string:", string
+    print ("Can't parse time string:", string)
     return None
 
 def status(request):
@@ -37,7 +42,7 @@ def status(request):
         time_string = request.POST.get('time')
         timestamp = parse_time(time_string)
     elif request.method == 'GET':
-        if request.GET.has_key('time'):
+        if 'time' in request.GET.keys():
             time_string = request.GET.get('time')
             timestamp = parse_time(time_string)
 
@@ -63,7 +68,7 @@ def status_plot(request, params, width=1000.0, height=500.0, hours=24.0, title=N
         width = float(request.GET.get('width', width))
         height = float(request.GET.get('height', height))
         hours = float(request.GET.get('hours', hours))
-        if request.GET.has_key('ylog'):
+        if 'ylog' in request.GET.keys():
             # FIXME: make it possible to pass False somehow
             ylog = True
 
@@ -72,7 +77,7 @@ def status_plot(request, params, width=1000.0, height=500.0, hours=24.0, title=N
         ylabel = request.GET.get('ylabel', ylabel)
 
         # Time range
-        if request.GET.has_key('time0'):
+        if 'time0' in request.GET.keys():
             time0 = parse_time(request.GET.get('time0'))
 
             time1 = time0 - datetime.timedelta(hours=hours/2)
@@ -134,7 +139,7 @@ def status_plot(request, params, width=1000.0, height=500.0, hours=24.0, title=N
 
     fig.autofmt_xdate()
 
-    if request.GET and request.GET.has_key('mark'):
+    if request.GET and 'mark' in request.GET.keys():
         time_mark = parse_time(request.GET.get('mark'))
         ax.axvline(time_mark, color='red', ls='--', alpha=1.0)
 
@@ -149,11 +154,11 @@ def status_plot(request, params, width=1000.0, height=500.0, hours=24.0, title=N
         ax.legend(frameon=True, loc=2, framealpha=0.99)
 
     if ylog:
-        ax.set_yscale('log', nonposy='clip')
+        ax.set_yscale('log', nonpositive='clip')
 
         # Try to fix the ticks if the data span is too small
         axis = ax.get_yaxis()
-        print np.ptp(np.log10(axis.get_data_interval()))
+        print (np.ptp(np.log10(axis.get_data_interval())))
         if np.ptp(np.log10(axis.get_data_interval())) < 1:
             axis.set_major_locator(MaxNLocator())
             axis.set_minor_locator(NullLocator())
@@ -165,7 +170,10 @@ def status_plot(request, params, width=1000.0, height=500.0, hours=24.0, title=N
     # ax.legend(handles, labels, loc=2)
 
     canvas = FigureCanvas(fig)
-    s = StringIO()
+    try:
+        s = StringIO() # Python2
+    except:
+        s = BytesIO()
     canvas.print_png(s)
     response = HttpResponse(s.getvalue(), content_type='image/png')
 

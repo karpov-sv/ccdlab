@@ -2,7 +2,12 @@ from django import template
 from django.template.defaultfilters import stringfilter
 from django.utils.safestring import mark_safe
 from django.db.models import Avg, Min, Max, StdDev
-from django.core.urlresolvers import reverse
+try:
+    # Python2
+    from django.core.urlresolvers import reverse
+except:
+    # Python3
+    from django.urls import reverse
 
 import datetime, re
 import numpy as np

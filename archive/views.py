@@ -2,8 +2,12 @@ from django.http import HttpResponse
 from django.template.response import TemplateResponse
 from django.db.models import Avg, Min, Max, StdDev
 
-from models import Log, MonitorStatus
-from utils import permission_required_or_403
+try:
+    from models import Log, MonitorStatus
+    from utils import permission_required_or_403
+except:
+    from . models import Log, MonitorStatus
+    from . utils import permission_required_or_403
 
 import datetime, re
 from db import DB
