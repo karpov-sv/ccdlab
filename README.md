@@ -224,6 +224,11 @@ The following Python packages are necessary in order to run the system:
     * ``pip install django-el-pagination``
   * **pylibftdi** for thorlabs linear stage, etc
     * ``pip install --user pylibftdi``
+    
+The following additional packages are required for the archive web interface:
+
+  * **django, django-el-pagination, markdown, StringIO**
+    * ``pip install --user django django-el-pagination markdown StringIO``
 
 To set up the database:
   * **PostgreSQL** installation
