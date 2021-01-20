@@ -179,16 +179,35 @@
 
     <div class="tab-content">
       <div id="roomtemp-hour" class="tab-pane fade">
-        <img src="{% url 'status_plot' 'arduino_A.temp01' %}?ylog=1&width=1000&height=400&hours=1&title=Room Temp&ylabel=temp [C]" class="img img-responsive center-block popup-status-image">
+        <img src="{% url 'status_plot' 'arduino_A.temp01,arduino_A.temp02' %}?ylog=1&width=1000&height=400&hours=1&title=Room Temp&ylabel=temp [C]" class="img img-responsive center-block popup-status-image">
       </div>
       <div id="roomtemp-day" class="tab-pane fade in active">
-        <img src="{% url 'status_plot' 'arduino_A.temp01' %}?ylog=1&width=1000&height=400&hours=24&title=Room Temp&ylabel=temp [C]" class="img img-responsive center-block popup-status-image">
+        <img src="{% url 'status_plot' 'arduino_A.temp01,arduino_A.temp02' %}?ylog=1&width=1000&height=400&hours=24&title=Room Temp&ylabel=temp [C]" class="img img-responsive center-block popup-status-image">
       </div>
       <div id="roomtemp-week" class="tab-pane fade">
-        <img src="{% url 'status_plot' 'arduino_A.temp01' %}?ylog=1&width=1000&height=400&hours=168&title=Room Temp&ylabel=temp [C]" class="img img-responsive center-block popup-status-image">
+        <img src="{% url 'status_plot' 'arduino_A.temp01,arduino_A.temp02' %}?ylog=1&width=1000&height=400&hours=168&title=Room Temp&ylabel=temp [C]" class="img img-responsive center-block popup-status-image">
       </div>
     </div>
 
+    <ul class="nav nav-tabs">
+      <li class="nav-item disabled"><a class="nav-link disabled">Room Humidity:</a></li>
+      <li class="nav-item"><a data-toggle="tab" href="#roomhumd-hour">Last Hour</a></li>
+      <li class="nav-item active"><a data-toggle="tab" href="#roomhumd-day">Last Day</a></li>
+      <li class="nav-item"><a data-toggle="tab" href="#roomhumd-week">Last Week</a></li>
+    </ul>
+
+    <div class="tab-content">
+      <div id="roomhumd-hour" class="tab-pane fade">
+        <img src="{% url 'status_plot' 'arduino_A.humd01,arduino_A.humd02' %}?ylog=1&width=1000&height=400&hours=1&title=Room Humidity&ylabel=temp [C]" class="img img-responsive center-block popup-status-image">
+      </div>
+      <div id="roomhumd-day" class="tab-pane fade in active">
+        <img src="{% url 'status_plot' 'arduino_A.humd01,arduino_A.humd02' %}?ylog=1&width=1000&height=400&hours=24&title=Room Humidity&ylabel=temp [C]" class="img img-responsive center-block popup-status-image">
+      </div>
+      <div id="roomhumd-week" class="tab-pane fade">
+        <img src="{% url 'status_plot' 'arduino_A.humd01,arduino_A.humd02' %}?ylog=1&width=1000&height=400&hours=168&title=Room Humidity&ylabel=temp [C]" class="img img-responsive center-block popup-status-image">
+      </div>
+    </div>
+    
   </div>
 
 
