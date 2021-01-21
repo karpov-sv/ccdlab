@@ -1,0 +1,3 @@
+[submodule "Arduino_A/min"]
+	path = Arduino_A/min
+	url = git@github.com:asenchristov/min.git
