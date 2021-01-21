@@ -1,5 +1,5 @@
 //#define DISABLE_TRANSPORT_ACK_RETRANSMIT
-//#define MIN_DEBUG_PRINTING
+//#define MIN_DEBUG_PRINTING //for this to work one hast to modify LibPrintf library to send the output to Serial3
 
 #ifdef MIN_DEBUG_PRINTING
 #include <LibPrintf.h>
