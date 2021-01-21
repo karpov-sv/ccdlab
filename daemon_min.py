@@ -150,7 +150,8 @@ class MINProtocol():
 
     def _transport_fifo_pop(self):
         assert len(self._transport_fifo) > 0
-        self.source[self._transport_fifo[0].seq] = self._transport_fifo[0].source
+        if self._transport_fifo[0].source:
+            self.source[self._transport_fifo[0].seq] = self._transport_fifo[0].source
         del self._transport_fifo[0]
 
     def _transport_fifo_send(self, frame: MINFrame):
@@ -164,7 +165,7 @@ class MINProtocol():
         ack_frame = MINFrame(min_id=self.ACK, seq=self._rn, payload=bytes([self._rn]), transport=True, ack_or_reset=True)
         on_wire_bytes = self._on_wire_bytes(frame=ack_frame)
         self._last_sent_ack_time_ms = now_ms()
-        min_logger.debug("Sending ACK, seq={}, bytes={}".format(ack_frame.seq, on_wire_bytes))
+        #min_logger.debug("Sending ACK, seq={}, bytes={}".format(ack_frame.seq, on_wire_bytes))
         self.object['hw'].write(on_wire_bytes)
 
     def _send_nack(self, to: int):
@@ -265,8 +266,10 @@ class MINProtocol():
                 self._rx_reset()
             else:
                 # MIN frame received
-                min_frame = MINFrame(min_id=min_id_control, payload=min_payload, seq=min_seq, source=self.source[min_seq], transport=True)
-                del self.source[min_seq]
+                orig_seq=int(min_payload.decode('ascii').split(':')[0])
+                min_frame = MINFrame(min_id=min_id_control, payload=min_payload, seq=min_seq, source=self.source[orig_seq], transport=True)
+                del self.source[orig_seq]
+                min_logger.debug("orig seq {}, sources left {}".format(orig_seq,len(self.source)))
                 if min_seq == self._rn:
                     min_logger.debug("MIN application frame received @{} (min_id={} seq={})".format(time(), min_id_control & 0x3f, min_seq))
                     self.processFrame(min_frame)
@@ -466,7 +469,7 @@ class MINProtocol():
                     self._transport_fifo_send(frame=oldest_frame)
         # Periodically transmit ACK
         if now_ms() - self._last_sent_ack_time_ms > self.ack_retransmit_timeout_ms:
-            min_logger.debug("Periodic send of ACK")
+            #min_logger.debug("Periodic send of ACK")
             self._send_ack()
 
         if (self._sn_max - self._sn_max) & 0xff > window_size:

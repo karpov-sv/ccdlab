@@ -22,11 +22,12 @@ class DaemonProtocol(SimpleProtocol):
                 # managment commands
                 if sstring == 'get_status':
                     self.message(
-                        'status hw_connected={hw_connected} temp01={temp01} humd01={humd01} temp02={temp02} humd02={humd02}'.format(**self.object))
+                        'status hw_connected={hw_connected} temp01={temp01} humd01={humd01} temp02={temp02} humd02={humd02} sw01={sw01} sw02={sw02}'.format(**self.object))
                     break
                 if not obj['hw_connected']:
                     break
                 queue_frame = obj['hwprotocol'].queue_frame
+                source=self.name
                 if sstring == 'reset':
                     obj['hwprotocol'].transport_reset()
                     break
@@ -34,16 +35,18 @@ class DaemonProtocol(SimpleProtocol):
                     from time import time
                     payload = bytes("hello world {}".format(time()), encoding='ascii')
                     break
-                if sstring in ['get_temp01', 'get_humd01','get_temp02','get_humd02']:
+                if sstring in ['get_ardsta','get_temp01', 'get_humd01','get_temp02','get_humd02','set_sw01on','set_sw01of','get_sw01st','set_sw02on','set_sw02of','get_sw02st']:
                     payload = bytes(sstring, encoding='ascii')
+                    if sstring in ['set_sw01on','set_sw01of','set_sw02on','set_sw02of']:
+                        source=None # these commands do not expect reply
                     break
                 break
             if payload:
-                queue_frame(1, payload, source=self.name)
+                queue_frame(1, payload, source=source)
 
 
 class Arduino_A_Protocol(MINProtocol):
-    status_commands = ['get_temp01','get_humd01','get_temp02','get_humd02']
+    status_commands = ['get_ardsta']
 
     @catch
     def __init__(self, devname, obj, debug=False):
@@ -66,29 +69,36 @@ class Arduino_A_Protocol(MINProtocol):
         self.object['humd01'] = 'nan'
         self.object['temp02'] = 'nan'
         self.object['humd02'] = 'nan'
+        self.object['sw01'] = 'nan'
+        self.object['sw02'] = 'nan'
 
     @catch
     def processFrame(self, frame: MINFrame):
         # Process the device reply
         min_logger.debug("Received MIN frame, min_id={}, payload={}, seq={}, source={}, tr={}".format(
             frame.min_id, frame.payload, frame.seq, frame.source, frame.is_transport))
-        plString = frame.payload.decode('ascii')
+        plString = frame.payload.decode('ascii').split(':')[1]
         r_str = ''
         while True:
+            if plString.startswith('status='):
+                statStr=plString.replace('status=','').split(';')
+                self.object['temp01'] = statStr[0]
+                self.object['temp02'] = statStr[1]
+                self.object['humd01'] = statStr[2]
+                self.object['humd02'] = statStr[3]
+                self.object['sw01'] = statStr[4]
+                self.object['sw02'] = statStr[5]
+                break                
             if plString.startswith('temp01='):
-                r_str = plString
                 self.object['temp01'] = plString.split('=')[1]
                 break
             if plString.startswith('humd01='):
-                r_str = plString
                 self.object['humd01'] = plString.split('=')[1]
                 break
             if plString.startswith('temp02='):
-                r_str = plString
                 self.object['temp02'] = plString.split('=')[1]
                 break
             if plString.startswith('humd02='):
-                r_str = plString
                 self.object['humd02'] = plString.split('=')[1]
                 break
             break
@@ -103,7 +113,7 @@ class Arduino_A_Protocol(MINProtocol):
     def update(self):
         if self.object['hw_connected'] == 0:
             return
-        min_logger.debug('updater')
+        #min_logger.debug('updater')
         if (len(self._transport_fifo)==0):
             for ccmd in self.status_commands:
                 payload = bytes(ccmd, encoding='ascii')
@@ -122,7 +132,7 @@ if __name__ == '__main__':
 
     # Object holding actual state and work logic.
     # May be anything that will be passed by reference - list, dict, object etc
-    obj = {'hw_connected': 0, 'temp01': 'nan', 'humd01': 'nan', 'temp02': 'nan', 'humd02': 'nan'}
+    obj = {'hw_connected': 0, 'temp01': 'nan', 'humd01': 'nan', 'temp02': 'nan', 'humd02': 'nan', 'sw01':'nan', 'sw02':'nan'}
 
     daemon = SimpleFactory(DaemonProtocol, obj)
     daemon.name = options.name
