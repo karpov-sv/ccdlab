@@ -1,5 +1,5 @@
 //#define DISABLE_TRANSPORT_ACK_RETRANSMIT
-//#define MIN_DEBUG_PRINTING //for this to work one hast to modify LibPrintf library to send the output to Serial3
+//#define MIN_DEBUG_PRINTING
 
 #ifdef MIN_DEBUG_PRINTING
 #include <LibPrintf.h>
@@ -16,7 +16,7 @@ void printhex(char *bbuf, int bbuf_len){
 #endif
 
 #include "GY21.h"
-#include "min/target/min.c"
+#include "min.c"
 
 struct min_context min_ctx;
 uint32_t last_sent;
@@ -33,7 +33,9 @@ struct ard_status {
   float humd_02;
   bool switch_01;
   bool switch_02;
-} my_status{-1000,-1000,-1000,-1000,false,false};
+  bool switch_03;
+  bool switch_04;
+} my_status{-1000,-1000,-1000,-1000,false,false,false,false};
 
 #include "Arduino_A_appLevel.h"
 
@@ -59,6 +61,10 @@ void setup() {
   digitalWrite(22, LOW);
   pinMode(23, OUTPUT); // the transistor swich will be here
   digitalWrite(23, LOW);
+  pinMode(24, OUTPUT); // the 230V swich will be here
+  digitalWrite(24, LOW);
+  pinMode(25, OUTPUT); // the 230V swich will be here
+  digitalWrite(25, LOW);
 }
 
 void loop() {
@@ -91,6 +97,6 @@ void loop() {
   min_poll(&min_ctx, (uint8_t *)buf, (uint8_t)buf_len); 
   my_status.temp_01 = GY21_S01->GY21_Temperature();
   my_status.humd_01 = GY21_S01->GY21_Humidity();
-  my_status.temp_02 = GY21_S02->GY21_Temperature();
-  my_status.humd_02 = GY21_S02->GY21_Humidity();
+  //my_status.temp_02 = GY21_S02->GY21_Temperature();
+  //my_status.humd_02 = GY21_S02->GY21_Humidity();
 }
