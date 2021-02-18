@@ -22,7 +22,7 @@ class DaemonProtocol(SimpleProtocol):
                 # managment commands
                 if sstring == 'get_status':
                     self.message(
-                        'status hw_connected={hw_connected} temp01={temp01} humd01={humd01} temp02={temp02} humd02={humd02} sw01={sw01} sw02={sw02}'.format(**self.object))
+                        'status hw_connected={hw_connected} temp01={temp01} humd01={humd01} temp02={temp02} humd02={humd02} sw01={sw01} sw02={sw02}  sw01={sw03} sw02={sw04}'.format(**self.object))
                     break
                 if not obj['hw_connected']:
                     break
@@ -35,9 +35,14 @@ class DaemonProtocol(SimpleProtocol):
                     from time import time
                     payload = bytes("hello world {}".format(time()), encoding='ascii')
                     break
-                if sstring in ['get_ardsta','get_temp01', 'get_humd01','get_temp02','get_humd02','set_sw01on','set_sw01of','get_sw01st','set_sw02on','set_sw02of','get_sw02st']:
+                if sstring in ['get_ardsta','get_temp01', 'get_humd01','get_temp02','get_humd02'
+                               ,'set_sw01on','set_sw01of','get_sw01st'
+                               ,'set_sw02on','set_sw02of','get_sw02st'
+                               ,'set_sw03on','set_sw03of','get_sw03st'
+                               ,'set_sw04on','set_sw04of','get_sw04st']:
                     payload = bytes(sstring, encoding='ascii')
-                    if sstring in ['set_sw01on','set_sw01of','set_sw02on','set_sw02of']:
+                    if sstring in ['set_sw01on','set_sw01of','set_sw02on','set_sw02of',
+                                   'set_sw03on','set_sw03of','set_sw04on','set_sw04of']:
                         source=None # these commands do not expect reply
                     break
                 break
@@ -71,6 +76,8 @@ class Arduino_A_Protocol(MINProtocol):
         self.object['humd02'] = 'nan'
         self.object['sw01'] = 'nan'
         self.object['sw02'] = 'nan'
+        self.object['sw03'] = 'nan'
+        self.object['sw04'] = 'nan'
 
     @catch
     def processFrame(self, frame: MINFrame):
@@ -88,6 +95,8 @@ class Arduino_A_Protocol(MINProtocol):
                 self.object['humd02'] = statStr[3]
                 self.object['sw01'] = statStr[4]
                 self.object['sw02'] = statStr[5]
+                self.object['sw03'] = statStr[6]
+                self.object['sw04'] = statStr[7]
                 break                
             if plString.startswith('temp01='):
                 self.object['temp01'] = plString.split('=')[1]
@@ -132,7 +141,7 @@ if __name__ == '__main__':
 
     # Object holding actual state and work logic.
     # May be anything that will be passed by reference - list, dict, object etc
-    obj = {'hw_connected': 0, 'temp01': 'nan', 'humd01': 'nan', 'temp02': 'nan', 'humd02': 'nan', 'sw01':'nan', 'sw02':'nan'}
+    obj = {'hw_connected': 0, 'temp01': 'nan', 'humd01': 'nan', 'temp02': 'nan', 'humd02': 'nan', 'sw01':'nan', 'sw02':'nan', 'sw03':'nan', 'sw04':'nan'}
 
     daemon = SimpleFactory(DaemonProtocol, obj)
     daemon.name = options.name
