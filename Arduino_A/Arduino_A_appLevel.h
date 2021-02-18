@@ -14,6 +14,8 @@ void min_application_handler(uint8_t min_id, uint8_t seq, uint8_t *min_payload, 
     bb = bb+";"+String(my_status.humd_02);
     bb = bb+";"+String(my_status.switch_01);
     bb = bb+";"+String(my_status.switch_02);
+    bb = bb+";"+String(my_status.switch_03);
+    bb = bb+";"+String(my_status.switch_04);
     min_queue_frame(&min_ctx, 1, bb.c_str(), bb.length());
     return;
   }
@@ -65,6 +67,37 @@ void min_application_handler(uint8_t min_id, uint8_t seq, uint8_t *min_payload, 
   } 
   if (strncmp("get_sw02st",min_payload,10) == 0) {
     bb = bb+"sw02="+String(my_status.switch_02);
+    min_queue_frame(&min_ctx, 1, bb.c_str(), bb.length());
+    return;
+  }   
+  
+  if (strncmp("set_sw03on",min_payload,10) == 0) {
+    digitalWrite(24, HIGH);
+    my_status.switch_03=true;
+    return;
+  }
+  if (strncmp("set_sw03of",min_payload,10) == 0) {
+    digitalWrite(24, LOW);
+    my_status.switch_03=false;
+    return;
+  } 
+  if (strncmp("get_sw03st",min_payload,10) == 0) {
+    bb = bb+"sw03="+String(my_status.switch_03);
+    min_queue_frame(&min_ctx, 1, bb.c_str(), bb.length());
+    return;
+  } 
+  if (strncmp("set_sw04on",min_payload,10) == 0) {
+    digitalWrite(25, HIGH);
+    my_status.switch_04=true;
+    return;
+  }
+  if (strncmp("set_sw04of",min_payload,10) == 0) {
+    digitalWrite(25, LOW);
+    my_status.switch_04=false;
+    return;
+  } 
+  if (strncmp("get_sw04st",min_payload,10) == 0) {
+    bb = bb+"sw04="+String(my_status.switch_04);
     min_queue_frame(&min_ctx, 1, bb.c_str(), bb.length());
     return;
   } 
