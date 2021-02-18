@@ -223,7 +223,9 @@ The following Python packages are necessary in order to run the system:
     * ``apt-get install python-django``
     * ``pip install django-el-pagination``
   * **pylibftdi** for thorlabs linear stage, etc
-    * ``pip install --user pylibftdi``
+    * ``pip install --user pylibftdi``  
+  * **pyudev** for recognizing usb devices, etc
+    * ``pip install --user pyudev``
     
 The following additional packages are required for the archive web interface:
 
