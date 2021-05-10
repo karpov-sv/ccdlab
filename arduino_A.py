@@ -22,7 +22,7 @@ class DaemonProtocol(SimpleProtocol):
                 # managment commands
                 if sstring == 'get_status':
                     self.message(
-                        'status hw_connected={hw_connected} temp01={temp01} humd01={humd01} temp02={temp02} humd02={humd02} sw01={sw01} sw02={sw02}  sw01={sw03} sw02={sw04}'.format(**self.object))
+                        'status hw_connected={hw_connected} temp01={temp01} humd01={humd01} temp02={temp02} humd02={humd02} sw01={sw01} sw02={sw02} sw03={sw03} sw04={sw04}'.format(**self.object))
                     break
                 if not obj['hw_connected']:
                     break

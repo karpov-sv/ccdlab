@@ -336,7 +336,7 @@ class SimpleProtocol(Protocol):
         # Some generic commands every connection should understand
         if cmd.name == 'get_id':
             # Identification of the daemon
-            self.message('id name=%s type=%s' % (self.factory.name, self.factory.type))
+            self.message(('id name=%s type=%s' % (self.factory.name, self.factory.type)).encode('ascii'))
         elif cmd.name == 'id':
             # Set peer identification
             self.name = cmd.get('name', '')
