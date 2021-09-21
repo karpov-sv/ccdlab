@@ -7,6 +7,7 @@ from daemon import SimpleFactory, SimpleProtocol
 from twisted.internet.serialport import SerialPort
 from twisted.internet.task import LoopingCall
 from command import Command
+from optparse import OptionParser
 
 # Example code with server daemon and outgoing connection to hardware
 
@@ -71,7 +72,6 @@ class HWProtocol(SimpleProtocol):
 
 
 if __name__ == '__main__':
-    from optparse import OptionParser
 
     parser = OptionParser(usage="usage: %prog [options] arg")
     parser.add_option('-P', '--hw-port', help='Hardware port to connect', action='store', dest='hw_port', default='/dev/ttyUSB0')

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import os
 import sys
@@ -88,7 +88,7 @@ class GPIBProtocol(SimpleProtocol):
     @catch
     def processMessage(self, string):
         if self._debug:
-            print "GPIB >> ", repr(string)
+            print ("GPIB >> ", repr(string))
 
         SimpleProtocol.processMessage(self, string)
         daemon = self.object['daemon']
@@ -139,7 +139,7 @@ class GPIBProtocol(SimpleProtocol):
     @catch
     def update(self):
         if self._debug:
-            print "Busy flag", self.readBusy
+            print ("Busy flag", self.readBusy)
         if self.readBusy[0]:
             if time.time()-self.readBusy[1]>3:
                 SimpleProtocol.message(self, '++read eoi') 
@@ -147,7 +147,7 @@ class GPIBProtocol(SimpleProtocol):
             return
         self.update_daemonQs()
         if self._debug:
-            print "daemonQs:", self.daemonQs
+            print ("daemonQs:", self.daemonQs)
         
         last_addr=self.next_addr
         no_commands = True
@@ -156,15 +156,15 @@ class GPIBProtocol(SimpleProtocol):
                 d=self.gpibAddrList.index(last_addr) - k - 1
                 self.next_addr = self.gpibAddrList[d]
                 if self._debug:
-                    print "Found last addr (", self.next_addr, ")"
+                    print ("Found last addr (", self.next_addr, ")")
             except BaseException:
                 self.next_addr = self.gpibAddrList[0]
                 if self._debug:
-                    print "Last addr not found (perhaps disconnected meanwhile), switching to the first (", self.next_addr, ")"
+                    print ("Last addr not found (perhaps disconnected meanwhile), switching to the first (", self.next_addr, ")")
             if len(self.daemonQs[self.next_addr]):
                 if self.object['current_addr'] != self.next_addr:
                     if self._debug:
-                        print "switching to addr (", self.next_addr, ")"
+                        print ("switching to addr (", self.next_addr, ")")
                     SimpleProtocol.message(self, '++addr %i' % self.next_addr)
                     self.object['current_addr'] = self.next_addr
                     #time.sleep(0.1) # we need to wait a bit here to allow the controller to finish changing the addr
@@ -176,7 +176,7 @@ class GPIBProtocol(SimpleProtocol):
                 break
         if no_commands and (time.time()-self.readBusy[1])>1.:
             if self._debug:
-                print "There is either no GPIB connections, or nothing to do for them, doing ++addr to keep the connection alive"
+                print ("There is either no GPIB connections, or nothing to do for them, doing ++addr to keep the connection alive")
             self.message('++addr', keep=True)
             self.readBusy = [True,time.time()]
 
