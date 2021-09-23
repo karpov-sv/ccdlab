@@ -314,7 +314,7 @@ class CryoConProtocol(SimpleProtocol):
             for k in self.status_commands:
                 self.commands.append(
                     {'cmd': k, 'source': 'itself', 'keep': True})
-                SimpleProtocol.message(self, self.commands[0]['cmd'])
+                SimpleProtocol.message(self, self.commands[-1]['cmd'])
 
     @catch
     def message(self, string, keep=False, source='itself'):
