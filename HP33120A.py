@@ -173,8 +173,6 @@ class HP33120AProtocol(SimpleProtocol):
             if self.commands[0]['cmd'] == ':VOLT:UNIT?':
                 obj['volt_unit'] = string
                 break
-
-
             break
         else:
             return
