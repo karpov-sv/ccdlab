@@ -57,6 +57,13 @@ def status(request):
 
     return TemplateResponse(request, 'status.html', context=context)
 
+def is_number(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
 def status_plot(request, params, width=1000.0, height=500.0, hours=24.0, title=None, xlabel="Time, UT", ylabel=None, ylog=False, grid=True):
     hours = float(hours) if hours else 24.0
 
@@ -100,6 +107,7 @@ def status_plot(request, params, width=1000.0, height=500.0, hours=24.0, title=N
     # TODO: add support for root level parameters, with no dots
     params = params.split(',')
     select = {}
+    where = []
 
     if not ylabel and len(params) == 1:
         ylabel = params[0]
@@ -107,10 +115,12 @@ def status_plot(request, params, width=1000.0, height=500.0, hours=24.0, title=N
     labels = []
     for param in params:
         s = param.split('.') # Split
-        select[s[0]+'.'+s[1]] = "(status #> '{%s}' #>> '{%s}')::float" % (s[0], s[1])
+        # select[s[0]+'.'+s[1]] = "(status #> '{%s}' #>> '{%s}')::float" % (s[0], s[1])
+        # where.append("(status #> '{%s}' #>> '{%s}' != 'None')" % (s[0], s[1]))
+        select[s[0]+'.'+s[1]] = "(status #> '{%s}' #>> '{%s}')" % (s[0], s[1])
         labels.append(s[0]+'.'+s[1])
 
-    ms = MonitorStatus.objects.extra(select=select).defer('status').order_by('time')
+    ms = MonitorStatus.objects.extra(select=select, where=where).defer('status').order_by('time')
     ms = ms.filter(time__gt = time1)
     ms = ms.filter(time__lte = time2)
 
@@ -127,6 +137,10 @@ def status_plot(request, params, width=1000.0, height=500.0, hours=24.0, title=N
     for _,value in enumerate(values):
         if np.any(np.array(value) != None):
             has_data = True
+
+            if len(value) and is_number(value[0]):
+                value = np.double(['nan' if _ == 'None' else _ for _ in value])
+
             ax.plot(time, value, '-', label=labels[_].split('.')[-1])
 
     # if time and has_data: # It is failing if no data are plotted

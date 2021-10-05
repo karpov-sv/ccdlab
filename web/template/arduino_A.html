@@ -1,0 +1,44 @@
+<!-- Default layout for a client widget -->
+<div class="panel panel-default">
+  <!-- Title bar with connection and hardware connection status flags -->
+  <div class="panel-heading">
+    <h3 class="panel-title">
+      <span class="monitor-client-title" style="margin-right: 0.5em">{{> params.description }}</span>
+      <span class="monitor-client-connstatus label label-default" style="margin-right: 0.5em"></span>
+      <span class="monitor-client-hwstatus label label-default" style="margin-right: 0.5em"></span>
+    </h3>
+  </div>
+  <!-- Main body, hidden when disconnected -->
+  <div class="monitor-client-body panel-body hide" style="padding: 1px; margin: 1px;">
+    <!-- Progress bar -->
+    <div class="monitor-client-progressdiv progress hide" style="margin: 0; padding: 0">
+      <div class="monitor-client-progress progress-bar" style="width: 0%">
+      </div>
+    </div>
+
+    <!-- Main content -->
+
+    <!-- Show all key=value pairs from the status -->
+    <div class="monitor-client-main" style="padding: 5px">
+      {^{props status}}
+      {^{: key }}:&nbsp;{{status key /}}
+      {{/props}}
+    </div>
+
+    <!-- Buttons -->
+    <div>
+      <span class="btn-group">
+        <button class="btn btn-default disabled">sw04:</button>
+        <button class="btn btn-default monitor-button" data-command="send arduino_A set_sw04on" data-link="disabled{: status.sw04 == 1 } class{:~switch(status.sw04, 1, 'btn btn-success monitor-button', 'btn btn-default monitor-button')}">On</button>
+        <button class="btn btn-default monitor-button" data-command="send arduino_A set_sw04of" data-link="disabled{: status.sw04 == 0 } class{:~switch(status.sw04, 0, 'btn btn-success monitor-button', 'btn btn-default monitor-button')}">Off</button>
+      </span>
+    </div>
+
+    <!-- Show all pre-configured plots -->
+    <div class="monitor-client-plots" style="padding: 5px">
+      {{props params.plots }}
+      <img src="/monitor/plot/{{> ~root.params.name }}/{{> key }}" class="monitor-plot-{{> ~root.params.name }}-{{> key }} img img-responsive center-block"/><br>
+      {{/props}}
+    </div>
+  </div>
+</div>
