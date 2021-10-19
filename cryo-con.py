@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import os
 import sys
@@ -240,7 +240,7 @@ class CryoConProtocol(SimpleProtocol):
     def processMessage(self, string):
         # Process the device reply
         if self._debug:
-            print "hw cc > %s" % string
+            print ("hw cc > %s" % string)
 
         obj = self.object  # Object holding the state
         daemon = obj['daemon']
@@ -252,13 +252,14 @@ class CryoConProtocol(SimpleProtocol):
 
         if len(self.commands) and string != "\r":
             if self._debug:
-                print "last command which expects reply was:", self.commands[0]['cmd']
-                print "received reply:", string
+                print ("last command which expects reply was:", self.commands[0]['cmd'])
+                print ("received reply:", string)
             if self.commands[0]['cmd'] in self.status_commands:
-                if len(string):
+                if len(string) and 'NAK' not in string:
                     # reply to parse looks like this:
                     # 20.806670;20.800480;20.896670;20.853670;--Htr OK--;HI ;MAN  ;50;0.000000;   0%;--Htr OK--;LOW;MAN  ;50;0.000000;   0%
                     # values for channel a;b;c;d (....... means not connected)
+
                     sstring = string.split(';')
                     if self.commands[0]['cmd'] == self.status_commands[0]:
                         status = ''
