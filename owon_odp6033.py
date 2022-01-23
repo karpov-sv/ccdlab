@@ -72,6 +72,7 @@ class Owon_odp6033Protocol(SimpleProtocol):
         self.name = 'hw'
         self.type = 'hw'
         self.status_commands = [':APP:VOLT?',':APP:CURR?','CHAN:OUTP:ALL?']
+        #self.status_commands = []
         
     @catch
     def connectionMade(self):
