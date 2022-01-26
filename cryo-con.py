@@ -283,6 +283,7 @@ class CryoConProtocol(SimpleProtocol):
                         self.object['ctrl_type' + str(nn)] = sstring[2].replace(' ', '')
                         if nn == 1:
                             self.object['load'+str(nn)] = float(sstring[3])
+                            print ('sstring[4]',sstring[4])
                             self.object['pwr_set'+str(nn)] = float(sstring[4])*pwrfactor1[self.object['range'+str(nn)]]*self.object['load'+str(nn)]/100.
                             self.object['pwr_actual'+str(nn)] = float(sstring[5].replace('%', ''))*pwrfactor1[self.object['range'+str(nn)]]*self.object['load'+str(nn)]/100.
                         elif nn == 2:
@@ -306,6 +307,8 @@ class CryoConProtocol(SimpleProtocol):
 
     @catch
     def update(self):
+        if self._debug:
+            print ('self.commands',self.commands)
         # Request the hardware state from the device
         if len(self.commands):
             SimpleProtocol.message(self, self.commands[0]['cmd'])
@@ -313,9 +316,7 @@ class CryoConProtocol(SimpleProtocol):
                 self.commands.pop(0)
         else:
             for k in self.status_commands:
-                self.commands.append(
-                    {'cmd': k, 'source': 'itself', 'keep': True})
-                SimpleProtocol.message(self, self.commands[-1]['cmd'])
+                self.commands.append({'cmd': k, 'source': 'itself', 'keep': True})
 
     @catch
     def message(self, string, keep=False, source='itself'):
