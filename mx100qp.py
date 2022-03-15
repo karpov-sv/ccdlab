@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+# !/usr/bin/env python
+
 import datetime
 import numpy as np
 import re
@@ -49,7 +50,6 @@ class DaemonProtocol(SimpleProtocol):
                 obj['VOut'+match.group('val')] = 'OFF'
                 break
 
-            break
             if STRING[-1] == '?':
                 hw.messageAll(string, type='hw', keep=True, source=self.name)
             else:
@@ -97,26 +97,27 @@ class mx100qp_Protocol(SimpleProtocol):
         obj['hw_connected'] = 1
         # Process the device reply
         while len(self.commands):
+            ccmd = self.commands[0]['cmd'].decode()
             # We have some sent commands in the queue - let's check what was the oldest one
             br = False
             for ch in ['1', '2', '3', '4']:
-                if self.commands[0]['cmd'] == 'I'+ch+'?':
+                if ccmd == 'I'+ch+'?':
                     obj['I'+ch] = float(string[3:-1])
                     br = True
                     break
-                if self.commands[0]['cmd'] == 'V'+ch+'?':
+                if ccmd == 'V'+ch+'?':
                     obj['V'+ch] = float(string[3:-1])
                     br = True
                     break
-                if self.commands[0]['cmd'] == 'V'+ch+'O?':
+                if ccmd == 'V'+ch+'O?':
                     obj['V'+ch+'O'] = float(string[0:-2])
                     br = True
                     break
-                if self.commands[0]['cmd'] == 'I'+ch+'O?':
+                if ccmd == 'I'+ch+'O?':
                     obj['I'+ch+'O'] = float(string[0:-2])
                     br = True
                     break
-                if self.commands[0]['cmd'] == 'OP'+ch+'?':
+                if ccmd == 'OP'+ch+'?':
                     obj['VOut'+ch] = 'ON' if string[0] == '1' else 'OFF'
                     br = True
                     break
@@ -152,7 +153,7 @@ class mx100qp_Protocol(SimpleProtocol):
                 self.commands[0]['sent'] = True
         elif not len(self.commands):
             for k in self.status_commands:
-                self.commands.append({'cmd': k, 'source': 'itself', 'keep': True, 'sent': False})
+                self.commands.append({'cmd': k.encode('ascii'), 'source': 'itself', 'keep': True, 'sent': False})
 
     @catch
     def message(self, string, keep=False, source='itself'):
