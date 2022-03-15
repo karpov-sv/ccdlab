@@ -211,8 +211,8 @@ The following Python packages are necessary in order to run the system:
 
   * **basic modules**
     * ``pip install --user numpy matplotlib``
-  * **libscrc￼** for calculating CRC16
-    * ``pip install --user libscrc￼``
+  * **libscrc** for calculating CRC16
+    * ``pip install --user libscrc``
   * **Twisted ans Python Serial Port Extension** for a basic TCP networking framework
     * ``pip install --user Twisted pyserial``
   * **ConfigObj** for parsing configuration files
