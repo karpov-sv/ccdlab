@@ -1,4 +1,4 @@
-# !/usr/bin/env python
+#!/usr/bin/env python
 
 import datetime
 import numpy as np
@@ -21,33 +21,35 @@ class DaemonProtocol(SimpleProtocol):
         STRING = string.upper()
         while True:
             if string == 'get_status':
-                self.message('status hw_connected=%s VSet1=%g VSet2=%g VSet3=%g VSet4=%g V1=%g V2=%g V3=%g V4=%g ILim1=%g ILim2=%g ILim3=%g ILim4=%g I1=%g I2=%g I3=%g I4=%g VOut1=%s VOut2=%s VOut3=%s VOut4=%s' %
+                self.message('status hw_connected=%s VSet1=%g VSet2=%g VSet3=%g VSet4=%g V1=%g V2=%g V3=%g V4=%g ILim1=%g ILim2=%g ILim3=%g ILim4=%g I1=%g I2=%g I3=%g I4=%g VOut1=%i VOut2=%i VOut3=%i VOut4=%i OVP1=%g OVP2=%g OVP3=%g OVP4=%g OCP1=%s OCP2=%s OCP3=%s OCP4=%s' %
                              (self.object['hw_connected'],
                               self.object['V1'], self.object['V2'], self.object['V3'], self.object['V4'],
                               self.object['V1O'], self.object['V2O'], self.object['V3O'], self.object['V4O'],
                               self.object['I1'], self.object['I2'], self.object['I3'], self.object['I4'],
                               self.object['I1O'], self.object['I2O'], self.object['I3O'], self.object['I4O'],
-                              self.object['VOut1'], self.object['VOut2'], self.object['VOut3'], self.object['VOut4'],))
+                              self.object['VOut1'], self.object['VOut2'], self.object['VOut3'], self.object['VOut4'],
+                              self.object['OVP1'], self.object['OVP2'], self.object['OVP3'], self.object['OVP4'],
+                              self.object['OCP1'], self.object['OCP2'], self.object['OCP3'], self.object['OCP4'],))
                 break
 
-            regex0 = re.compile(r'\:?ENGAGE (?P<val>([1-4])\b)')
+            regex0 = re.compile(r'\:?ENGAGE(?P<val>([1-4])\b)')
             regex1 = re.compile(r'\:?OP(?P<val>([1-4])).1')
             match = re.match(regex0, STRING)
             if not match:
                 match = re.match(regex1, STRING)
             if match:
                 hw.messageAll('OP' + match.group('val') + ' 1\n', type='hw', keep=False, source=self.name)
-                obj['VOut'+match.group('val')] = 'ON'
+                obj['VOut'+match.group('val')] = 1
                 break
 
-            regex0 = re.compile(r'\:?DISENGAGE (?P<val>([1-4])\b)')
+            regex0 = re.compile(r'\:?DISENGAGE(?P<val>([1-4])\b)')
             regex1 = re.compile(r'\:?OP(?P<val>([1-4])).0')
             match = re.match(regex0, STRING)
             if not match:
                 match = re.match(regex1, STRING)
             if match:
                 hw.messageAll('OP' + match.group('val') + ' 0\n', type='hw', keep=False, source=self.name)
-                obj['VOut'+match.group('val')] = 'OFF'
+                obj['VOut'+match.group('val')] = 0
                 break
 
             if STRING[-1] == '?':
@@ -68,7 +70,10 @@ class mx100qp_Protocol(SimpleProtocol):
                                 'I2?', 'V2?', 'I2O?', 'V2O?', 'OP2?',
                                 'I3?', 'V3?', 'I3O?', 'V3O?', 'OP3?',
                                 'I4?', 'V4?', 'I4O?', 'V4O?', 'OP4?',
+                                'OVP1?', 'OVP2?', 'OVP3?', 'OVP4?',
+                                'OCP1?', 'OCP2?', 'OCP3?', 'OCP4?',
                                 'CONFIG?', ]
+        #self.status_commands = []
         self.name = 'hw'
         self.type = 'hw'
         self.lastAutoRead = datetime.datetime.utcnow()
@@ -118,13 +123,21 @@ class mx100qp_Protocol(SimpleProtocol):
                     br = True
                     break
                 if ccmd == 'OP'+ch+'?':
-                    obj['VOut'+ch] = 'ON' if string[0] == '1' else 'OFF'
+                    obj['VOut'+ch] = int(string[0])
                     br = True
                     break
+                if ccmd == 'OVP'+ch+'?':
+                    obj['OVP'+ch] = float(string[:-1].split()[1])
+                    br = True
+                    break
+                if ccmd == 'OCP'+ch+'?':
+                    obj['OCP'+ch] = float(string[:-1].split()[1])
+                    br = True
+                    break                
             if br:
                 break
 
-            # some more commans
+            # some more commands
             break
         else:
             return
@@ -176,22 +189,30 @@ def resetObjStatus(obj):
     obj['V1'] = np.nan
     obj['I1O'] = np.nan
     obj['V1O'] = np.nan
-    obj['VOut1'] = '-'
+    obj['VOut1'] = 0
     obj['I2'] = np.nan
     obj['V2'] = np.nan
     obj['I2O'] = np.nan
     obj['V2O'] = np.nan
-    obj['VOut2'] = '-'
+    obj['VOut2'] = 0
     obj['I3'] = np.nan
     obj['V3'] = np.nan
     obj['I3O'] = np.nan
     obj['V3O'] = np.nan
-    obj['VOut3'] = '-'
+    obj['VOut3'] = 0
     obj['I4'] = np.nan
     obj['V4'] = np.nan
     obj['I4O'] = np.nan
     obj['V4O'] = np.nan
-    obj['VOut4'] = '-'
+    obj['VOut4'] = 0
+    obj['OVP1'] = np.nan
+    obj['OVP2'] = np.nan
+    obj['OVP3'] = np.nan
+    obj['OVP4'] = np.nan
+    obj['OCP1'] = np.nan
+    obj['OCP2'] = np.nan
+    obj['OCP3'] = np.nan
+    obj['OCP4'] = np.nan
 
 
 if __name__ == '__main__':
