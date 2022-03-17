@@ -1,0 +1,149 @@
+<!-- Default layout for a client widget -->
+<div class="panel panel-default">
+  <!-- Title bar with connection and hardware connection status flags -->
+  <div class="panel-heading">
+    <h3 class="panel-title">
+      <span class="monitor-client-title" style="margin-right: 0.5em">{{> params.description }}</span>
+      <span class="monitor-client-connstatus label label-default" style="margin-right: 0.5em"></span>
+      <span class="monitor-client-hwstatus label label-default" style="margin-right: 0.5em" ></span>
+    </h3>
+  </div>
+  <!-- Main body, hidden when disconnected -->
+  <ul class="monitor-client-body list-group hide">
+    <!-- Progress bar -->
+    <li class="monitor-client-progressdiv list-group-item progress hide" style="margin: 0; padding: 0">
+      <div class="monitor-client-progress progress-bar" style="width: 0%">
+      </div>
+    </li>
+    <!-- Main content -->
+    <!-- Show all key=value pairs from the status -->
+    <li class="list-group-item" style="padding: 5px">
+    </li>
+    
+    <li class="list-group-item clearfix" style="padding: 5px">
+      <!-- Subsystems -->
+      <img src="/monitor/plot/{{> ~root.params.name }}/current_ch12" class="monitor-plot-{{> ~root.params.name }}-current img pull-right" width="40%"/>
+      <img src="/monitor/plot/{{> ~root.params.name }}/voltage_ch12" class="monitor-plot-{{> ~root.params.name }}-voltage img pull-right" width="40%"/>
+     
+       {{for ~list('VSet1', 'V1', 'ILim1', 'I1') itemVar="~prefix" }}
+        <div id="channels12">
+           {{if ~prefix == 'VSet1'}}
+                {{: ~prefix }}: <span data-link="class{: (~root.status.VOut1 == 0) ? 'label label-default' : 'label label-success'} {:(~root.status.VSet1)+'V'}"></span>
+            {{else ~prefix == 'V1'}}
+                {{: ~prefix }}: <span data-link="class{: (~root.status.VOut1 == 0) ? 'label label-default' : 'label label-success' } {:(~root.status.V1)+'V'}"></span>
+            {{else ~prefix == 'ILim1'}}
+                {{: ~prefix }}: <span data-link="class{: (~root.status.VOut1 == 0) ? 'label label-default' : 'label label-success' } {:(~root.status.ILim1)+'A'}"></span>
+            {{else ~prefix == 'I1'}}
+                {{: ~prefix }}: <span data-link="class{: (~root.status.VOut1 == 0) ? 'label label-default' : 'label label-success' } {:(~root.status.I1)+'A'}"></span>
+            {{else ~prefix == 'Vstatus'}}
+                {{: ~prefix }}: {{status_switch ~prefix '1' 'label label-success' '0' 'label label-default'/}}
+            {{else}}
+                {{: ~prefix }}: {{status ~prefix /}}
+            {{/if}}    
+        </div>
+                
+      {{/for}}
+     
+     <br>
+     
+     <button class="btn btn-danger monitor-button" data-command="send mx100qp engage1" data-link="disabled{: status.VOut1 == 1}">Voltage Engage 1</button>    
+     <button class="btn btn-danger monitor-button" data-command="send mx100qp disengage1" data-link="disabled{: status.VOut1 == 0}">Voltage Disengage 1</button>    
+     
+     <br>
+     <br>
+     
+     {{for ~list('VSet2', 'V2', 'ILim2', 'I2') itemVar="~prefix" }}
+        <div id="channels34">
+           {{if ~prefix == 'VSet1'}}
+                {{: ~prefix }}: <span data-link="class{: (~root.status.VOut2 == 0) ? 'label label-default' : 'label label-success'} {:(~root.status.VSet2)+'V'}"></span>
+            {{else ~prefix == 'V1'}}
+                {{: ~prefix }}: <span data-link="class{: (~root.status.VOut2 == 0) ? 'label label-default' : 'label label-success' } {:(~root.status.V2)+'V'}"></span>
+            {{else ~prefix == 'ILim1'}}
+                {{: ~prefix }}: <span data-link="class{: (~root.status.VOut2 == 0) ? 'label label-default' : 'label label-success' } {:(~root.status.ILim2)+'A'}"></span>
+            {{else ~prefix == 'I1'}}
+                {{: ~prefix }}: <span data-link="class{: (~root.status.VOut2 == 0) ? 'label label-default' : 'label label-success' } {:(~root.status.I2)+'A'}"></span>
+            {{else ~prefix == 'Vstatus'}}
+                {{: ~prefix }}: {{status_switch ~prefix '1' 'label label-success' '0' 'label label-default'/}}
+            {{else}}
+                {{: ~prefix }}: {{status ~prefix /}}
+            {{/if}}    
+        </div>
+                
+      {{/for}}
+     
+     <br>
+     
+     <button class="btn btn-danger monitor-button" data-command="send mx100qp engage2" data-link="disabled{: status.VOut2 == 1}">Voltage Engage 2</button>    
+     <button class="btn btn-danger monitor-button" data-command="send mx100qp disengage2" data-link="disabled{: status.VOut2 == 0}">Voltage Disengage 2</button>   
+         
+     
+     </li>
+
+     <li class="list-group-item clearfix" style="padding: 5px">
+      <!-- Subsystems -->
+      <img src="/monitor/plot/{{> ~root.params.name }}/current_ch34" class="monitor-plot-{{> ~root.params.name }}-current img pull-right" width="40%"/>
+      <img src="/monitor/plot/{{> ~root.params.name }}/voltage_ch34" class="monitor-plot-{{> ~root.params.name }}-voltage img pull-right" width="40%"/>
+     
+       {{for ~list('VSet1', 'V1', 'ILim1', 'I1') itemVar="~prefix" }}
+        <div id="col1">
+           {{if ~prefix == 'VSet1'}}
+                {{: ~prefix }}: <span data-link="class{: (~root.status.VOut3 == 0) ? 'label label-default' : 'label label-success'} {:(~root.status.VSet3)+'V'}"></span>
+            {{else ~prefix == 'V1'}}
+                {{: ~prefix }}: <span data-link="class{: (~root.status.VOut3 == 0) ? 'label label-default' : 'label label-success' } {:(~root.status.V3)+'V'}"></span>
+            {{else ~prefix == 'ILim1'}}
+                {{: ~prefix }}: <span data-link="class{: (~root.status.VOut3 == 0) ? 'label label-default' : 'label label-success' } {:(~root.status.ILim3)+'A'}"></span>
+            {{else ~prefix == 'I1'}}
+                {{: ~prefix }}: <span data-link="class{: (~root.status.VOut3 == 0) ? 'label label-default' : 'label label-success' } {:(~root.status.I3)+'A'}"></span>
+            {{else ~prefix == 'Vstatus'}}
+                {{: ~prefix }}: {{status_switch ~prefix '1' 'label label-success' '0' 'label label-default'/}}
+            {{else}}
+                {{: ~prefix }}: {{status ~prefix /}}
+            {{/if}}    
+        </div>
+                
+      {{/for}}
+     
+     <br>
+     
+     <button class="btn btn-danger monitor-button" data-command="send mx100qp engage3" data-link="disabled{: status.VOut3 == 1}">Voltage Engage 3</button>    
+     <button class="btn btn-danger monitor-button" data-command="send mx100qp disengage3" data-link="disabled{: status.VOut3 == 0}">Voltage Disengage 3</button>    
+     
+     <br>
+     <br>
+     
+     {{for ~list('VSet2', 'V2', 'ILim2', 'I2') itemVar="~prefix" }}
+        <div id="col2">
+           {{if ~prefix == 'VSet1'}}
+                {{: ~prefix }}: <span data-link="class{: (~root.status.VOut4 == 0) ? 'label label-default' : 'label label-success'} {:(~root.status.VSet4)+'V'}"></span>
+            {{else ~prefix == 'V1'}}
+                {{: ~prefix }}: <span data-link="class{: (~root.status.VOut4 == 0) ? 'label label-default' : 'label label-success' } {:(~root.status.V4)+'V'}"></span>
+            {{else ~prefix == 'ILim1'}}
+                {{: ~prefix }}: <span data-link="class{: (~root.status.VOut4 == 0) ? 'label label-default' : 'label label-success' } {:(~root.status.ILim4)+'A'}"></span>
+            {{else ~prefix == 'I1'}}
+                {{: ~prefix }}: <span data-link="class{: (~root.status.VOut4 == 0) ? 'label label-default' : 'label label-success' } {:(~root.status.I4)+'A'}"></span>
+            {{else ~prefix == 'Vstatus'}}
+                {{: ~prefix }}: {{status_switch ~prefix '1' 'label label-success' '0' 'label label-default'/}}
+            {{else}}
+                {{: ~prefix }}: {{status ~prefix /}}
+            {{/if}}    
+        </div>
+                
+      {{/for}}
+     
+     <br>
+     
+     <button class="btn btn-danger monitor-button" data-command="send mx100qp engage4" data-link="disabled{: status.VOut4 == 1}">Voltage Engage 4</button>    
+     <button class="btn btn-danger monitor-button" data-command="send mx100qp disengage4" data-link="disabled{: status.VOut4 == 0}">Voltage Disengage 4</button>   
+         
+     
+     </li>
+     
+     
+      <li class="list-group-item" style="padding: 5px">
+    </li>
+        
+     
+  </ul>
+
+</div>
+
