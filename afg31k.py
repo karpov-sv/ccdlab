@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import datetime
 import re
-
+import numpy as np
 from daemon import SimpleFactory, SimpleProtocol, catch
 
 
@@ -20,13 +20,33 @@ class DaemonProtocol(SimpleProtocol):
 
         while True:
             if string == 'get_status':
-                self.message('status hw_connected=%s CH1_Stat1=%s CH2_Stat=%s CH1_Func1=%s CH2_Func=%s' %
-                             (self.object['hw_connected'],
-                              self.object['CH1_Stat'], self.object['CH2_Stat'],
-                              self.object['CH1_Func'], self.object['CH2_Func'],))
+                self.message('status hw_connected=%s CH1_Stat=%s CH2_Stat=%s '
+                             'CH1_Func=%s CH2_Func=%s '
+                             'CH1_Freq=%g CH2_Freq=%g '
+                             'CH1_Unit=%s CH2_Unit=%s '
+                             'CH1_Ampl=%g CH2_Ampl=%g '
+                             'CH1_Offs=%g CH2_Offs=%g '
+                             'CH1_RSym=%g CH2_RSym=%g' %
+                             (obj['hw_connected'],
+                              obj['CH1_Stat'], obj['CH2_Stat'],
+                              obj['CH1_Func'], obj['CH2_Func'],
+                              obj['CH1_Freq'], obj['CH2_Freq'],
+                              obj['CH1_Unit'], obj['CH2_Unit'],
+                              obj['CH1_Ampl'], obj['CH2_Ampl'],
+                              obj['CH1_Offs'], obj['CH2_Offs'],
+                              obj['CH1_RSym'], obj['CH2_RSym'],))
+                break
+            if string == 'reset_q':
+                hw.messageAll('reset_q', type='hw', keep=False, source=self.name)
                 break
 
             # will change commands which are also status comands to a standart from, so that they are recognized for status updates
+            regex = re.compile(r'\:?SYST(|EM):ERR(|OR)\?')
+            m = re.match(regex, STRING)
+            if m:
+                hw.messageAll('SYST:ERR?', type='hw', keep=True, source=self.name)
+                break
+
             regex = re.compile(r'\:?OUTP(|UT)(?P<chan>(1|2))\?')
             m = re.match(regex, STRING)
             if m:
@@ -38,6 +58,41 @@ class DaemonProtocol(SimpleProtocol):
             m = re.match(regex, STRING)
             if m:
                 STRING = 'SOUR'+m.group('chan')+':FUNC?'
+                hw.messageAll(STRING, type='hw', keep=True, source=self.name)
+                break
+
+            regex = re.compile(r'\:?SOUR(|CE)(?P<chan>(1|2)):FREQ(|UENCY)\?')
+            m = re.match(regex, STRING)
+            if m:
+                STRING = 'SOUR'+m.group('chan')+':FREQ?'
+                hw.messageAll(STRING, type='hw', keep=True, source=self.name)
+                break
+
+            regex = re.compile(r'\:?SOUR(|CE)(?P<chan>(1|2)):VOLT(|AGE):UNIT\?')
+            m = re.match(regex, STRING)
+            if m:
+                STRING = 'SOUR'+m.group('chan')+':VOLT:UNIT?'
+                hw.messageAll(STRING, type='hw', keep=True, source=self.name)
+                break
+
+            regex = re.compile(r'\:?SOUR(|CE)(?P<chan>(1|2)):VOLT(|AGE):AMPL(|ITUDE)\?')
+            m = re.match(regex, STRING)
+            if m:
+                STRING = 'SOUR'+m.group('chan')+':VOLT:AMPL?'
+                hw.messageAll(STRING, type='hw', keep=True, source=self.name)
+                break
+
+            regex = re.compile(r'\:?SOUR(|CE)(?P<chan>(1|2)):VOLT(|AGE):OFFS(|ET)\?')
+            m = re.match(regex, STRING)
+            if m:
+                STRING = 'SOUR'+m.group('chan')+':VOLT:OFFS?'
+                hw.messageAll(STRING, type='hw', keep=True, source=self.name)
+                break
+
+            regex = re.compile(r'\:?SOUR(|CE)(?P<chan>(1|2)):FUNC(|TION):RAMP:SYMM(|ETRY)\?')
+            m = re.match(regex, STRING)
+            if m:
+                STRING = 'SOUR'+m.group('chan')+':FUNC:RAMP:SYMM?'
                 hw.messageAll(STRING, type='hw', keep=True, source=self.name)
                 break
 
@@ -55,7 +110,13 @@ class afg31k_Protocol(SimpleProtocol):
     def __init__(self):
         SimpleProtocol.__init__(self)
         self.commands = []  # Queue of command sent to the device which will provide replies, each entry is a dict with keys "cmd","source","timeStamp"
-        self.status_commands = ['OUTP1?', 'OUTP2?', 'SOUR1:FUNC?', 'SOUR2:FUNC?']
+        self.status_commands = ['OUTP1?', 'OUTP2?',
+                                'SOUR1:FUNC?', 'SOUR2:FUNC?',
+                                'SOUR1:FREQ?', 'SOUR2:FREQ?',
+                                'SOUR1:VOLT:AMPL?', 'SOUR2:VOLT:AMPL?',
+                                'SOUR1:VOLT:UNIT?', 'SOUR2:VOLT:UNIT?',
+                                'SOUR1:VOLT:OFFS?', 'SOUR2:VOLT:OFFS?',
+                                'SOUR1:FUNC:RAMP:SYMM?', 'SOUR2:FUNC:RAMP:SYMM?',]
         #self.status_commands = []
 
         self.name = 'hw'
@@ -97,6 +158,27 @@ class afg31k_Protocol(SimpleProtocol):
                     obj['CH'+ch+'_Func'] = string
                     br = True
                     break
+                if ccmd == 'SOUR'+ch+':FREQ?':
+                    obj['CH'+ch+'_Freq'] = float(string)
+                    br = True
+                    break
+                if ccmd == 'SOUR'+ch+':VOLT:UNIT?':
+                    obj['CH'+ch+'_Unit'] = string
+                    br = True
+                    break
+                if ccmd == 'SOUR'+ch+':VOLT:AMPL?':
+                    obj['CH'+ch+'_Ampl'] = float(string)
+                    br = True
+                    break
+                if ccmd == 'SOUR'+ch+':VOLT:OFFS?':
+                    obj['CH'+ch+'_Offs'] = float(string)
+                    br = True
+                    break
+                if ccmd == 'SOUR'+ch+':FUNC:RAMP:SYMM?':
+                    obj['CH'+ch+'_RSym'] = float(string)
+                    br = True
+                    break
+
             if br:
                 break
 
@@ -136,6 +218,13 @@ class afg31k_Protocol(SimpleProtocol):
         """
         Send the message to the controller. If keep=True, expect reply
         """
+        if string == b'reset_q':
+            self.commands=[]
+            return
+
+        if string == b'SYST:ERR?':
+            self.commands.insert(0, {'cmd': string, 'source': source, 'keep': keep, 'sent': False})
+            return
         n = 0
         for cc in self.commands:
             if not cc['sent']:
@@ -152,6 +241,18 @@ def resetObjStatus(obj):
     obj['CH2_Stat'] = '-'
     obj['CH1_Func'] = '-'
     obj['CH2_Func'] = '-'
+    obj['CH1_Freq'] = np.nan
+    obj['CH2_Freq'] = np.nan
+    obj['CH1_Unit'] = '-'
+    obj['CH2_Unit'] = '-'
+    obj['CH1_Ampl'] = np.nan
+    obj['CH2_Ampl'] = np.nan
+    obj['CH1_Offs'] = np.nan
+    obj['CH2_Offs'] = np.nan
+    obj['CH1_RSym'] = np.nan
+    obj['CH2_RSym'] = np.nan
+
+
 
 
 if __name__ == '__main__':
