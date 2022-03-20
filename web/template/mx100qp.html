@@ -26,7 +26,7 @@
       <img src="/monitor/plot/{{> ~root.params.name }}/voltage_ch12" class="monitor-plot-{{> ~root.params.name }}-voltage img pull-right" width="40%"/>
      
        {{for ~list('VSet1', 'V1', 'ILim1', 'I1') itemVar="~prefix" }}
-        <div id="channels12">
+        <div>
            {{if ~prefix == 'VSet1'}}
                 {{: ~prefix }}: <span data-link="class{: (~root.status.VOut1 == 0) ? 'label label-default' : 'label label-success'} {:(~root.status.VSet1)+'V'}"></span>
             {{else ~prefix == 'V1'}}
@@ -53,14 +53,14 @@
      <br>
      
      {{for ~list('VSet2', 'V2', 'ILim2', 'I2') itemVar="~prefix" }}
-        <div id="channels34">
-           {{if ~prefix == 'VSet1'}}
+        <div>
+           {{if ~prefix == 'VSet2'}}
                 {{: ~prefix }}: <span data-link="class{: (~root.status.VOut2 == 0) ? 'label label-default' : 'label label-success'} {:(~root.status.VSet2)+'V'}"></span>
-            {{else ~prefix == 'V1'}}
+            {{else ~prefix == 'V2'}}
                 {{: ~prefix }}: <span data-link="class{: (~root.status.VOut2 == 0) ? 'label label-default' : 'label label-success' } {:(~root.status.V2)+'V'}"></span>
-            {{else ~prefix == 'ILim1'}}
+            {{else ~prefix == 'ILim2'}}
                 {{: ~prefix }}: <span data-link="class{: (~root.status.VOut2 == 0) ? 'label label-default' : 'label label-success' } {:(~root.status.ILim2)+'A'}"></span>
-            {{else ~prefix == 'I1'}}
+            {{else ~prefix == 'I2'}}
                 {{: ~prefix }}: <span data-link="class{: (~root.status.VOut2 == 0) ? 'label label-default' : 'label label-success' } {:(~root.status.I2)+'A'}"></span>
             {{else ~prefix == 'Vstatus'}}
                 {{: ~prefix }}: {{status_switch ~prefix '1' 'label label-success' '0' 'label label-default'/}}
@@ -84,15 +84,15 @@
       <img src="/monitor/plot/{{> ~root.params.name }}/current_ch34" class="monitor-plot-{{> ~root.params.name }}-current img pull-right" width="40%"/>
       <img src="/monitor/plot/{{> ~root.params.name }}/voltage_ch34" class="monitor-plot-{{> ~root.params.name }}-voltage img pull-right" width="40%"/>
      
-       {{for ~list('VSet1', 'V1', 'ILim1', 'I1') itemVar="~prefix" }}
-        <div id="col1">
-           {{if ~prefix == 'VSet1'}}
+       {{for ~list('VSet3', 'V3', 'ILim3', 'I3') itemVar="~prefix" }}
+        <div>
+           {{if ~prefix == 'VSet3'}}
                 {{: ~prefix }}: <span data-link="class{: (~root.status.VOut3 == 0) ? 'label label-default' : 'label label-success'} {:(~root.status.VSet3)+'V'}"></span>
-            {{else ~prefix == 'V1'}}
+            {{else ~prefix == 'V3'}}
                 {{: ~prefix }}: <span data-link="class{: (~root.status.VOut3 == 0) ? 'label label-default' : 'label label-success' } {:(~root.status.V3)+'V'}"></span>
-            {{else ~prefix == 'ILim1'}}
+            {{else ~prefix == 'ILim3'}}
                 {{: ~prefix }}: <span data-link="class{: (~root.status.VOut3 == 0) ? 'label label-default' : 'label label-success' } {:(~root.status.ILim3)+'A'}"></span>
-            {{else ~prefix == 'I1'}}
+            {{else ~prefix == 'I3'}}
                 {{: ~prefix }}: <span data-link="class{: (~root.status.VOut3 == 0) ? 'label label-default' : 'label label-success' } {:(~root.status.I3)+'A'}"></span>
             {{else ~prefix == 'Vstatus'}}
                 {{: ~prefix }}: {{status_switch ~prefix '1' 'label label-success' '0' 'label label-default'/}}
@@ -111,15 +111,15 @@
      <br>
      <br>
      
-     {{for ~list('VSet2', 'V2', 'ILim2', 'I2') itemVar="~prefix" }}
-        <div id="col2">
-           {{if ~prefix == 'VSet1'}}
+     {{for ~list('VSet4', 'V4', 'ILim4', 'I4') itemVar="~prefix" }}
+        <div>
+           {{if ~prefix == 'VSet4'}}
                 {{: ~prefix }}: <span data-link="class{: (~root.status.VOut4 == 0) ? 'label label-default' : 'label label-success'} {:(~root.status.VSet4)+'V'}"></span>
-            {{else ~prefix == 'V1'}}
+            {{else ~prefix == 'V4'}}
                 {{: ~prefix }}: <span data-link="class{: (~root.status.VOut4 == 0) ? 'label label-default' : 'label label-success' } {:(~root.status.V4)+'V'}"></span>
-            {{else ~prefix == 'ILim1'}}
+            {{else ~prefix == 'ILim4'}}
                 {{: ~prefix }}: <span data-link="class{: (~root.status.VOut4 == 0) ? 'label label-default' : 'label label-success' } {:(~root.status.ILim4)+'A'}"></span>
-            {{else ~prefix == 'I1'}}
+            {{else ~prefix == 'I4'}}
                 {{: ~prefix }}: <span data-link="class{: (~root.status.VOut4 == 0) ? 'label label-default' : 'label label-success' } {:(~root.status.I4)+'A'}"></span>
             {{else ~prefix == 'Vstatus'}}
                 {{: ~prefix }}: {{status_switch ~prefix '1' 'label label-success' '0' 'label label-default'/}}
