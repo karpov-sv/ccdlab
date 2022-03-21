@@ -116,7 +116,7 @@ class afg31k_Protocol(SimpleProtocol):
                                 'SOUR1:VOLT:AMPL?', 'SOUR2:VOLT:AMPL?',
                                 'SOUR1:VOLT:UNIT?', 'SOUR2:VOLT:UNIT?',
                                 'SOUR1:VOLT:OFFS?', 'SOUR2:VOLT:OFFS?',
-                                'SOUR1:FUNC:RAMP:SYMM?', 'SOUR2:FUNC:RAMP:SYMM?',]
+                                'SOUR1:FUNC:RAMP:SYMM?', 'SOUR2:FUNC:RAMP:SYMM?', ]
         #self.status_commands = []
 
         self.name = 'hw'
@@ -219,7 +219,7 @@ class afg31k_Protocol(SimpleProtocol):
         Send the message to the controller. If keep=True, expect reply
         """
         if string == b'reset_q':
-            self.commands=[]
+            self.commands = []
             return
 
         if string == b'SYST:ERR?':
@@ -251,8 +251,6 @@ def resetObjStatus(obj):
     obj['CH2_Offs'] = np.nan
     obj['CH1_RSym'] = np.nan
     obj['CH2_RSym'] = np.nan
-
-
 
 
 if __name__ == '__main__':

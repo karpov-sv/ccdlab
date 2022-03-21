@@ -21,7 +21,13 @@ class DaemonProtocol(SimpleProtocol):
         STRING = string.upper()
         while True:
             if string == 'get_status':
-                self.message('status hw_connected=%s VSet1=%g VSet2=%g VSet3=%g VSet4=%g V1=%g V2=%g V3=%g V4=%g ILim1=%g ILim2=%g ILim3=%g ILim4=%g I1=%g I2=%g I3=%g I4=%g VOut1=%i VOut2=%i VOut3=%i VOut4=%i OVP1=%g OVP2=%g OVP3=%g OVP4=%g OCP1=%s OCP2=%s OCP3=%s OCP4=%s' %
+                self.message('status hw_connected=%s VSet1=%g VSet2=%g VSet3=%g VSet4=%g '
+                             'V1=%g V2=%g V3=%g V4=%g '
+                             'ILim1=%g ILim2=%g ILim3=%g ILim4=%g '
+                             'I1=%g I2=%g I3=%g I4=%g '
+                             'VOut1=%i VOut2=%i VOut3=%i VOut4=%i '
+                             'OVP1=%g OVP2=%g OVP3=%g OVP4=%g '
+                             'OCP1=%s OCP2=%s OCP3=%s OCP4=%s' %
                              (self.object['hw_connected'],
                               self.object['V1'], self.object['V2'], self.object['V3'], self.object['V4'],
                               self.object['V1O'], self.object['V2O'], self.object['V3O'], self.object['V4O'],
@@ -30,6 +36,9 @@ class DaemonProtocol(SimpleProtocol):
                               self.object['VOut1'], self.object['VOut2'], self.object['VOut3'], self.object['VOut4'],
                               self.object['OVP1'], self.object['OVP2'], self.object['OVP3'], self.object['OVP4'],
                               self.object['OCP1'], self.object['OCP2'], self.object['OCP3'], self.object['OCP4'],))
+                break
+            if string == 'reset_q':
+                hw.messageAll('reset_q', type='hw', keep=False, source=self.name)
                 break
 
             regex0 = re.compile(r'\:?ENGAGE(?P<val>([1-4])\b)')
@@ -133,7 +142,7 @@ class mx100qp_Protocol(SimpleProtocol):
                 if ccmd == 'OCP'+ch+'?':
                     obj['OCP'+ch] = float(string[:-1].split()[1])
                     br = True
-                    break                
+                    break
             if br:
                 break
 
@@ -173,6 +182,14 @@ class mx100qp_Protocol(SimpleProtocol):
         """
         Send the message to the controller. If keep=True, expect reply
         """
+        if string == b'reset_q':
+            self.commands = []
+            return
+
+        if string in [b'EER?', b'QER?']:
+            self.commands.insert(0, {'cmd': string, 'source': source, 'keep': keep, 'sent': False})
+            return
+
         n = 0
         for cc in self.commands:
             if not cc['sent']:
