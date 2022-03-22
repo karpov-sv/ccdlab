@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import os, sys
 import numpy as np
@@ -50,7 +50,7 @@ class HWProtocol(SimpleProtocol):
     def processMessage(self, string):
         # Process the device reply
         if self._debug:
-            print "hw > %s" % string
+            print ("hw > %s" % string)
 
         if len(string) and string[0] >= '0' and string[0] <= '6' and 'E' in string:
             # b,sx.xxxxEsxx
@@ -61,9 +61,9 @@ class HWProtocol(SimpleProtocol):
     def message(self, string):
         """Sending outgoing message"""
         if self._debug:
-            print ">> serial >>", string
-        self.transport.write(string)
-        self.transport.write("\r\n")
+            print (">> serial >>", string)
+        self.transport.write(string.encode('ascii'))
+        self.transport.write("\r\n".encode('ascii'))
 
 
     @catch
