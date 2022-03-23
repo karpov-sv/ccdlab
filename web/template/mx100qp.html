@@ -22,8 +22,8 @@
     
     <li class="list-group-item clearfix" style="padding: 5px">
       <!-- Subsystems -->
-      <img src="/monitor/plot/{{> ~root.params.name }}/current_ch12" class="monitor-plot-{{> ~root.params.name }}-current img pull-right" width="40%"/>
-      <img src="/monitor/plot/{{> ~root.params.name }}/voltage_ch12" class="monitor-plot-{{> ~root.params.name }}-voltage img pull-right" width="40%"/>
+      <img src="/monitor/plot/{{> ~root.params.name }}/current_ch12" class="monitor-plot-{{> ~root.params.name }}-current_ch12 img pull-right" width="40%"/>
+      <img src="/monitor/plot/{{> ~root.params.name }}/voltage_ch12" class="monitor-plot-{{> ~root.params.name }}-voltage_ch12 img pull-right" width="40%"/>
      
        {{for ~list('VSet1', 'V1', 'ILim1', 'I1') itemVar="~prefix" }}
         <div>
@@ -81,8 +81,8 @@
 
      <li class="list-group-item clearfix" style="padding: 5px">
       <!-- Subsystems -->
-      <img src="/monitor/plot/{{> ~root.params.name }}/current_ch34" class="monitor-plot-{{> ~root.params.name }}-current img pull-right" width="40%"/>
-      <img src="/monitor/plot/{{> ~root.params.name }}/voltage_ch34" class="monitor-plot-{{> ~root.params.name }}-voltage img pull-right" width="40%"/>
+      <img src="/monitor/plot/{{> ~root.params.name }}/current_ch34" class="monitor-plot-{{> ~root.params.name }}-current_ch34 img pull-right" width="40%"/>
+      <img src="/monitor/plot/{{> ~root.params.name }}/voltage_ch34" class="monitor-plot-{{> ~root.params.name }}-voltage_ch34 img pull-right" width="40%"/>
      
        {{for ~list('VSet3', 'V3', 'ILim3', 'I3') itemVar="~prefix" }}
         <div>
