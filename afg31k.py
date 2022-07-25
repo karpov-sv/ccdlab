@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import datetime
 import re
 import numpy as np
@@ -193,7 +193,7 @@ class afg31k_Protocol(SimpleProtocol):
 
     @catch
     def update(self):
-        if self._debug:
+        if self._debug and len(self.commands):
             print('--------self.commands--------------')
             for cc in self.commands:
                 print(cc)
