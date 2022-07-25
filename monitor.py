@@ -323,7 +323,7 @@ def make_plot(file, obj, client_name, plot_name, size=800):
             ax.set_xscale(plot['xscale'], nonposx='clip')
 
         if plot['yscale'] != 'linear':
-            ax.set_yscale(plot['yscale'], nonposy='clip')
+            ax.set_yscale(plot['yscale'], nonpositive='clip')
 
             if plot['yscale'] == 'log':
                 # Try to fix the ticks if the data span is too small
