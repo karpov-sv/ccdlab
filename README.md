@@ -206,6 +206,7 @@ Check `example.py` for a bit more complex daemon which holds persistent re-conne
 The following libraries are necessary:
   * **libftdi1** (For thorlabs linear stage, etc)
     * on a debian based system: ``sudo apt-get install libftdi1-2``
+    * or ``pip install pylibftdi``
 
 The following Python packages are necessary in order to run the system:
 
