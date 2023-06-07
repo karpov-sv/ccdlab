@@ -8,62 +8,63 @@
       <span class="monitor-client-hwstatus label label-default" style="margin-right: 0.5em" ></span>
     </h3>
   </div>
+
   <!-- Main body, hidden when disconnected -->
+    <div class="monitor-client-body panel-body hide" style="padding: 1px; margin: 1px;">
      <!-- Main content -->
-    <!-- Show all key=value pairs from the status -->
-    
-    
-   <!-- Subsystems -->
-    <div>  
-    <div class="column" style="float:left">
-    <li class="list-group-item" style="padding: 5px">
-        {{for ~list('CH1_Stat', 'CH1_Func', 'CH1_Freq', 'CH1_Unit', 'CH1_Ampl', 'CH1_Offs', 'CH1_RSym') itemVar="~prefix" }}  
-        {{if ~prefix == 'CH1_Stat'}}
-                {{: ~prefix }}: <span data-link="class{: (~root.status.CH1_Stat == 'OFF') ? 'label label-default' : 'label label-success'} {:(~root.status.CH1_Stat)}"></span><br/>
-        {{else ~prefix == 'CH1_Func'}}
-                {{: ~prefix }}: <span data-link="class{: (~root.status.CH1_Stat == 'OFF') ? 'label label-default' : 'label label-success' } {:(~root.status.CH1_Func)}"></span><br/>
-        {{else ~prefix == 'CH1_Freq'}}
-                {{: ~prefix }}: <span data-link="class{: (~root.status.CH1_Stat == 'OFF') ? 'label label-default' : 'label label-success' } {:(~root.status.CH1_Freq)}"></span><br/>
-        {{else ~prefix == 'CH1_Unit'}}
-                {{: ~prefix }}: <span data-link="class{: (~root.status.CH1_Stat == 'OFF') ? 'label label-default' : 'label label-success' } {:(~root.status.CH1_Unit)}"></span><br/>
-        {{else ~prefix == 'CH1_Ampl'}}
-                {{: ~prefix }}: <span data-link="class{: (~root.status.CH1_Stat == 'OFF') ? 'label label-default' : 'label label-success' } {:(~root.status.CH1_Ampl)}"></span><br/>
-        {{else ~prefix == 'CH1_Offs'}}
-                {{: ~prefix }}: <span data-link="class{: (~root.status.CH1_Stat == 'OFF') ? 'label label-default' : 'label label-success' } {:(~root.status.CH1_Offs)}"></span><br/>
-        {{else ~prefix == 'CH1_RSym'}}
-                {{: ~prefix }}: <span data-link="class{: (~root.status.CH1_Stat == 'OFF') ? 'label label-default' : 'label label-success' } {:(~root.status.CH1_RSym)}"></span>
-        {{else ~prefix == 'Vstatus'}}
-                {{: ~prefix }}: {{status_switch ~prefix '1' 'label label-success' '0' 'label label-default'/}}
-        {{else}}
-            {{: ~prefix }}: {{status ~prefix /}}
-        {{/if}}    
-        {{/for}}
-   </li>
-   </div>
-   <div class="column" style="float:left">
-    <li class="list-group-item" style="padding: 5px">
-       {{for ~list('CH2_Stat', 'CH2_Func', 'CH2_Freq', 'CH2_Unit', 'CH2_Ampl', 'CH2_Offs', 'CH2_RSym') itemVar="~prefix" }}
-           {{if ~prefix == 'CH2_Stat'}}
-            {{: ~prefix }}: <span data-link="class{: (~root.status.CH2_Stat == 'OFF') ? 'label label-default' : 'label label-success'} {:(~root.status.CH2_Stat)}"></span><br/>
-            {{else ~prefix == 'CH2_Func'}}
-                {{: ~prefix }}: <span data-link="class{: (~root.status.CH2_Stat == 'OFF') ? 'label label-default' : 'label label-success' } {:(~root.status.CH2_Func)}"></span><br/>
-            {{else ~prefix == 'CH2_Freq'}}
-                {{: ~prefix }}: <span data-link="class{: (~root.status.CH2_Stat == 'OFF') ? 'label label-default' : 'label label-success' } {:(~root.status.CH2_Freq)}"></span><br/>
-            {{else ~prefix == 'CH2_Unit'}}
-                {{: ~prefix }}: <span data-link="class{: (~root.status.CH2_Stat == 'OFF') ? 'label label-default' : 'label label-success' } {:(~root.status.CH2_Unit)}"></span><br/>
-            {{else ~prefix == 'CH2_Ampl'}}
-                {{: ~prefix }}: <span data-link="class{: (~root.status.CH2_Stat == 'OFF') ? 'label label-default' : 'label label-success' } {:(~root.status.CH2_Ampl)}"></span><br/>
-            {{else ~prefix == 'CH2_Offs'}}
-                {{: ~prefix }}: <span data-link="class{: (~root.status.CH2_Stat == 'OFF') ? 'label label-default' : 'label label-success' } {:(~root.status.CH2_Offs)}"></span><br/>
-            {{else ~prefix == 'CH2_RSym'}}
-                {{: ~prefix }}: <span data-link="class{: (~root.status.CH2_Stat == 'OFF') ? 'label label-default' : 'label label-success' } {:(~root.status.CH2_RSym)}"></span>
-            {{else ~prefix == 'Vstatus'}}
-                {{: ~prefix }}: {{status_switch ~prefix '1' 'label label-success' '0' 'label label-default'/}}
-            {{else}}
-                {{: ~prefix }}: {{status ~prefix /}}
-            {{/if}}
-        {{/for}}
+
+        <li class="list-group-item" style="padding: 5px">
+            <div class="column" style="float:left">
+                {{for ~list('CH1_Stat', 'CH1_Func', 'CH1_Freq', 'CH1_Unit', 'CH1_Ampl', 'CH1_Offs', 'CH1_RSym') itemVar="~prefix" }}
+                    {{if ~prefix == 'CH1_Stat'}}
+                            {{: ~prefix }}: <span data-link="class{: (~root.status.CH1_Stat == 'OFF') ? 'label label-default' : 'label label-success'} {:(~root.status.CH1_Stat)}"></span><br/>
+                    {{else ~prefix == 'CH1_Func'}}
+                            {{: ~prefix }}: <span data-link="class{: (~root.status.CH1_Stat == 'OFF') ? 'label label-default' : 'label label-success' } {:(~root.status.CH1_Func)}"></span><br/>
+                    {{else ~prefix == 'CH1_Freq'}}
+                            {{: ~prefix }}: <span data-link="class{: (~root.status.CH1_Stat == 'OFF') ? 'label label-default' : 'label label-success' } {:(~root.status.CH1_Freq)}"></span><br/>
+                    {{else ~prefix == 'CH1_Unit'}}
+                            {{: ~prefix }}: <span data-link="class{: (~root.status.CH1_Stat == 'OFF') ? 'label label-default' : 'label label-success' } {:(~root.status.CH1_Unit)}"></span><br/>
+                    {{else ~prefix == 'CH1_Ampl'}}
+                            {{: ~prefix }}: <span data-link="class{: (~root.status.CH1_Stat == 'OFF') ? 'label label-default' : 'label label-success' } {:(~root.status.CH1_Ampl)}"></span><br/>
+                    {{else ~prefix == 'CH1_Offs'}}
+                            {{: ~prefix }}: <span data-link="class{: (~root.status.CH1_Stat == 'OFF') ? 'label label-default' : 'label label-success' } {:(~root.status.CH1_Offs)}"></span><br/>
+                    {{else ~prefix == 'CH1_RSym'}}
+                            {{: ~prefix }}: <span data-link="class{: (~root.status.CH1_Stat == 'OFF') ? 'label label-default' : 'label label-success' } {:(~root.status.CH1_RSym)}"></span>
+                    {{else ~prefix == 'Vstatus'}}
+                            {{: ~prefix }}: {{status_switch ~prefix '1' 'label label-success' '0' 'label label-default'/}}
+                    {{else}}
+                        {{: ~prefix }}: {{status ~prefix /}}
+                    {{/if}}
+                {{/for}}
+            </div>
+        </li>
+
+
+        <li class="list-group-item" style="padding: 5px">
+            <div class="column" style="float:left">
+                {{for ~list('CH2_Stat', 'CH2_Func', 'CH2_Freq', 'CH2_Unit', 'CH2_Ampl', 'CH2_Offs', 'CH2_RSym') itemVar="~prefix" }}
+                    {{if ~prefix == 'CH2_Stat'}}
+                    {{: ~prefix }}: <span data-link="class{: (~root.status.CH2_Stat == 'OFF') ? 'label label-default' : 'label label-success'} {:(~root.status.CH2_Stat)}"></span><br/>
+                    {{else ~prefix == 'CH2_Func'}}
+                        {{: ~prefix }}: <span data-link="class{: (~root.status.CH2_Stat == 'OFF') ? 'label label-default' : 'label label-success' } {:(~root.status.CH2_Func)}"></span><br/>
+                    {{else ~prefix == 'CH2_Freq'}}
+                        {{: ~prefix }}: <span data-link="class{: (~root.status.CH2_Stat == 'OFF') ? 'label label-default' : 'label label-success' } {:(~root.status.CH2_Freq)}"></span><br/>
+                    {{else ~prefix == 'CH2_Unit'}}
+                        {{: ~prefix }}: <span data-link="class{: (~root.status.CH2_Stat == 'OFF') ? 'label label-default' : 'label label-success' } {:(~root.status.CH2_Unit)}"></span><br/>
+                    {{else ~prefix == 'CH2_Ampl'}}
+                        {{: ~prefix }}: <span data-link="class{: (~root.status.CH2_Stat == 'OFF') ? 'label label-default' : 'label label-success' } {:(~root.status.CH2_Ampl)}"></span><br/>
+                    {{else ~prefix == 'CH2_Offs'}}
+                        {{: ~prefix }}: <span data-link="class{: (~root.status.CH2_Stat == 'OFF') ? 'label label-default' : 'label label-success' } {:(~root.status.CH2_Offs)}"></span><br/>
+                    {{else ~prefix == 'CH2_RSym'}}
+                        {{: ~prefix }}: <span data-link="class{: (~root.status.CH2_Stat == 'OFF') ? 'label label-default' : 'label label-success' } {:(~root.status.CH2_RSym)}"></span>
+                    {{else ~prefix == 'Vstatus'}}
+                        {{: ~prefix }}: {{status_switch ~prefix '1' 'label label-success' '0' 'label label-default'/}}
+                    {{else}}
+                        {{: ~prefix }}: {{status ~prefix /}}
+                    {{/if}}
+                {{/for}}
+            </div>
         </li>
     </div>
-    </div>
+
 </div>
