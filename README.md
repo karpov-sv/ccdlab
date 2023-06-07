@@ -235,7 +235,7 @@ The following additional packages are required for the archive web interface:
 
 To set up the database:
   * **PostgreSQL** installation
-    * ``apt-get install postgresql-12``
+    * ``apt-get install postgresql``
   * Configure the database
     * ``sudo -u postgres createuser --superuser $USER``
     * ``createdb ccdlab``
