@@ -24,7 +24,7 @@
       <!-- Subsystems -->
       <img src="/monitor/plot/{{> ~root.params.name }}/current_ch12" class="monitor-plot-{{> ~root.params.name }}-current img pull-right" width="40%"/>
       <img src="/monitor/plot/{{> ~root.params.name }}/voltage_ch12" class="monitor-plot-{{> ~root.params.name }}-voltage img pull-right" width="40%"/>
-     
+
        {{for ~list('VSet1', 'V1', 'ILim1', 'I1') itemVar="~prefix" }}
         <div>
            {{if ~prefix == 'VSet1'}}
@@ -141,7 +141,7 @@
      
       <li class="list-group-item" style="padding: 5px">
     </li>
-        
+
      
   </ul>
 
