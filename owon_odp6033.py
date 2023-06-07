@@ -138,10 +138,11 @@ class Owon_odp6033Protocol(SimpleProtocol):
 
     @catch
     def update(self):
-        print ('--------self.commands--------------')
-        for cc in self.commands:
-            print (cc)
-        print ('----------------------')
+        if _debug:
+            print ('--------self.commands--------------')
+            for cc in self.commands:
+                print (cc)
+            print ('----------------------')
         # first check if device is hw_connected
         if self.object['hw_connected'] == 0:
             # if not connected do not send any commands

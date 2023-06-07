@@ -206,35 +206,36 @@ Check `example.py` for a bit more complex daemon which holds persistent re-conne
 The following libraries are necessary:
   * **libftdi1** (For thorlabs linear stage, etc)
     * on a debian based system: ``sudo apt-get install libftdi1-2``
+    * or ``pip install pylibftdi``
 
 The following Python packages are necessary in order to run the system:
 
   * **basic modules**
-    * ``pip install --user numpy matplotlib``
+    * ``pip install numpy matplotlib``
   * **libscrc** for calculating CRC16
-    * ``pip install --user libscrc``
+    * ``pip install libscrc``
   * **Twisted ans Python Serial Port Extension** for a basic TCP networking framework
-    * ``pip install --user Twisted pyserial``
+    * ``pip install Twisted pyserial``
   * **ConfigObj** for parsing configuration files
-    * ``pip install --user configobj``
+    * ``pip install configobj``
   * **Psycopg2** for accessing PostgreSQL databases
-    * ``pip install --user psycopg2-binary``
+    * ``pip install psycopg2-binary``
   * **Django** for data archive web interface
     * ``apt-get install python-django``
     * ``pip install django-el-pagination``
   * **pylibftdi** for thorlabs linear stage, etc
-    * ``pip install --user pylibftdi``  
+    * ``pip install pylibftdi``  
   * **pyudev** for recognizing usb devices, etc
-    * ``pip install --user pyudev``
+    * ``pip install pyudev``
     
 The following additional packages are required for the archive web interface:
 
   * **django, django-el-pagination, markdown, StringIO**
-    * ``pip install --user django django-el-pagination markdown StringIO``
+    * ``pip install django django-el-pagination markdown StringIO``
 
 To set up the database:
   * **PostgreSQL** installation
-    * ``apt-get install postgresql-12``
+    * ``apt-get install postgresql``
   * Configure the database
     * ``sudo -u postgres createuser --superuser $USER``
     * ``createdb ccdlab``
