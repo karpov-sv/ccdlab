@@ -419,8 +419,12 @@ class SimpleFactory(Factory):
                 continue
             if type and c.type != type:
                 continue
-            c.message(string.encode('ascii'), **kwargs)
-
+            try:
+                c.message(string.encode('ascii'), **kwargs)
+            except Exception as e:
+                c.message(string, **kwargs)
+                
+                
     def listen(self, port=0):
         """Listen for incoming connections on a given port"""
         print("Listening for incoming connections on port %d" % port)

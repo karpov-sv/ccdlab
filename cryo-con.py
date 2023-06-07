@@ -283,7 +283,6 @@ class CryoConProtocol(SimpleProtocol):
                         self.object['ctrl_type' + str(nn)] = sstring[2].replace(' ', '')
                         if nn == 1:
                             self.object['load'+str(nn)] = float(sstring[3])
-                            print ('sstring[4]',sstring[4])
                             self.object['pwr_set'+str(nn)] = float(sstring[4])*pwrfactor1[self.object['range'+str(nn)]]*self.object['load'+str(nn)]/100.
                             self.object['pwr_actual'+str(nn)] = float(sstring[5].replace('%', ''))*pwrfactor1[self.object['range'+str(nn)]]*self.object['load'+str(nn)]/100.
                         elif nn == 2:

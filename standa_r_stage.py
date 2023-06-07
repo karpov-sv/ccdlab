@@ -32,6 +32,7 @@ class DaemonProtocol(SimpleProtocol):
                 pars[-1][1] = [i for i in ss if pars_o[n][1] in i][0].split(':')[1]
         mstr = self.mbytes(cmd, pars, rbs)
         if mstr:
+            print ('mstr',mstr)
             obj['hw'].protocol.Imessage(mstr, nb=4, source=self.name)
         return True
 
@@ -103,6 +104,7 @@ class DaemonProtocol(SimpleProtocol):
                 if sstring.startswith('move'):
                     # set movement parameters
                     pars_o = [[4, 'pos'], [2, 'upos']]
+                    print (pars_o)
                     if self.parsePars('move', pars_o, sstring.split(' ')[1:], 6):
                         daemon.log('move ', sstring)
                         break
@@ -141,7 +143,9 @@ class StandaRSProtocol(SerialUSBProtocol):
     @catch
     def __init__(self, serial_num, obj, debug=False):
         self.commands = []  # Queue of command sent to the device which will provide replies, each entry is a dict with keys "cmd","source"
-        self.status_commands = [[26, 'gpos'], [30, 'gmov']]  # commands send when device not busy to keep tabs on the state
+
+        #self.status_commands = [[26, 'gpos'], [30, 'gmov']]  # commands send when device not busy to keep tabs on the state
+        self.status_commands = []
 
         super().__init__(obj=obj, serial_num=serial_num, refresh=1, baudrate=115200, bytesize=8, parity='N', stopbits=2, timeout=400, debug=debug)
 
@@ -196,6 +200,7 @@ class StandaRSProtocol(SerialUSBProtocol):
     def processBinary(self, bstring):
         # Process the device reply
         self._bs = bstring
+
         if self._debug:
             print("hw bb > %s" % self._bs)
         if len(self.commands):
@@ -249,8 +254,8 @@ class StandaRSProtocol(SerialUSBProtocol):
                     self.object['encposition'] = int(self.sintb(8))
                     if self.commands[0]['status'] != 'sent_status':
                         r_str = 'pos:'+self.object['position']+' '
-                        r_str += 'upos:'+self.object['uposition']+' '
-                        r_str += 'encpos:'+self.object['encposition']
+                        r_str += 'upos:'+str(self.object['uposition'])+' '
+                        r_str += 'encpos:'+str(self.object['encposition'])
                     break
                 # not recognized command, just pass the output
                 r_str = self._bs

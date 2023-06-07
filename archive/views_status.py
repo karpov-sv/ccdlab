@@ -61,7 +61,7 @@ def is_number(s):
     try:
         float(s)
         return True
-    except ValueError:
+    except:
         return False
 
 def status_plot(request, params, width=1000.0, height=500.0, hours=24.0, title=None, xlabel="Time, UT", ylabel=None, ylog=False, grid=True):
