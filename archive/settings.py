@@ -26,7 +26,7 @@ SECRET_KEY = '(#((9dc(bdy@ibrb5t7ud=0zm45bjm%52n1eyr6)7%#u$@5!44'
 #DEBUG = False
 DEBUG = True
 
-ALLOWED_HOSTS = '*'
+ALLOWED_HOSTS = ['*']
 
 INTERNAL_IPS = ['127.0.0.1']
 

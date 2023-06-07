@@ -346,7 +346,7 @@ def make_plot(file, obj, client_name, plot_name, size=800):
 
     # Return the image
     canvas = FigureCanvas(fig)
-    canvas.print_png(file, bbox_inches='tight')
+    canvas.print_png(file)#, bbox_inches='tight')
 
 
 class WebMonitor(Resource):
