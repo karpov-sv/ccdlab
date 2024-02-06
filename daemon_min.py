@@ -264,7 +264,7 @@ class MINProtocol():
                 min_logger.debug("RESET received".format(min_seq))
                 self._transport_fifo_reset()
                 self._rx_reset()
-            else:
+            elif len(self.source):
                 # MIN frame received
                 orig_seq=int(min_payload.decode('ascii').split(':')[0])
                 min_frame = MINFrame(min_id=min_id_control, payload=min_payload, seq=min_seq, source=self.source[orig_seq], transport=True)

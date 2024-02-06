@@ -88,7 +88,8 @@ class Arduino_A_Protocol(MINProtocol):
         r_str = ''
         while True:
             if plString.startswith('status='):
-                statStr=plString.replace('status=','').split(';')
+                statStr=plString.replace('-1000.00','nan')
+                statStr=statStr.replace('status=','').split(';')
                 self.object['temp01'] = statStr[0]
                 self.object['temp02'] = statStr[1]
                 self.object['humd01'] = statStr[2]
