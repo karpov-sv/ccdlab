@@ -150,7 +150,7 @@ class plh120_Protocol(SimpleProtocol):
         obj = self.object  # Object holding the state
         daemon = obj['daemon']
         if self._debug:
-            print('PLH120-P >> %s' % string)
+            print 'PLH120-P >> %s' % string
             #print 'commands Q:', self.commands
         # Update the last reply timestamp
         obj['hw_last_reply_time'] = datetime.datetime.utcnow()

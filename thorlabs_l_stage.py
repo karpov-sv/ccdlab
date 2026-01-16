@@ -242,7 +242,7 @@ class DaemonProtocol(SimpleProtocol):
                                     vals[input_ex[0]] *= obj['hw']._velocity_scale
                             elif input_ex[0] == 'offset':
                                 vals[input_ex[0]] = float(input_ex[1])
-                                if sstring.startswith('set_home_pars_mm'):
+                                if sstring.sMessage(Message.MGMSG_MOD_IDENTIFY).startswith('set_home_pars_mm'):
                                     vals[input_ex[0]] *= obj['hw']._position_scale
                         except:
                             print('command ' + sstring + ' is not valid')
@@ -428,16 +428,25 @@ class ThorlabsLSProtocol(FTDIProtocol):
 
     @catch
     def __init__(self, serial_num, obj, debug=False):
+
         # commands send when device not busy to keep tabs on the state
-        self.status_commands = [{'msg': Message(Message.MGMSG_MOT_REQ_STATUSUPDATE), 'source': 'itself',
-                                 'get_c': -Message.MGMSG_MOT_GET_STATUSUPDATE, 'unit': 'mm'}]
+        self.status_commands = [{'msg': Message(Message.MGMSG_MOT_REQ_STATUSUPDATE), 'source': 'itself_init',
+                                 'get_c': Message.MGMSG_MOT_GET_STATUSUPDATE, 'unit': 'mm'}]
         self.commands = []
         self._debug = debug
+        if self._debug:
+            print("initializing")
         super().__init__(serial_num, obj)
         self.name = 'hw'
         self.type = 'hw'
         self._refresh = 1
 
+    @catch
+    def __post_init__(self):
+        print("blinking")
+        for i in range(100):
+            self.send_message(Message(Message.MGMSG_MOD_IDENTIFY))
+        print("blinked")
     @catch
     def ConnectionLost(self):
         super().ConnectionLost()
@@ -462,11 +471,11 @@ class ThorlabsLSProtocol(FTDIProtocol):
         self.commands = []
         # init some parameters
         params = st.pack('<HHHIIH', 1, 3, 3, 50*self._position_scale, 0, 1)
-        self.commands.append({'msg': Message(Message.MGMSG_MOT_SET_LIMSWITCHPARAMS, data=params), 'source': 'itself', 'get_c': 0})
+        self.commands.append({'msg': Message(Message.MGMSG_MOT_SET_LIMSWITCHPARAMS, data=params), 'source': 'itself_conn', 'get_c': 0})
         params = st.pack('<HHHII', 1, 2, 1, 2*self._velocity_scale, int(0.1*self._position_scale))
-        self.commands.append({'msg': Message(Message.MGMSG_MOT_SET_HOMEPARAMS, data=params), 'source': 'itself', 'get_c': 0})
+        self.commands.append({'msg': Message(Message.MGMSG_MOT_SET_HOMEPARAMS, data=params), 'source': 'itself_conn', 'get_c': 0})
         params = st.pack('<HHH', 1, 20, 100)
-        self.commands.append({'msg': Message(Message.MGMSG_MOT_SET_POWERPARAMS, data=params), 'source': 'itself', 'get_c': 0})
+        self.commands.append({'msg': Message(Message.MGMSG_MOT_SET_POWERPARAMS, data=params), 'source': 'itself_conn', 'get_c': 0})
         super().ConnectionMade()
         self.object['hw_connected'] = 1
 
@@ -649,10 +658,18 @@ class ThorlabsLSProtocol(FTDIProtocol):
             print("===================== command queue end ==========================")
 
         if not self.object['hw_connected']:
+            if self._debug:
+                print("hw not connected, can't send message")
             return
 
+        if self._debug:
+            print("sending commands")
+
         if len(self.commands):
-            if self.commands[0]['get_c'] >= 0:
+            if self.commands[0]["source"] == "itself_init":
+                self.commands.pop()
+                return
+            if self.commands[0]['get_c'] >= 0 or True:
                 if self._debug:
                     print('sending command', self.commands[0])
                 self.send_message(self.commands[0]['msg'].pack())

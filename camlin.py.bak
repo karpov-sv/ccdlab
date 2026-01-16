@@ -93,10 +93,10 @@ class DaemonProtocol(SimpleProtocol):
                 obj['hw_connected'] = 1
 
                 # Print some info
-                print(("DLL:", hw.get_dll_version()))
-                print(("SN:", hw.get_serial_number()))
-                print(("Firmware:", hw.get_firmware_version()))
-                print(("Model:", hw.get_model()))
+                print("DLL:", hw.get_dll_version())
+                print("SN:", hw.get_serial_number())
+                print("Firmware:", hw.get_firmware_version())
+                print("Model:", hw.get_model())
 
                 # Perform an initialization
                 # FIXME: make it configurable?..

@@ -138,7 +138,7 @@ def status_plot(request, params, width=1000.0, height=500.0, hours=24.0, title=N
         if np.any(np.array(value) != None):
             has_data = True
 
-            if len(value) and is_number(value[0]):
+            if len(value):
                 value = np.double(['nan' if _ == 'None' else _ for _ in value])
 
             ax.plot(time, value, '-', label=labels[_].split('.')[-1])

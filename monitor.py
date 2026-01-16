@@ -506,8 +506,13 @@ if __name__ == '__main__':
     parser.add_option('-s', '--server', help='Act as a TCP and HTTP server', action='store_true', dest='server', default=False)
     parser.add_option('-i', '--interval', help='DB logging status inteval', dest='interval', type='float', default=obj['db_status_interval'])
     parser.add_option('-a', '--auth-file', help='passwords file', action='store', dest='passwd_file', type='string')  # htpasswd -c -d passwdfile user
+    parser.add_option('-N', '--no-auth', help='to use when running without password', action='store_true', dest='no_auth', default=False)
 
     (options, args) = parser.parse_args()
+
+    if (bool(options.passwd_file) == options.no_auth):
+        parser.error("options -N and -a are mutually exclusive")
+
 
     obj['db_status_interval'] = options.interval
 
@@ -546,10 +551,14 @@ if __name__ == '__main__':
         root = File(r"web")
         root.putChild(b"", File('web/main.html'))
         root.putChild(b"monitor", WebMonitor(factory=daemon, object=obj))
+        
         if options.passwd_file and os.path.exists(options.passwd_file):
             site = Site(Auth(root, options.passwd_file))
-        else:
+        elif options.no_auth:
             site = Site(root)
+        else:
+            print("undefined auth state")
+            raise RuntimeError
 
         # WebSockets
         if _HAVE_TXSOCKJS:

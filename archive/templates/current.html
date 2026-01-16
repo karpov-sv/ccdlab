@@ -207,7 +207,29 @@
         <img src="{% url 'status_plot' 'arduino_A.humd01,arduino_A.humd02' %}?ylog=1&width=1000&height=400&hours=168&title=Room Humidity&ylabel=temp [C]" class="img img-responsive center-block popup-status-image">
       </div>
     </div>
-    
+
+    <ul class="nav nav-tabs">
+      <li class="nav-item disabled"><a class="nav-link disabled">FAST camera:</a></li>
+      <li class="nav-item"><a data-toggle="tab" href="#fastd-hour">Last Hour</a></li>
+      <li class="nav-item active"><a data-toggle="tab" href="#fastd-day">Last Day</a></li>
+      <li class="nav-item"><a data-toggle="tab" href="#fastd-week">Last Week</a></li>
+    </ul>
+
+    <div class="tab-content">
+      <div id="fastd-hour" class="tab-pane fade">
+        <img src="{% url 'status_plot' 'fast.temperature,fast.camera_temperature' %}?width=1000&height=400&hours=1&title=Temperature&ylabel=temp [C]" class="img img-responsive center-block popup-status-image">
+        <img src="{% url 'status_plot' 'fast.acquisition,fast.storage' %}?width=1000&height=400&hours=1" class="img img-responsive center-block popup-status-image">
+      </div>
+      <div id="fastd-day" class="tab-pane fade in active">
+        <img src="{% url 'status_plot' 'fast.temperature,fast.camera_temperature' %}?width=1000&height=400&hours=24&title=Temperature&ylabel=temp [C]" class="img img-responsive center-block popup-status-image">
+        <img src="{% url 'status_plot' 'fast.acquisition,fast.storage' %}?width=1000&height=400&hours=24" class="img img-responsive center-block popup-status-image">
+      </div>
+      <div id="fastd-week" class="tab-pane fade">
+        <img src="{% url 'status_plot' 'fast.temperature,fast.camera_temperature' %}?width=1000&height=400&hours=168&title=Temperature&ylabel=temp [C]" class="img img-responsive center-block popup-status-image">
+        <img src="{% url 'status_plot' 'fast.acquisition,fast.storage' %}?width=1000&height=400&hours=168" class="img img-responsive center-block popup-status-image">
+      </div>
+    </div>
+
   </div>
 
 
