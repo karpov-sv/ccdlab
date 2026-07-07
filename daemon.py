@@ -424,11 +424,15 @@ class SimpleFactory(Factory):
             except Exception as e:
                 c.message(string, **kwargs)
                 
-                
-    def listen(self, port=0):
+    def listen(self, port=0, listen_on = "127.0.0.1"):
         """Listen for incoming connections on a given port"""
         print("Listening for incoming connections on port %d" % port)
-        TCP4ServerEndpoint(self._reactor, port).listen(self)
+        TCP4ServerEndpoint(self._reactor, port = port, interface = listen_on).listen(self)
+                
+#    def listen(self, port=0):
+#        """Listen for incoming connections on a given port"""
+#        print("Listening for incoming connections on port %d" % port)
+#        TCP4ServerEndpoint(self._reactor, port).listen(self)
 
     def connect(self, host, port, reconnect=True):
         """Initiate outgoing connection, either persistent or no"""
