@@ -8,6 +8,8 @@ from twisted.protocols.basic import LineReceiver
 from twisted.internet.task import LoopingCall
 from twisted.internet.serialport import SerialPort
 
+from ipaddress import ip_address, ip_network
+
 import pylibftdi
 from pyudev import Context, Monitor, MonitorObserver
 
@@ -69,7 +71,7 @@ class FTDIProtocol(Protocol):
                 for ch in device.children:
                     if 'tty' not in ch.get('DEVPATH'):
                         self.devpath = ch.get('DEVPATH')
-                        self.ConnectionMade()
+                        self.nMade()
 
         cm = Monitor.from_netlink(context)
         cm.filter_by(subsystem='usb')
@@ -224,11 +226,16 @@ class SimpleProtocol(Protocol):
     _refresh = 1.0
     _comand_end_character = b'\n'
 
-    def __init__(self, refresh=0):
+    def __init__(self, refresh=0, allowed_IPs=['192.168.1.0/24','127.0.0.1']):
         self._buffer = b''
         self._is_binary = False
         self._binary_length = 0
         self._peer = None
+
+        self._allowed = [
+            ip_network(ip_or_net, strict=False)
+            for ip_or_net in allowed_IPs
+        ]
 
         if refresh > 0:
             self._refresh = refresh
@@ -248,13 +255,21 @@ class SimpleProtocol(Protocol):
 
     def connectionMade(self):
         """Method called when connection is established"""
+
         self._peer = self.transport.getPeer()
         self.factory.connections.append(self)
-
-        print("Connected to %s:%d" % (self._peer.host, self._peer.port))
-
         self._updateTimer = LoopingCall(self.update)
         self._updateTimer.start(self._refresh)
+
+        peer_host = self.transport.getPeer().host
+
+        if any(ip_address(peer_host) in net for net in self._allowed):
+            print("IP allowed")
+        else:
+            self.transport.loseConnection()
+            return
+
+        print("Connected to %s:%d" % (self._peer.host, self._peer.port))
 
         # Set up TCP keepalive for the connection
         self.transport.getHandle().setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
@@ -424,15 +439,11 @@ class SimpleFactory(Factory):
             except Exception as e:
                 c.message(string, **kwargs)
                 
-    def listen(self, port=0, listen_on = "127.0.0.1"):
+                
+    def listen(self, port=0):
         """Listen for incoming connections on a given port"""
         print("Listening for incoming connections on port %d" % port)
-        TCP4ServerEndpoint(self._reactor, port = port, interface = listen_on).listen(self)
-                
-#    def listen(self, port=0):
-#        """Listen for incoming connections on a given port"""
-#        print("Listening for incoming connections on port %d" % port)
-#        TCP4ServerEndpoint(self._reactor, port).listen(self)
+        TCP4ServerEndpoint(self._reactor, port).listen(self)
 
     def connect(self, host, port, reconnect=True):
         """Initiate outgoing connection, either persistent or no"""
